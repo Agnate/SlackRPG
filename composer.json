@@ -1,0 +1,7 @@
+{
+  "require": {
+    "raveren/kint": "v0.9",
+    "react/zmq": "0.2.*",
+    "frlnc/php-slack": "*"
+  }
+}

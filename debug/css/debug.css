@@ -1,0 +1,35 @@
+body {
+	background-color: white;
+	color: #3D3C40;
+	font-family: Lato, sans-serif;
+	font-size: 15px;
+	line-height: 22px;
+}
+
+code {
+	font-size: .72rem;
+	white-space: normal;
+	color: #c25;
+	padding: 1px 3px;
+	font-family: Monaco,Menlo,Consolas,"Courier New",monospace;
+	border-radius: 3px;
+	box-sizing: border-box;
+	background-color: #f7f7f9;
+	border: 1px solid #e1e1e8;
+}
+
+img {
+	display: inline-block;
+	vertical-align: baseline;
+	margin: -2px 0;
+	line-height: 18px;
+	width: 22px;
+	height: 22px;
+	background-size: 22px;
+	box-sizing: border-box;
+}
+
+.channel-personal {
+	font-style: italic;
+	color: #8b898f;
+}

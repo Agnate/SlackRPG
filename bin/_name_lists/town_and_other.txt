@@ -1,0 +1,98 @@
+TOWN NAME BITS:  HABITATION
+1. Fort
+2. Station
+3. Outpost
+4. Mine
+6. Camp
+7. Ranch
+8. Farm
+11. Church
+
+TOWN NAME BITS:  TOPOGRAPHY
+1. Canyon
+2. Gulch
+3. Wash
+4. Valley
+5. Mountain
+6. Summit
+7. Pass
+8. Ridge
+9. Gorge
+10. Rock
+11. Point
+12. Arch
+13. Basin
+14. River
+15. Creek
+16. Fork
+17. Bend
+18. Crossing
+19. Lake
+20. Spring
+
+TOWN NAME BITS:  DESCRIPTION
+1. Roaring
+2. Windy
+3. North
+4. Icy
+5. Flat
+6. West
+7. Soda
+8. Alkali
+9. Salt
+10. Briny
+11. Rocky
+12. Snowy
+13. East
+14. Muddy
+15. Mossy
+16. Gold
+17. Silver
+18. Big
+19. Little
+20. South
+
+terrain feature names: 
+-weald
+-barrow
+-tor
+-cairn
+-dale - valley
+-loch
+-vale
+-borough
+-hollow - sunken area
+-dell - small wooded valley
+-hall
+-deep
+-moor
+-knoll - small hill
+-grove - smallish stand of trees, lacking undergrowth
+-hillock - small hill
+-copse - small dense stand of trees
+-glade - grassy open space in a forest
+-glen - A glen is a valley, typically one that is long, deep, and often glacially U-shaped; or one with a watercourse running through such a valley.
+-cleft
+-crag
+-ridge
+-mesa
+-foothills
+-gulch - a steep, V-shaped valley, usually with a river or stram at bottom; prone to flash-floods
+-bluff
+-dolmen
+-thicket
+-shallows
+-strand
+-basin
+-spring
+-fork
+-creek
+-gulch
+-pass
+-fork
+-crossing
+-fen: a low and marshy or frequently flooded area of land.
+-marsh
+-marshland
+-wetland
+-heath: an area of open uncultivated land, especially in Britain, with characteristic vegetation of heather, gorse, and coarse grasses.
