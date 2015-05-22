@@ -29,6 +29,8 @@ class RPGSession {
     $this->register_callback(array('register'), 'cmd_register');
     $this->register_callback(array('recruit'), 'cmd_recruit');
     $this->register_callback(array('quest'), 'cmd_quest');
+    $this->register_callback(array('map'), 'cmd_map');
+    $this->register_callback(array('explore'), 'cmd_explore');
 
     $this->register_callback(array('test'), 'cmd_test');    
 
@@ -46,6 +48,8 @@ class RPGSession {
     $response[] = 'Register Guild: `/rpg register [GUILD EMOJI] [GUILD NAME]` (example: `/rpg register :skull: Death\'s Rattle`)';
     $response[] = 'Guild status: `/rpg status`';
     $response[] = 'Recruit Adventurers: `/rpg recruit`';
+    $response[] = 'Quests: `/rpg quest`';
+    $response[] = 'Explore the Map: `/rpg explore`';
     $response[] = '';
     
     $response[] = '*Other*';
@@ -394,6 +398,51 @@ class RPGSession {
     $names = implode(', ', $names).$last_name;
 
     $this->respond($names.' embark'.($name_count == 1 ? 's' : '').' on the quest to '.$quest->name.' returning in '.$this->get_duration_as_hours($duration).'.');
+  }
+
+
+
+  /**
+   * Go explore the map.
+   */
+  protected function cmd_explore ($args = array()) {
+    // Load the player and fail out if they have not created a Guild.
+    $player = $this->load_current_player();
+
+    // If there's no coordinates entered, show the map.
+    if (empty($args) || empty($args[0])) {
+      $this->cmd_map($args);
+      return;
+    }
+
+    // Get the coordinates: ex. A4.
+    $coord = $args[0];
+    // Regex the line to scrub out the letters.
+    $row = preg_replace('/[^0-9]/', '', $coord);
+    $col = preg_replace('/[^a-zA-Z]/', '', $coord);
+
+    if (empty($row) || empty($col)) {
+      $this->respond('Please enter the coordinates without any spaces. Example: `/rpg explore A4 [ADVENTURER NAMES (comma-separated)]`');
+      return false;
+    }
+
+  }
+
+
+
+  /**
+   * View the map.
+   */
+  protected function cmd_map ($args = array()) {
+    // Load the player and fail out if they have not created a Guild.
+    //$player = $this->load_current_player();
+
+    $response = array();
+    $response[] = '[MAP GOES HERE]';
+    $response[] = '';
+    $response[] = 'To explore a location on the map, type: `/rpg explore [LETTER][NUMBER]` (ex: `/rpg explore A4`).';
+
+    $this->respond(implode("\n", $response));
   }
 
 
