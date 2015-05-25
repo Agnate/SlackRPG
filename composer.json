@@ -1,7 +1,13 @@
 {
+  "repositories": [
+    {
+      "type": "vcs",
+      "url": "https://github.com/Devristo/phpws"
+    }
+  ],
   "require": {
     "raveren/kint": "v0.9",
-    "react/zmq": "0.2.*",
-    "frlnc/php-slack": "*"
+    "frlnc/php-slack": "*",
+    "devristo/phpws": "dev-master"
   }
 }

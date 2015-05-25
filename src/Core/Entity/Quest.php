@@ -15,17 +15,28 @@ class Quest extends RPGEntitySaveable {
   public $reward_gold;
   public $reward_exp;
   public $reward_fame;
-  public $location;
   public $duration;
   public $cooldown;
   public $requirements;
-  public $party_size;
+  public $party_size_min;
+  public $party_size_max;
+
+  // Protected
+  protected $_location;
 
   // Private vars
-  static $fields_int = array('created', 'reward_gold', 'reward_exp', 'reward_fame', 'duration', 'cooldown', 'party_size');
+  static $fields_int = array('created', 'reward_gold', 'reward_exp', 'reward_fame', 'duration', 'cooldown', 'party_size_min', 'party_size_max');
   static $db_table = 'quests';
   static $default_class = 'Quest';
   static $primary_key = 'qid';
+
+  // Constants
+  const TYPE_EXPLORE = 'explore';
+  const TYPE_TRAIN = 'train';
+  const TYPE_INVESTIGATE = 'investigate';
+  const TYPE_AID = 'aid';
+  const TYPE_FIGHT = 'fight';
+  const TYPE_BOSS = 'boss';
 
   
   function __construct($data = array()) {
@@ -34,7 +45,33 @@ class Quest extends RPGEntitySaveable {
 
     // Add created timestamp if nothing did already.
     if (empty($this->created)) $this->created = time();
-    if (empty($this->party_size)) $this->party_size = 1;
+    if (empty($this->party_size_min)) $this->party_size_min = 1;
+  }
+
+  public function load_location () {
+    $this->_location = Location::load(array('locid' => $this->locid));
+  }
+
+  public function get_location () {
+    if (empty($this->_location)) {
+      $this->load_location();
+    }
+
+    return $this->_location;
+  }
+
+  public function get_party_size () {
+    return $this->party_size_min .($this->party_size_max > 0 && $this->party_size_max != $this->party_size_min ? '-'.$this->party_size_max : '');
+  }
+
+  public function get_duration () {
+    $duration = $this->duration;
+    // Load up the location for this Quest.
+    $location = Location::load(array('locid' => $this->locid));
+    if (!empty($location)) {
+      $duration += $location->get_duration();
+    }
+    return $duration;
   }
 
   public function queue_process ($queue = null) {
@@ -75,6 +112,22 @@ class Quest extends RPGEntitySaveable {
       $adventurer->save();
     }
 
+    $player_text = $this->name .' was completed!';
+    $channel_text = '';
+
+    // If this is an exploration quest, reveal the location.
+    if ($this->type == Quest::TYPE_EXPLORE) {
+      $location = $this->get_location();
+      $location->revealed = true;
+      $location->gid = $guild->gid;
+      $location->save();
+
+      if (!empty($location->name)) {
+        $player_text .= " You discovered ".$location->name.".";
+        $channel_text .= $guild->get_display_name()." discovered ".$location->name.".";
+      }
+    }
+
     // Check if we need to reactivate this quest.
     $this->agid = 0;
     $this->gid = 0;
@@ -93,10 +146,17 @@ class Quest extends RPGEntitySaveable {
     // If a cooldown was set, we need to queue up the activation.
     if (!empty($cooldown)) $this->queue( $cooldown );
 
-    return array(
-      'player' => $guild,
-      'text' => $this->name .' was completed!',
+    $result = array(
+      'messages' => array(),
     );
+    if (isset($player_text) && !empty($player_text)) {
+      $result['messages']['instant_message'] = array(
+        'text' => $player_text,
+        'player' => $guild,
+      );
+    }
+    if (isset($channel_text) && !empty($channel_text)) $result['messages']['channel'] = array('text' => $channel_text);
+    return $result;
   }
 
   protected function queue_process_reactivate ($queue = null) {

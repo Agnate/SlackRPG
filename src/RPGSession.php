@@ -32,8 +32,6 @@ class RPGSession {
     $this->register_callback(array('map'), 'cmd_map');
     $this->register_callback(array('explore'), 'cmd_explore');
 
-    $this->register_callback(array('test'), 'cmd_test');    
-
     $this->register_callback(array('status'), 'cmd_status');
   }
 
@@ -156,7 +154,7 @@ class RPGSession {
     $response[] = '*Adventurers*: ('.$player->get_adventurers_count().' / '.$player->adventurer_limit.')';
 
     foreach ($adventurers as $adventurer) {
-      $adv_status = !empty($adventurer->agid) ? ' [Questing]' : '';
+      $adv_status = !empty($adventurer->agid) ? ' [Adventuring]' : '';
       $response[] = $adventurer->get_display_name(false) .$adv_status;
     }
 
@@ -248,7 +246,7 @@ class RPGSession {
       $response = array();
       $response[] = 'Quests available:';
       foreach ($quests as $quest) {
-        $response[] = $quest->name.' (adventurers required: '.$quest->party_size.')  `/rpg quest q'.$quest->qid.' [ADVENTURER NAMES (comma-separated)]`';
+        $response[] = $quest->name.' (adventurers required: '.$quest->get_party_size().')  `/rpg quest q'.$quest->qid.' [ADVENTURER NAMES (comma-separated)]`';
       }
 
       // Also show the list of available adventurers.
@@ -307,47 +305,49 @@ class RPGSession {
 
     // Check the party size requirement.
     $num_adventurers = count($adventurers);
-    if ($num_adventurers != $quest->party_size) {
-      $adventurer_diff = $quest->party_size - $num_adventurers;
-      $adventurer_response = ($adventurer_diff > 0) ? abs($adventurer_diff).' too few' : abs($adventurer_diff).' too many';
-
-      if ($adventurer_diff > 0) {
-        $response[] = 'You need '.abs($adventurer_diff).' more adventurer'.($quest->party_size > 1 ? 's' : '').' (total of '.$quest->party_size.') to embark on this quest.';
+    $too_few = $num_adventurers < $quest->party_size_min;
+    $too_many = $num_adventurers > $quest->party_size_max;
+    if ($too_few || $too_many) {
+      if ($too_few) {
+        $response[] = 'You need at least '.$quest->party_size_min.' adventurer'.($quest->party_size_min > 1 ? 's' : '').' to embark on this quest.';
       }
-      else {
-        $response[] = 'There are '.abs($adventurer_diff).' too many adventurers for this quest. Please reduce the group to '.$quest->party_size.' adventurer'.($quest->party_size > 1 ? 's' : '').'.'; 
+      
+      if ($too_many) {
+        $adventurer_diff = $num_adventurers - $quest->party_size_max;
+        $response[] = 'There are '.abs($adventurer_diff).' too many adventurers for this quest. Please reduce the group to '.$quest->party_size_max.' adventurer'.($quest->party_size_max > 1 ? 's' : '').'.';
       }
 
       $response[] = "(You typed: `/rpg quest q".$qid." ".$adventurer_args.(!empty($confirmation) ? ' '.$confirmation : '')."`)";
-
       $this->respond(implode("\n", $response));
       return FALSE;
     }
     
     // Check for a valid confirmation code.
-    if (!empty($confirmation) && $confirmation != 'CONFIRM_Q'.$quest->qid) {
-      $response[] = 'The confirmation code "'.$confirmation.'" is invalid. The code should be: `CONFIRM_Q'.$quest->qid.'`.';
+    if (!empty($confirmation) && $confirmation != 'CONFIRM') {
+      $response[] = 'The confirmation code "'.$confirmation.'" is invalid. The code should be: `CONFIRM`.';
       $response[] = '';
       // Re-display the confirmation text.
       $confirmation = false;
     }
 
+    $duration = $quest->get_duration();
+
     // Display the confirmation message and code.
     if (empty($confirmation)) {
-      $response[] = '*Quest*: '.$quest->name;
+      $response[] = '*Mission*: '.$quest->name;
+      $response[] = '*Duration*: '.$this->get_duration_as_hours($duration);
       $response[] = '*Adventuring party*: ('.count($adventurers).')';
       foreach ($adventurers as $adventurer) {
         $response[] = $adventurer->get_display_name();
       }
       $response[] = '';
       $response[] = 'To confirm your departure, type:';
-      $response[] = '`/rpg q'.$quest->qid.' '.$adventurer_args.' CONFIRM_Q'.$quest->qid.'`';
+      $response[] = '`/rpg quest q'.$quest->qid.' '.$adventurer_args.' CONFIRM`';
       $this->respond(implode("\n", $response));
       return FALSE;
     }
 
     // Put together the adventuring party.
-    $duration = $quest->duration;
     $data = array(
       'gid' => $player->gid,
       'created' => time(),
@@ -416,16 +416,192 @@ class RPGSession {
     }
 
     // Get the coordinates: ex. A4.
-    $coord = $args[0];
+    $coord = strtoupper(array_shift($args));
     // Regex the line to scrub out the letters.
     $row = preg_replace('/[^0-9]/', '', $coord);
     $col = preg_replace('/[^a-zA-Z]/', '', $coord);
-
     if (empty($row) || empty($col)) {
       $this->respond('Please enter the coordinates without any spaces. Example: `/rpg explore A4 [ADVENTURER NAMES (comma-separated)]`');
       return false;
     }
 
+    // Load the Location.
+    $location = Location::load(array(
+      'row' => $row,
+      'col' => Location::get_number($col),
+    ));
+    // Check if the Location exists.
+    if (empty($location)) {
+      $this->respond("Location ".$coord." is not on the map.\n", RPGSession::PERSONAL, false);
+      $this->cmd_map($args);
+      return;
+    }
+    // Check if the Location is already revealed.
+    if ($location->revealed) {
+      // Load up the Guild that revealed this location.
+      $guild = Guild::load(array('gid' => $location->gid));
+      $revealed_text = empty($guild) ? '' : ' by '.$guild->get_display_name();
+      if ($guild->gid == $player->gid) $revealed_text = ' you';
+      $this->respond('Location '.$coord.' was already explored'.$revealed_text.'.');
+      return false;
+    }
+    
+    // Get the adventurers going.
+    if (empty($args)) {
+      $response = array();
+      $response[] = 'Please choose Adventurers to go exploring. Type: `/rpg explore '.$coord.' [ADVENTURER NAMES (comma-separated)]`';
+      // Also show the list of available adventurers.
+      $response[] = '';
+      $response[] = 'Adventurers available for exploring:';
+      foreach ($player->get_adventurers() as $adventurer) {
+        if (!empty($adventurer->agid)) continue;
+        $response[] = $adventurer->get_display_name();
+      }
+      $this->respond(implode("\n", $response));
+      return FALSE;
+    }
+
+    // Check the last argument for the confirmation code.
+    $confirmation = false;
+    if (!empty($args) && strpos($args[count($args)-1], 'CONFIRM') === 0) {
+      $confirmation = array_pop($args);
+    }
+
+    // Check if the adventurers are valid.
+    $adventurer_args = implode(' ', $args);
+    $list = explode(',', $adventurer_args);
+    $adventurers = array();
+    foreach ($list as $name) {
+      // Check if the Adventurer is available for a Quest.
+      $adventurer = Adventurer::load(array(
+        'name' => trim($name),
+        'gid' => $player->gid,
+        'agid' => 0,
+      ), true);
+
+      if (empty($adventurer)) {
+        $this->respond('The adventurer named "'.trim($name).'" is not available or valid. Please double-check that the name is correct.'."\n(You typed: `/rpg explore ".$coord." ".$adventurer_args.(!empty($confirmation) ? ' '.$confirmation : '')."`)");
+        return FALSE;
+      }
+
+      $adventurers[] = $adventurer;
+    }
+
+    $response = array();
+
+    // Check the party size requirement.
+    $num_adventurers = count($adventurers);
+    $min_allowed = 2;
+    $too_few = $num_adventurers < $min_allowed;
+    if ($too_few) {
+      $response[] = 'You need at least '.$min_allowed.' adventurer'.($min_allowed > 1 ? 's' : '').' to go exploring.';
+
+      $response[] = "(You typed: `/rpg explore ".$coord." ".$adventurer_args.(!empty($confirmation) ? ' '.$confirmation : '')."`)";
+      $this->respond(implode("\n", $response));
+      return FALSE;
+    }
+    
+    // Check for a valid confirmation code.
+    if (!empty($confirmation) && $confirmation != 'CONFIRM') {
+      $response[] = 'The confirmation code "'.$confirmation.'" is invalid. The code should be: `CONFIRM`.';
+      $response[] = '';
+      // Re-display the confirmation text.
+      $confirmation = false;
+    }
+
+    // Calculate the duration.
+    $duration = $location->get_duration();
+
+    // Display the confirmation message and code.
+    if (empty($confirmation)) {
+      $response[] = '*Mission*: Exploration';
+      $response[] = '*Duration*: '.$this->get_duration_as_hours($duration);
+      $response[] = '*Adventuring party*: ('.count($adventurers).')';
+      foreach ($adventurers as $adventurer) {
+        $response[] = $adventurer->get_display_name();
+      }
+      $response[] = '';
+      $response[] = 'To confirm your departure, type:';
+      $response[] = '`/rpg explore '.$coord.' '.$adventurer_args.' CONFIRM`';
+      $this->respond(implode("\n", $response));
+      return FALSE;
+    }
+
+    // Create the exploration "quest".
+    $quest = new Quest (array(
+      'gid' => $player->gid,
+      'locid' => $location->locid,
+      'type' => Quest::TYPE_EXPLORE,
+      'name' => 'Explore '.$location->get_coord_name(),
+      'icon' => ':explore:',
+      'created' => time(),
+      'active' => false,
+      'permanent' => false,
+      'reward_gold' => 0,
+      'reward_exp' => 0,
+      'reward_fame' => 0,
+      'duration' => 0,
+      'cooldown' => 0,
+      'min_party_size' => 2,
+      'max_party_size' => 0,
+    ));
+    $success = $quest->save();
+    if ($success === false) {
+      $this->respond('There was a problem saving the exploration quest. Please talk to Paul.');
+      return FALSE;
+    }
+
+    // Put together the adventuring party.
+    $data = array(
+      'gid' => $player->gid,
+      'created' => time(),
+      'task_id' => $quest->qid,
+      'task_type' => 'Quest',
+      'task_eta' => $duration,
+      'completed' => false,
+    );
+    $advgroup = new AdventuringGroup ($data);
+    $success = $advgroup->save();
+    if ($success === false) {
+      $this->respond('There was a problem saving the adventuring group. Please talk to Paul.');
+      return FALSE;
+    }
+
+    // Assign all the adventurers to the new group.
+    $names = array();
+    foreach ($adventurers as $adventurer) {
+      $names[] = $adventurer->get_display_name();
+      $adventurer->agid = $advgroup->agid;
+      $success = $adventurer->save();
+      if ($success === false) {
+        $this->respond('There was a problem saving an adventurer to the adventuring group. Please talk to Paul.');
+        return FALSE;
+      }
+    }
+
+    // Assign adventuring group to the quest.
+    $quest->gid = $player->gid;
+    $quest->agid = $advgroup->agid;
+    $quest->active = false;
+    $success = $quest->save();
+    if ($success === false) {
+      $this->respond('There was a problem saving the quest. Please talk to Paul.');
+      return FALSE;
+    }
+
+    // Queue the quest for completion.
+    $queue = $quest->queue( $duration );
+    if (empty($queue)) {
+      $this->respond('There was a problem adding the quest to the queue. Please talk to Paul.');
+      return FALSE;
+    }
+
+    // Get list of adventurer names.
+    $name_count = count($names);
+    $last_name = ($name_count > 1) ? ', and '.array_pop($names) : '';
+    $names = implode(', ', $names).$last_name;
+
+    $this->respond($names.' set'.($name_count == 1 ? 's' : '').' off to explore '.$location->get_coord_name().' returning in '.$this->get_duration_as_hours($duration).'.');
   }
 
 
@@ -435,23 +611,32 @@ class RPGSession {
    */
   protected function cmd_map ($args = array()) {
     // Load the player and fail out if they have not created a Guild.
-    //$player = $this->load_current_player();
+    $player = $this->load_current_player();
+
+    $season = $this->load_current_season();
+    $map = Map::load(array('season' => $season));
+    $locations = Location::load_multiple(array('mapid' => $map->mapid));
 
     $response = array();
     $response[] = '[MAP GOES HERE]';
+
+    foreach ($locations as $location) {
+      if ($location->revealed) continue;
+      $response[] = $location->get_display_name().': `/rpg explore '.$location->get_coord_name().' [ADVENTURER NAMES (comma-separated)]`';
+    }
+
+    // Also show the list of available adventurers.
     $response[] = '';
-    $response[] = 'To explore a location on the map, type: `/rpg explore [LETTER][NUMBER]` (ex: `/rpg explore A4`).';
+    $response[] = 'Adventurers available for exploring:';
+    foreach ($player->get_adventurers() as $adventurer) {
+      if (!empty($adventurer->agid)) continue;
+      $response[] = $adventurer->get_display_name();
+    }
+
+    $response[] = '';
+    $response[] = 'To explore a location on the map, type: `/rpg explore [LETTER][NUMBER] [ADVENTURER NAMES (comma-separated)]` (ex: `/rpg explore A4 Morgan, Gareth`).';
 
     $this->respond(implode("\n", $response));
-  }
-
-
-
-  protected function cmd_test ($args = array()) {
-    // Load the player and fail out if they have not created a Guild.
-    $player = $this->load_current_player();
-
-    $this->respond('This is a test.', RPGSession::IM);
   }
 
 
@@ -464,6 +649,10 @@ class RPGSession {
   /____/\____/_/   /_/    \____/_/ |_| /_/    /_/    \____/_/ |_/\____/ /_/ /___/\____/_/ |_//____/  
                                                                                                      
   ==================================================================================================== */
+
+  protected function load_current_season () {
+    return 1;
+  }
 
   protected function load_current_player ($allow_error = true) {
     $player = $this->get_current_player();

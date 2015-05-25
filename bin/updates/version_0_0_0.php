@@ -63,11 +63,11 @@ function update_version_0_0_0 ($forced = false) {
   $quests_table[] = "reward_gold INT(10) UNSIGNED NOT NULL";
   $quests_table[] = "reward_exp INT(10) UNSIGNED NOT NULL";
   $quests_table[] = "reward_fame INT(10) UNSIGNED NOT NULL";
-  $quests_table[] = "location VARCHAR(255) NOT NULL";
   $quests_table[] = "duration INT(10) UNSIGNED NOT NULL";
   $quests_table[] = "cooldown INT(10) UNSIGNED NOT NULL";
   $quests_table[] = "requirements VARCHAR(255) NOT NULL";
-  $quests_table[] = "party_size INT(10) UNSIGNED NOT NULL";
+  $quests_table[] = "party_size_min INT(10) UNSIGNED NOT NULL";
+  $quests_table[] = "party_size_max INT(10) UNSIGNED NOT NULL";
   $quests_table[] = "PRIMARY KEY ( qid )";
   add_update_query( "CREATE TABLE IF NOT EXISTS quests (". implode(',', $quests_table) .")" );
 
@@ -108,7 +108,7 @@ function update_version_0_0_0 ($forced = false) {
   // Add some Adventurers.
   $adventurers = array();
   $adventurers[] = array(':gid' => '', ':name' => 'Antoine Delorisci', ':icon' => ':antoine:', ':created' => $time, ':available' => true, ':level' => '1', ':exp' => 0, ':exp_tnl' => 1, ':class' => '');
-  $adventurers[] = array(':gid' => '', ':name' => 'Katherine Hemsley', ':icon' => ':catherine:', ':created' => $time, ':available' => true, ':level' => '1', ':exp' => 0, ':exp_tnl' => 1, ':class' => '');
+  $adventurers[] = array(':gid' => '', ':name' => 'Catherine Hemsley', ':icon' => ':catherine:', ':created' => $time, ':available' => true, ':level' => '1', ':exp' => 0, ':exp_tnl' => 1, ':class' => '');
   $adventurers[] = array(':gid' => '', ':name' => 'Gareth Lockheart', ':icon' => ':gareth:', ':created' => $time, ':available' => true, ':level' => '1', ':exp' => 0, ':exp_tnl' => 1, ':class' => '');
   $adventurers[] = array(':gid' => '', ':name' => 'Reginald Tigerlily', ':icon' => ':reginald:', ':created' => $time, ':available' => true, ':level' => '1', ':exp' => 0, ':exp_tnl' => 1, ':class' => '');
   $adventurers[] = array(':gid' => '', ':name' => 'Morgan LeClaire', ':icon' => ':morgan:', ':created' => $time, ':available' => true, ':level' => '1', ':exp' => 0, ':exp_tnl' => 1, ':class' => '');
@@ -120,10 +120,28 @@ function update_version_0_0_0 ($forced = false) {
 
   // Add some Quests.
   $quests = array();
-  $quests[] = array(':name' => 'Permanent Quest', ':icon' => ':quest1:', ':type' => 'standard', ':locid' => 0, ':created' => $time, ':active' => true, ':permanent' => true, ':reward_gold' => 100, ':reward_exp' => 150, ':reward_fame' => 0, ':duration' => 20, ':cooldown' => 10, ':party_size' => 1);
-  $quests[] = array(':name' => 'Fancy Quest', ':icon' => ':quest2:', ':type' => 'standard', ':locid' => 0, ':created' => $time, ':active' => true, ':permanent' => false, ':reward_gold' => 500, ':reward_exp' => 450, ':reward_fame' => 10, ':duration' => 50, ':cooldown' => 60, ':party_size' => 3);
-  //$quests[] = array(':name' => '', ':icon' => '', ':type' => '', ':locid' => 0, ':created' => $time, ':active' => false, ':permanent' => false, ':reward_gold' => 0, ':reward_exp' => 0, ':duration' => 0, ':cooldown' => 0, ':party_size' => 0);
+  $quests[] = array(':name' => 'Permanent Quest', ':icon' => ':quest1:', ':type' => 'standard', ':locid' => 0, ':created' => $time, ':active' => true, ':permanent' => true, ':reward_gold' => 100, ':reward_exp' => 150, ':reward_fame' => 0, ':duration' => 20, ':cooldown' => 10, ':party_size_min' => 1, ':party_size_max' => 1);
+  $quests[] = array(':name' => 'Fancy Quest', ':icon' => ':quest2:', ':type' => 'standard', ':locid' => 0, ':created' => $time, ':active' => true, ':permanent' => false, ':reward_gold' => 500, ':reward_exp' => 450, ':reward_fame' => 10, ':duration' => 50, ':cooldown' => 60, ':party_size_min' => 1, ':party_size_max' => 3);
+  //$quests[] = array(':name' => '', ':icon' => '', ':type' => '', ':locid' => 0, ':created' => $time, ':active' => false, ':permanent' => false, ':reward_gold' => 0, ':reward_exp' => 0, ':duration' => 0, ':cooldown' => 0, ':party_size_min' => 1, ':party_size_max' => 0);
   foreach ($quests as $quest) {
-    add_update_query("INSERT INTO quests (name, icon, type, locid, created, active, permanent, reward_gold, reward_exp, reward_fame, duration, cooldown, party_size) VALUES (:name, :icon, :type, :locid, :created, :active, :permanent, :reward_gold, :reward_exp, :reward_fame, :duration, :cooldown, :party_size)", $quest);
+    add_update_query("INSERT INTO quests (name, icon, type, locid, created, active, permanent, reward_gold, reward_exp, reward_fame, duration, cooldown, party_size_min, party_size_max) VALUES (:name, :icon, :type, :locid, :created, :active, :permanent, :reward_gold, :reward_exp, :reward_fame, :duration, :cooldown, :party_size_min, :party_size_max)", $quest);
+  }
+
+  // Add a Map.
+  $maps = array();
+  $maps[] = array(':season' => 1, ':created' => $time);
+  //$maps[] = array(':season' => 0, ':created' => $time);
+  foreach ($maps as $map) {
+    add_update_query("INSERT INTO maps (season, created) VALUES (:season, :created)", $map);
+  }
+
+  // Add some Locations.
+  $locations = array();
+  $locations[] = array(':mapid' => 1, ':gid' => 0, ':name' => "The Capital", ':row' => 13, ':col' => 13, ':type' => 'capital', ':created' => $time, ':revealed' => true);
+  $locations[] = array(':mapid' => 1, ':gid' => 0, ':name' => "The Dragon's Cave", ':row' => 1, ':col' => 4, ':type' => 'empty', ':created' => $time, ':revealed' => false);
+  $locations[] = array(':mapid' => 1, ':gid' => 0, ':name' => "", ':row' => 14, ':col' => 13, ':type' => 'empty', ':created' => $time, ':revealed' => false);
+  //$locations[] = array(':mapid' => 0, ':gid' => 0, ':name' => "", ':row' => 0, ':col' => 0, ':type' => '', ':created' => $time, ':revealed' => false);
+  foreach ($locations as $location) {
+    add_update_query("INSERT INTO locations (mapid, gid, name, row, col, type, created, revealed) VALUES (:mapid, :gid, :name, :row, :col, :type, :created, :revealed)", $location);
   }
 }
