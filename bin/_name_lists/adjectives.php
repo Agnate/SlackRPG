@@ -39,4 +39,10 @@ $adjectives = array(
   'Epic',
   'Gargantuan',
   'Colossal',
+  'Explosive',
+  'Tyrannic',
+  'Radioactive',
+  'Poisonous',
+  'Venomous',
+  'Deranged',
 );

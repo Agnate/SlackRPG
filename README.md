@@ -29,7 +29,7 @@ Supervisor: https://www.digitalocean.com/community/tutorials/how-to-install-and-
 - `vim /etc/supervisor/conf.d/rpgbetaserver.conf`
 - Paste the following:
 
-`
+```
 [program:slack_rpg_test_server]
 command=/usr/bin/php bin/server.php
 directory=/rpg_slack/test
@@ -37,4 +37,4 @@ autostart=false
 autorestart=false
 stderr_logfile=/rpg_slack/test/log/server.err.log
 stdout_logfile=/rpg_slack/test/log/server.out.log
-`
+```
