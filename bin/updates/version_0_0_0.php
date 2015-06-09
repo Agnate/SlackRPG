@@ -28,6 +28,7 @@ function update_version_0_0_0 ($forced = false) {
   $guilds_table[] = "gold INT(10) UNSIGNED NOT NULL";
   $guilds_table[] = "fame INT(10) UNSIGNED NOT NULL";
   $guilds_table[] = "adventurer_limit INT(10) UNSIGNED NOT NULL";
+  $guilds_table[] = "upgrades VARCHAR(255) NOT NULL";
   $guilds_table[] = "PRIMARY KEY ( gid )";
   add_update_query( "CREATE TABLE IF NOT EXISTS guilds (". implode(',', $guilds_table) .")" );
 
@@ -108,6 +109,17 @@ function update_version_0_0_0 ($forced = false) {
   $location_table[] = "PRIMARY KEY ( locid )";
   add_update_query( "CREATE TABLE IF NOT EXISTS locations (". implode(',', $location_table) .")" );
 
+  // Create Upgrade table.
+  $upgrade_table = array();
+  $upgrade_table[] = "upid INT(11) UNSIGNED AUTO_INCREMENT";
+  $upgrade_table[] = "name_id VARCHAR(100) NOT NULL";
+  $upgrade_table[] = "name VARCHAR(255) NOT NULL";
+  $upgrade_table[] = "cost INT(10) UNSIGNED NOT NULL";
+  $upgrade_table[] = "duration INT(10) UNSIGNED NOT NULL";
+  $upgrade_table[] = "requires VARCHAR(255) NOT NULL";
+  $upgrade_table[] = "PRIMARY KEY ( upid )";
+  add_update_query( "CREATE TABLE IF NOT EXISTS upgrades (". implode(',', $upgrade_table) .")" );
+
   // Add some Adventurers.
   $adventurers = array();
   $adventurers[] = array(':gid' => '', ':name' => 'Antoine Delorisci', ':icon' => ':antoine:', ':created' => $time, ':available' => true, ':level' => '1', ':exp' => 0, ':exp_tnl' => 1, ':class' => '', ':champion' => false);
@@ -146,5 +158,26 @@ function update_version_0_0_0 ($forced = false) {
   //$locations[] = array(':mapid' => 0, ':gid' => 0, ':name' => "", ':row' => 0, ':col' => 0, ':type' => '', ':created' => $time, ':revealed' => false);
   foreach ($locations as $location) {
     add_update_query("INSERT INTO locations (mapid, gid, name, row, col, type, created, revealed) VALUES (:mapid, :gid, :name, :row, :col, :type, :created, :revealed)", $location);
+  }
+
+  // Add some Upgrades.
+  $upgrades = array();
+  $upgrades[] = array(':name_id' => "dorm1", ':name' => "Dormitory 1 (increase max to 5 adventurers)", ':cost' => 0, ':duration' => 0, ':requires' => '');
+  $upgrades[] = array(':name_id' => "dorm2", ':name' => "Dormitory 2 (increase max to 7 adventurers)", ':cost' => 0, ':duration' => 0, ':requires' => 'dorm1');
+  $upgrades[] = array(':name_id' => "dorm3", ':name' => "Dormitory 3 (increase max to 10 adventurers)", ':cost' => 0, ':duration' => 0, ':requires' => 'dorm2');
+  $upgrades[] = array(':name_id' => "speed1", ':name' => "Transportation: Horse (increase speed by 5%)", ':cost' => 0, ':duration' => 0, ':requires' => '');
+  $upgrades[] = array(':name_id' => "speed2", ':name' => "Transportation: Pegasus (increase speed by 5%)", ':cost' => 0, ':duration' => 0, ':requires' => 'speed1');
+  $upgrades[] = array(':name_id' => "speed3", ':name' => "Transportation: Airship (increase speed by 10%)", ':cost' => 0, ':duration' => 0, ':requires' => 'speed2');
+  $upgrades[] = array(':name_id' => "equip1", ':name' => "Equipment: Iron", ':cost' => 0, ':duration' => 0, ':requires' => '');
+  $upgrades[] = array(':name_id' => "equip2", ':name' => "Equipment: Steel", ':cost' => 0, ':duration' => 0, ':requires' => 'equip1');
+  $upgrades[] = array(':name_id' => "equip3", ':name' => "Equipment: Mithril ", ':cost' => 0, ':duration' => 0, ':requires' => 'equip2');
+  $upgrades[] = array(':name_id' => "equip4", ':name' => "Equipment: Diamond-edged", ':cost' => 0, ':duration' => 0, ':requires' => 'equip3');
+  $upgrades[] = array(':name_id' => "equip5", ':name' => "Equipment: Inlaid Crystal", ':cost' => 0, ':duration' => 0, ':requires' => 'equip4');
+  $upgrades[] = array(':name_id' => "equip6", ':name' => "Equipment: Adamantine", ':cost' => 0, ':duration' => 0, ':requires' => 'equip5');
+  $upgrades[] = array(':name_id' => "equip7", ':name' => "Equipment: Demonite", ':cost' => 0, ':duration' => 0, ':requires' => 'equip6');
+  $upgrades[] = array(':name_id' => "equip8", ':name' => "Equipment: Godstone", ':cost' => 0, ':duration' => 0, ':requires' => 'equip7');
+  //$upgrades[] = array(':name_id' => "", ':name' => "", ':cost' => 0, ':duration' => 0, ':requires' => '');
+  foreach ($upgrades as $upgrade) {
+    add_update_query("INSERT INTO upgrades (name_id, name, cost, duration, requires) VALUES (:name_id, :name, :cost, :duration, :requires)", $upgrade);
   }
 }

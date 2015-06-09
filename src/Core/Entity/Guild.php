@@ -12,10 +12,12 @@ class Guild extends RPGEntitySaveable {
   public $gold;
   public $fame;
   public $adventurer_limit;
+  public $upgrades;
 
   // Protected
   protected $_adventurers;
   protected $_renown;
+  protected $_upgrades;
 
   // Private vars
   static $fields_int = array('created', 'updated', 'gold', 'fame', 'adventurer_limit');
@@ -34,6 +36,9 @@ class Guild extends RPGEntitySaveable {
     // Add default adventurer limit.
     if (empty($this->adventurer_limit)) $this->adventurer_limit = Guild::DEFAULT_ADVENTURER_LIMIT;
     if (empty($this->_renown)) $this->_renown = -9999;
+
+    // Convert upgrades.
+    $this->load_upgrades();
   }
 
   public function get_display_name ($bold = true) {
@@ -69,6 +74,78 @@ class Guild extends RPGEntitySaveable {
     }
 
     return $this->_renown;
+  }
+
+  public function load_upgrades () {
+    $list = explode(',', $this->upgrades);
+    $this->_upgrades = array();
+
+    // Load up all the Upgrade items.
+    foreach ($list as $upgrade_name) {
+      $this->__add_upgrade($upgrade_name, false);
+    }
+
+    // Re-string the upgrade list to weed out errors.
+    $this->_update_upgrades_to_string();
+  }
+
+  protected function _update_upgrades_to_string () {
+    if ($this->upgrades == '') $this->_upgrades = array();
+    else $this->upgrades = implode(',', array_keys($this->_upgrades));
+  }
+
+  public function get_upgrades () {
+    if (empty($this->_upgrades)) $this->load_upgrades();
+    return $this->_upgrades;
+  }
+
+  public function add_upgrade ($upgrade_name) {
+    if (empty($upgrade_name)) return FALSE;
+    if (empty($this->_upgrades)) $this->load_upgrades();
+    // Add the upgrade to the list.
+    $this->__add_upgrade($upgrade_name);
+    // Refresh the string to save to the db.
+    $this->_update_upgrades_to_string();
+    return FALSE;
+  }
+
+  protected function __add_upgrade ($upgrade_name, $check_existing = true) {
+    // Check if this upgrade even exists.
+    $upgrade = Upgrade::load(array('name_id' => $upgrade_name));
+    if (empty($upgrade)) return FALSE;
+    // Check if the upgrade is already in the list.
+    if ($check_existing && in_array($upgrade_name, array_keys($this->_upgrades))) return FALSE;
+    // Add the upgrade.
+    $this->_upgrades[$upgrade->name_id] = $upgrade;
+    return $upgrade;
+  }
+
+  public function meets_requirement ($upgrade) {
+    // Check that ALL of the requirements are met.
+    $requires = $upgrade->get_requires();
+    if (empty($requires)) return TRUE;
+
+    $keys = array_keys($this->_upgrades);
+    foreach ($requires as $upgrade_name) {
+      if (!in_array($upgrade_name, $keys)) return FALSE;
+    }
+
+    return TRUE;
+  }
+
+  public function get_available_upgrades () {
+    // Load all Upgrades.
+    $all = Upgrade::load_multiple(array());
+
+    // Weed out the upgrades that aren't available
+    foreach ($all as $key => $upgrade) {
+      // If they can upgrade to this, keep it.
+      if ($this->meets_requirement($upgrade)) continue;
+      // Remove anything that cannot be upgraded now.
+      unset($all[$key]);
+    }
+
+    return $all;
   }
 
 

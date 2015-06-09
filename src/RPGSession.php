@@ -30,6 +30,7 @@ class RPGSession {
     $this->register_callback(array('recruit'), 'cmd_recruit');
     $this->register_callback(array('champion'), 'cmd_champion');
     $this->register_callback(array('edit'), 'cmd_edit');
+    $this->register_callback(array('upgrades', 'upgrade'), 'cmd_upgrade');
 
     $this->register_callback(array('quest'), 'cmd_quest');
     $this->register_callback(array('map'), 'cmd_map');
@@ -218,6 +219,12 @@ class RPGSession {
       return FALSE;
     }
 
+    // Check if the player is at their max.
+    if ($player->get_adventurers_count() >= $player->adventurer_limit) {
+      $this->respond('You cannot recruit more adventurers because you are at your maximum capacity ('.$player->adventurer_limit.').');
+      return FALSE;
+    }
+
     // They chose a name, so let's check if that adventurer is available.
     $adventurer = Adventurer::load(array('name' => implode(' ', $args), 'available' => true, 'gid' => 0), true);
 
@@ -257,6 +264,9 @@ class RPGSession {
    * See and go on quests.
    */
   protected function cmd_quest ($args = array()) {
+    $orig_args = $args;
+    $cmd_word = 'quest';
+
     // Load the player and fail out if they have not created a Guild.
     $player = $this->load_current_player();
 
@@ -311,22 +321,14 @@ class RPGSession {
     // Check if the adventurers are valid.
     $adventurer_args = implode(' ', $args);
     $list = explode(',', $adventurer_args);
-    $adventurers = array();
-    foreach ($list as $name) {
-      // Check if the Adventurer is available for a Quest.
-      $adventurer = Adventurer::load(array(
-        'name' => trim($name),
-        'gid' => $player->gid,
-        'agid' => 0,
-      ), true);
-
-      if (empty($adventurer)) {
-        $this->respond('The adventurer named "'.trim($name).'" is not available or valid. Please double-check that the name is correct.'."\n(You typed: `/rpg quest q".$qid." ".$adventurer_args.(!empty($confirmation) ? ' '.$confirmation : '')."`)");
-        return FALSE;
-      }
-
-      $adventurers[] = $adventurer;
+    $success = $this->check_for_valid_adventurers($player, $list);
+    if (!$success['success']) {
+      $success['msg'][] = $this->get_typed($cmd_word, $orig_args);
+      $this->respond(implode("\n", $success['msg']));
+      return FALSE;
     }
+    // Get the list of adventurers.
+    $adventurers = $success['data']['adventurers'];
 
     $response = array();
 
@@ -433,6 +435,9 @@ class RPGSession {
    * Go explore the map.
    */
   protected function cmd_explore ($args = array()) {
+    $orig_args = $args;
+    $cmd_word = 'explore';
+
     // Load the player and fail out if they have not created a Guild.
     $player = $this->load_current_player();
 
@@ -497,22 +502,15 @@ class RPGSession {
     // Check if the adventurers are valid.
     $adventurer_args = implode(' ', $args);
     $list = explode(',', $adventurer_args);
-    $adventurers = array();
-    foreach ($list as $name) {
-      // Check if the Adventurer is available for a Quest.
-      $adventurer = Adventurer::load(array(
-        'name' => trim($name),
-        'gid' => $player->gid,
-        'agid' => 0,
-      ), true);
-
-      if (empty($adventurer)) {
-        $this->respond('The adventurer named "'.trim($name).'" is not available or valid. Please double-check that the name is correct.'."\n(You typed: `/rpg explore ".$coord." ".$adventurer_args.(!empty($confirmation) ? ' '.$confirmation : '')."`)");
-        return FALSE;
-      }
-
-      $adventurers[] = $adventurer;
+    $success = $this->check_for_valid_adventurers($player, $list);
+    if (!$success['success']) {
+      $success['msg'][] = $this->get_typed($cmd_word, $orig_args);
+      $this->respond(implode("\n", $success['msg']));
+      return FALSE;
     }
+    // Get the list of adventurers.
+    $adventurers = $success['data']['adventurers'];
+
 
     $response = array();
 
@@ -822,6 +820,31 @@ class RPGSession {
 
 
 
+  /**
+   * Upgrade your Guild with additional benefits.
+   */
+  protected function cmd_upgrade ($args = array()) {
+    // Load the player and fail out if they have not created a Guild.
+    $player = $this->load_current_player();
+
+    // If there are no arguments, list the upgrades.
+    if (empty($args) || empty($args[0])) {
+      $response = array();
+      $response[] = 'You can purchase the following upgrades:';
+      $response[] = '';
+
+      $upgrades = $player->get_available_upgrades();
+      foreach ($upgrades as $upgrade) {
+        $response[] = '*'.$upgrade->get_display_name() .'* for '. $this->get_currency($upgrade->cost) .' and '. $this->get_duration_as_hours($upgrade->duration);
+      }
+
+      $this->respond(implode("\n", $response));
+      return TRUE;
+    }
+  }
+
+
+
   protected function cmd_test ($args = array()) {
     // Load the player and fail out if they have not created a Guild.
     $player = $this->load_current_player();
@@ -913,6 +936,10 @@ class RPGSession {
     return ':fame: '.$fame;
   }
 
+  protected function get_typed ($cmd, $args) {
+    return "\n(You typed: `/rpg ".$cmd." ".implode(' ', $args)."`)";
+  }
+
   protected function addOrdinalNumberSuffix ($num) {
     if (!in_array(($num % 100), array(11,12,13))) {
       switch ($num % 10) {
@@ -923,6 +950,50 @@ class RPGSession {
       }
     }
     return $num.'th';
+  }
+
+  protected function check_for_valid_adventurers ($guild, $names, $check_is_available = true) {
+    $response = array(
+      'success' => false,
+      'msg' => array(),
+      'data' => array(),
+    );
+
+    // Check if the adventurers are valid.
+    $adventurers = array();
+    $adventurer_ids = array();
+
+    foreach ($names as $name) {
+      $trim_name = trim($name);
+      $data = array(
+        'name' => $trim_name,
+        'gid' => $guild->gid,
+      );
+
+      if ($check_is_available) $data['agid'] = 0;
+
+      // Check if the Adventurer is available.
+      $adventurer = Adventurer::load($data, true);
+
+      if (empty($adventurer)) {
+        $response['msg'][] = 'The adventurer named "'.$trim_name.'" is not valid'.($check_is_available ? ' or available' : '').'. Please double-check that the name is correct.';
+        return $response;
+      }
+
+      // Check that this adventurer wasn't already included.
+      if (in_array($adventurer->aid, $adventurer_ids)) {
+        $response['msg'][] = 'The same adventurer was included more than once (named "'.$trim_name.'"). Please use more letters from their name and do not re-use the same character.';
+        return $response;
+      }
+
+      $adventurers[] = $adventurer;
+      $adventurer_ids[] = $adventurer->aid;
+    }
+
+    // Success. Return the data.
+    $response['success'] = true;
+    $response['data'] = compact('adventurers', 'adventurer_ids');
+    return $response;
   }
 
 
