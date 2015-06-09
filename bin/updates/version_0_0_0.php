@@ -45,6 +45,7 @@ function update_version_0_0_0 ($forced = false) {
   $adventurers_table[] = "exp INT(10) UNSIGNED NOT NULL";
   $adventurers_table[] = "exp_tnl INT(10) UNSIGNED NOT NULL";
   $adventurers_table[] = "class VARCHAR(100) NOT NULL";
+  $adventurers_table[] = "champion TINYINT(1) NOT NULL";
   $adventurers_table[] = "PRIMARY KEY ( aid )";
   add_update_query( "CREATE TABLE IF NOT EXISTS adventurers (". implode(',', $adventurers_table) .")" );
 
@@ -102,20 +103,22 @@ function update_version_0_0_0 ($forced = false) {
   $location_table[] = "type VARCHAR(255) NOT NULL";
   $location_table[] = "created INT(10) UNSIGNED NOT NULL";
   $location_table[] = "revealed TINYINT(1) NOT NULL";
+  $location_table[] = "star_min INT(10) UNSIGNED NOT NULL";
+  $location_table[] = "star_max INT(10) UNSIGNED NOT NULL";
   $location_table[] = "PRIMARY KEY ( locid )";
   add_update_query( "CREATE TABLE IF NOT EXISTS locations (". implode(',', $location_table) .")" );
 
   // Add some Adventurers.
   $adventurers = array();
-  $adventurers[] = array(':gid' => '', ':name' => 'Antoine Delorisci', ':icon' => ':antoine:', ':created' => $time, ':available' => true, ':level' => '1', ':exp' => 0, ':exp_tnl' => 1, ':class' => '');
-  $adventurers[] = array(':gid' => '', ':name' => 'Catherine Hemsley', ':icon' => ':catherine:', ':created' => $time, ':available' => true, ':level' => '1', ':exp' => 0, ':exp_tnl' => 1, ':class' => '');
-  $adventurers[] = array(':gid' => '', ':name' => 'Gareth Lockheart', ':icon' => ':gareth:', ':created' => $time, ':available' => true, ':level' => '1', ':exp' => 0, ':exp_tnl' => 1, ':class' => '');
-  $adventurers[] = array(':gid' => '', ':name' => 'Reginald Tigerlily', ':icon' => ':reginald:', ':created' => $time, ':available' => true, ':level' => '1', ':exp' => 0, ':exp_tnl' => 1, ':class' => '');
-  $adventurers[] = array(':gid' => '', ':name' => 'Morgan LeClaire', ':icon' => ':morgan:', ':created' => $time, ':available' => true, ':level' => '1', ':exp' => 0, ':exp_tnl' => 1, ':class' => '');
-  $adventurers[] = array(':gid' => '', ':name' => 'Freya von Alfheimr', ':icon' => ':freya:', ':created' => $time, ':available' => true, ':level' => '1', ':exp' => 0, ':exp_tnl' => 1, ':class' => '');
-  //$adventurers[] = array(':gid' => '', ':name' => '', ':icon' => '', ':created' => '', ':available' => '', ':level' => '', ':exp' => 0, ':exp_tnl' => 1, ':class' => '');
+  $adventurers[] = array(':gid' => '', ':name' => 'Antoine Delorisci', ':icon' => ':antoine:', ':created' => $time, ':available' => true, ':level' => '1', ':exp' => 0, ':exp_tnl' => 1, ':class' => '', ':champion' => false);
+  $adventurers[] = array(':gid' => '', ':name' => 'Catherine Hemsley', ':icon' => ':catherine:', ':created' => $time, ':available' => true, ':level' => '1', ':exp' => 0, ':exp_tnl' => 1, ':class' => '', ':champion' => false);
+  $adventurers[] = array(':gid' => '', ':name' => 'Gareth Lockheart', ':icon' => ':gareth:', ':created' => $time, ':available' => true, ':level' => '1', ':exp' => 0, ':exp_tnl' => 1, ':class' => '', ':champion' => false);
+  $adventurers[] = array(':gid' => '', ':name' => 'Reginald Tigerlily', ':icon' => ':reginald:', ':created' => $time, ':available' => true, ':level' => '1', ':exp' => 0, ':exp_tnl' => 1, ':class' => '', ':champion' => false);
+  $adventurers[] = array(':gid' => '', ':name' => 'Morgan LeClaire', ':icon' => ':morgan:', ':created' => $time, ':available' => true, ':level' => '1', ':exp' => 0, ':exp_tnl' => 1, ':class' => '', ':champion' => false);
+  $adventurers[] = array(':gid' => '', ':name' => 'Freya von Alfheimr', ':icon' => ':freya:', ':created' => $time, ':available' => true, ':level' => '1', ':exp' => 0, ':exp_tnl' => 1, ':class' => '', ':champion' => false);
+  //$adventurers[] = array(':gid' => '', ':name' => '', ':icon' => '', ':created' => '', ':available' => '', ':level' => '', ':exp' => 0, ':exp_tnl' => 1, ':class' => '', ':champion' => false);
   foreach ($adventurers as $adventurer) {
-    add_update_query("INSERT INTO adventurers (gid, name, icon, created, available, level, exp, exp_tnl, class) VALUES (:gid, :name, :icon, :created, :available, :level, :exp, :exp_tnl, :class)", $adventurer);
+    add_update_query("INSERT INTO adventurers (gid, name, icon, created, available, level, exp, exp_tnl, class, champion) VALUES (:gid, :name, :icon, :created, :available, :level, :exp, :exp_tnl, :class, :champion)", $adventurer);
   }
 
   // Add some Quests.

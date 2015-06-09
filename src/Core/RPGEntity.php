@@ -120,11 +120,11 @@ abstract class RPGEntity {
       $where[] = $key .'='. $token;
     }
 
-    if (count($where) <= 0) {
-      return FALSE;
-    }
+    // if (count($where) <= 0) {
+    //   return FALSE;
+    // }
 
-    $query = "SELECT * FROM ". static::$db_table ." WHERE ". implode(' AND ', $where);
+    $query = "SELECT * FROM ". static::$db_table .(count($where) > 0 ? " WHERE ". implode(' AND ', $where) : "");
     $query = pdo_prepare($query);
 
     if (static::$default_class != '' && class_exists(static::$default_class)) {

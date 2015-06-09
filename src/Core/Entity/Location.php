@@ -11,18 +11,25 @@ class Location extends RPGEntitySaveable {
   public $type;
   public $created;
   public $revealed;
+  public $star_min;
+  public $star_max;
 
   // Protected
   protected $_map;
 
   // Private vars
-  static $fields_int = array('created', 'row', 'col');
+  static $fields_int = array('created', 'row', 'col', 'star_min', 'star_max');
   static $db_table = 'locations';
   static $default_class = 'Location';
   static $primary_key = 'locid';
 
   const TYPE_EMPTY = 'empty';
   const TYPE_CAPITAL = 'capital';
+  const TYPE_CREATURE = 'creature';
+  const TYPE_STRUCTURE = 'structure';
+  const TYPE_LANDMARK = 'landmark';
+
+  static $_types = array(Location::TYPE_CREATURE, Location::TYPE_STRUCTURE, Location::TYPE_LANDMARK);
 
   const TRAVEL_MODIFIER = 5; // 10800 = 3 hours/tile (60 * 60 * 3)
 
@@ -72,5 +79,19 @@ class Location extends RPGEntitySaveable {
 
   public static function get_number ($letter) {
     return ord(strtoupper($letter)) - 64;
+  }
+
+
+  /* =================================
+     ______________  ________________
+    / ___/_  __/   |/_  __/  _/ ____/
+    \__ \ / / / /| | / /  / // /     
+   ___/ // / / ___ |/ / _/ // /___   
+  /____//_/ /_/  |_/_/ /___/\____/   
+                                     
+  ==================================== */
+
+  static function types () {
+    return Location::$_types;
   }
 }

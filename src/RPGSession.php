@@ -28,11 +28,18 @@ class RPGSession {
 
     $this->register_callback(array('register'), 'cmd_register');
     $this->register_callback(array('recruit'), 'cmd_recruit');
+    $this->register_callback(array('champion'), 'cmd_champion');
+    $this->register_callback(array('edit'), 'cmd_edit');
+
     $this->register_callback(array('quest'), 'cmd_quest');
     $this->register_callback(array('map'), 'cmd_map');
     $this->register_callback(array('explore'), 'cmd_explore');
 
     $this->register_callback(array('status'), 'cmd_status');
+    $this->register_callback(array('leaderboard', 'leader'), 'cmd_leaderboard');
+
+
+    $this->register_callback(array('test'), 'cmd_test');
   }
 
 
@@ -42,12 +49,15 @@ class RPGSession {
    */
   protected function cmd_help( $args = array() ) {
     $response = array();
-    $response[] = '*RPG Commands:*';
+    $response[] = '*Commands:*';
     $response[] = 'Register Guild: `/rpg register [GUILD EMOJI] [GUILD NAME]` (example: `/rpg register :skull: Death\'s Rattle`)';
-    $response[] = 'Guild status: `/rpg status`';
+    $response[] = 'Guild status: `/rpg status [GUILD NAME]`';
+    $response[] = 'Leaderboard rankings: `/rpg leaderboard [all]`';
     $response[] = 'Recruit Adventurers: `/rpg recruit`';
     $response[] = 'Quests: `/rpg quest`';
-    $response[] = 'Explore the Map: `/rpg explore`';
+    $response[] = 'View and explore the Map: `/rpg explore`';
+    $response[] = 'Set your guild\'s Champion: `/rpg champion [NAME]`';
+    $response[] = 'Edit your guild\'s information: `/rpg edit`';
     $response[] = '';
     
     $response[] = '*Other*';
@@ -146,16 +156,33 @@ class RPGSession {
   protected function cmd_status ($args = array()) {
     // Load the player and fail out if they have not created a Guild.
     $player = $this->load_current_player();
-    $adventurers = $player->get_adventurers();
+    $guild = $player;
+    $guild_is_player = true;
+
+    // Check if they want to find the status of another guild.
+    if (!empty($args) && !empty($args[0])) {
+      $guild_name = implode(' ', $args);
+      $guild = Guild::load(array('name' => $guild_name), true);
+      if (empty($guild)) {
+        $this->respond('There is no guild by the name of "'.$guild_name.'".');
+        return FALSE;
+      }
+      $guild_is_player = false;
+    }
+
+    $adventurers = $guild->get_adventurers();
     
     $response = array();
-    $response[] = '*Guild name*: '.$player->get_display_name(false);
-    $response[] = '*Gold*: '.$this->get_currency($player->gold);
-    $response[] = '*Adventurers*: ('.$player->get_adventurers_count().' / '.$player->adventurer_limit.')';
+    $response[] = '*Guild name*: '.$guild->get_display_name(false);
+    $response[] = '*Fame*: '.$guild->fame;
+    $response[] = '*Founder:* @'.$guild->username;
+    $response[] = '*Founded on:* '.date('F j, Y', $guild->created);
+    if ($guild_is_player) $response[] = '*Gold*: '.$this->get_currency($guild->gold);
+    $response[] = '*Adventurers*:'.($guild_is_player ? ' ('.$guild->get_adventurers_count().' / '.$guild->adventurer_limit.')' : '');
 
     foreach ($adventurers as $adventurer) {
       $adv_status = !empty($adventurer->agid) ? ' [Adventuring]' : '';
-      $response[] = $adventurer->get_display_name(false) .$adv_status;
+      $response[] = $adventurer->get_display_name(false) .($guild_is_player ? $adv_status : '');
     }
 
     $this->respond(implode("\n", $response));
@@ -641,6 +668,192 @@ class RPGSession {
 
 
 
+
+  /**
+   * Select your champion.
+   */
+  protected function cmd_champion ($args = array()) {
+    // Load the player and fail out if they have not created a Guild.
+    $player = $this->load_current_player();
+    $response = array();
+
+    // Make sure they give a name.
+    if (empty($args) || empty($args[0])) {
+      $response[] = 'Please choose which adventurer should be your Champion. You may only choose one.';
+      $response[] = '';
+      $response[] = 'Your adventurers:';
+      foreach ($player->get_adventurers() as $adventurer) {
+        if (!empty($adventurer->agid)) continue;
+        $response[] = $adventurer->get_display_name();
+      }
+      $this->respond(implode("\n", $response));
+      return FALSE;
+    }
+
+    // Check if the adventurer they named exists for them.
+    $name = implode(' ', $args);
+    $champion = Adventurer::load(array('name' => $name, 'gid' => $player->gid), true);
+    if (empty($champion)) {
+      $response[] = 'You do not have an adventurer by the name of "'.$name.'".';
+      $response[] = '';
+      $response[] = 'Your adventurers:';
+      foreach ($player->get_adventurers() as $adventurer) {
+        if (!empty($adventurer->agid)) continue;
+        $response[] = $adventurer->get_display_name();
+      }
+      $this->respond(implode("\n", $response));
+      return FALSE;
+    }
+
+    // Load up the old champ to remove their title.
+    $old = Adventurer::load(array('champion' => true, 'gid' => $player->gid));
+    if (!empty($old)) {
+      if ($old->aid == $champion->aid) {
+        $this->respond($champion->get_display_name().' is already your Champion.');
+        return FALSE;
+      }
+
+      $old->champion = false;
+      $success = $old->save();
+      if ($success === false) {
+        $this->respond('There was an error removing the old Champion. Go talk to Paul.');
+        return FALSE;
+      }
+    }
+
+    $champion->champion = true;
+    $success = $champion->save();
+    if ($success === false) {
+      $this->respond('There was an error saving the new Champion. Go talk to Paul.');
+      return FALSE;
+    }
+
+    if (!empty($old)) $response[] = $old->name.' was denounced as the old Champion.';
+    $response[] = 'All hail '.$champion->get_display_name().', the new Champion of '.$player->get_display_name().'!';
+
+    $this->respond(implode("\n", $response));
+  }
+
+
+
+  /**
+   * Select your leaderboard.
+   */
+  protected function cmd_leaderboard ($args = array()) {
+    // Load the player and fail out if they have not created a Guild.
+    $player = $this->load_current_player();
+
+    $orig_max = 10;
+    $max = $orig_max;
+    // Set the max based on the argument provided by user.
+    if (!empty($args) && !empty($args[0])) {
+      $max = (strtolower($args[0]) == 'all') ? 0 : (int)$args[0];
+    }
+
+    $response = array();
+    $response[] = ($max > 0 ? 'Top '.$max.' ' : '') .'Guild Ranking:';
+
+    // Load all Guilds.
+    $guilds = Guild::load_multiple(array());
+    if (empty($guilds)) {
+      $this->respond('There are no Guilds? Go talk to Paul because that seems like an error.');
+      return FALSE;
+    }
+
+    // Sort Guilds by fame.
+    usort($guilds, array('Guild','sort'));
+
+    $count = 0;
+    foreach ($guilds as $guild) {
+      $count++;
+      $response[] = $this->addOrdinalNumberSuffix($count).': ('.$this->get_fame($guild->get_total_points()).') '.$guild->get_display_name();
+      if ($count == $max) break;
+    }
+
+    if ($max == $orig_max) {
+      $response[] = '';
+      $response[] = 'To view all Guilds, type: `/rpg leader all`.';
+    }
+
+    $this->respond(implode("\n", $response));
+  }
+
+
+
+  /**
+   * Edit your Guild information.
+   */
+  protected function cmd_edit ($args = array()) {
+    // Load the player and fail out if they have not created a Guild.
+    $player = $this->load_current_player();
+    $response = array();
+
+    if (empty($args) || empty($args[0])) {
+      $response[] = 'You may edit the following information:';
+      $response[] = '- Guild emoji: `/rpg edit icon [ICON]`';
+
+      $this->respond(implode("\n", $response));
+      return FALSE;
+    }
+
+    if ($args[0] == 'icon') {
+      if (!isset($args[1])) {
+        $this->respond('You must include the new emoji icon alias (example: `/rpg edit icon :skull:`).');
+        return FALSE;
+      }
+
+      $icon = $args[1];
+      if (strpos($icon, ':') !== 0 || strrpos($icon, ':') !== strlen($icon)-1) {
+        $this->respond('You must include a valid emoji icon alias (example: `/rpg edit icon :skull:`).');
+        return FALSE;
+      }
+
+      $player->icon = $icon;
+      $success = $player->save();
+      if ($success === false) {
+        $this->respond('There was an error saving your Guild information. Talk to Paul.');
+        return FALSE;
+      }
+
+      $this->respond('Your icon has been changed to: '.$player->get_display_name());
+      return TRUE;
+    }
+  }
+
+
+
+  protected function cmd_test ($args = array()) {
+    // Load the player and fail out if they have not created a Guild.
+    $player = $this->load_current_player();
+
+    // Create a fake location.
+    $types = Location::types();
+    $loc_type = array_rand($types);
+    $loc_type = $types[$loc_type];
+    $star = rand(1, 5);
+
+    d($loc_type);
+    d($star);
+
+    $location = new Location (array(
+      'locid' => 10,
+      'mapid' => 1,
+      'name' => 'Fancy Swamp',
+      'type' => $loc_type,
+      'created' => time(),
+      'revealed' => false,
+      'star_min' => ($star > 1 ? $star - 1 : $star),
+      'star_max' => $star,
+    ));
+
+    // Create quests for the location.
+    $quests = Quest::generate_quests($location);
+
+    d($quests);
+  }
+
+
+
   /* =================================================================================================
      _____ __  ______  ____  ____  ____  ______   ________  ___   ______________________  _   _______
     / ___// / / / __ \/ __ \/ __ \/ __ \/_  __/  / ____/ / / / | / / ____/_  __/  _/ __ \/ | / / ___/
@@ -696,6 +909,21 @@ class RPGSession {
     return ($hours > 0 ? $hours.' hours, ' : '').($minutes > 0 ? $minutes.' minutes, ' : '').($seconds.' seconds');
   }
 
+  protected function get_fame ($fame) {
+    return ':fame: '.$fame;
+  }
+
+  protected function addOrdinalNumberSuffix ($num) {
+    if (!in_array(($num % 100), array(11,12,13))) {
+      switch ($num % 10) {
+        // Handle 1st, 2nd, 3rd
+        case 1: return $num.'st';
+        case 2: return $num.'nd';
+        case 3: return $num.'rd';
+      }
+    }
+    return $num.'th';
+  }
 
 
   /* =============================================================================

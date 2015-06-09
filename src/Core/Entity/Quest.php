@@ -38,6 +38,8 @@ class Quest extends RPGEntitySaveable {
   const TYPE_FIGHT = 'fight';
   const TYPE_BOSS = 'boss';
 
+  static $_types = array(Quest::TYPE_INVESTIGATE, Quest::TYPE_AID, Quest::TYPE_FIGHT, Quest::TYPE_BOSS);
+
   
   function __construct($data = array()) {
     // Perform regular constructor.
@@ -122,6 +124,11 @@ class Quest extends RPGEntitySaveable {
       $location->gid = $guild->gid;
       $location->save();
 
+      // Generate new Quests for the revealed location.
+      // $star_min = 1;
+      // $star_max = 2;
+      // $quests = Quest::generate_quests($location, $star_min, $star_max);
+
       if (!empty($location->name)) {
         $player_text .= " You discovered ".$location->name.".";
         $channel_text .= $guild->get_display_name()." discovered ".$location->name.".";
@@ -164,4 +171,163 @@ class Quest extends RPGEntitySaveable {
     $this->active = true;
     $this->save();
   }
+
+
+  /* =================================
+     ______________  ________________
+    / ___/_  __/   |/_  __/  _/ ____/
+    \__ \ / / / /| | / /  / // /     
+   ___/ // / / ___ |/ / _/ // /___   
+  /____//_/ /_/  |_/_/ /___/\____/   
+                                     
+  ==================================== */
+
+  /**
+   * Generate quests for a location.
+   */
+  static function generate_quests ($location) {
+    if (empty($location) || !is_a($location, 'Location')) return false;
+
+    $quests = array();
+    $num_quests = rand(1, 3) + 1;
+    // For now, generate a number of quests = star rating.
+    for ($i = 0; $i < $num_quests; $i++) {
+      // Determine the type.
+      $type = Quest::randomize_quest_types($location->type);
+      // Generate the quest.
+      $quest = Quest::generate_quest_type($location, $type);
+      $quests[] = $quest;
+    }
+
+    return $quests;
+  }
+
+  static function generate_quest_type ($location, $type) {
+    if (empty($location) || !is_a($location, 'Location')) return false;
+
+    // Determine the star rating.
+    $stars = rand($location->star_min, $location->star_max);
+
+    $data = array(
+      'locid' => $location->locid,
+      'permanent' => false,
+      'created' => time(),
+      'type' => $type,
+      'active' => true,
+      'cooldown' => 0,
+    );
+
+    // Generate the name and icon.
+    $data['name'] = 'Test Quest';
+    $data['icon'] = ':test:';
+
+    // Set some defaults.
+    $data['party_size_min'] = 1;
+    $data['party_size_max'] = 3;
+    $data['duration'] = (rand(2, 4) * $stars) * (60*60*24);
+    $data['reward_gold'] = $stars * rand(50, 250);
+    $data['reward_exp'] = ($stars * $data['party_size_max']) * rand(25, 75);
+    $data['reward_fame'] = $stars * rand(3, 8);
+    
+    // Calculate the rewards and information.
+    switch ($type) {
+      case Quest::TYPE_EXPLORE:
+        $data['reward_gold'] = 0;
+        $data['reward_exp'] = rand(5, 15);
+        $data['reward_fame'] = 0;
+        $data['duration'] = 0;
+        // Bonus reward if you discover a non-empty location.
+        if ($location->type != Location::TYPE_EMPTY) {
+          $data['reward_fame'] += $stars * 3;
+          $data['reward_exp'] += rand(5, 15);
+        }
+        break;
+
+      case Quest::TYPE_BOSS:
+        $data['active'] = false;
+        $data['cooldown'] = (3 * 60 * 60 * 23); // 3 days less 3 hours.
+        $data['party_size_min'] = 2;
+        $data['party_size_max'] = rand(3, 5);
+        $data['reward_gold'] = $stars * rand(200, 400);
+        $data['reward_exp'] = ($stars * $data['reward_exp']) + 50;
+        $data['reward_fame'] = ($data['reward_fame'] * 3) + 5;
+        $data['duration'] = (rand(4, 7) * $stars) * (60*60*24);
+        break;
+
+      case Quest::TYPE_FIGHT:
+        $data['reward_exp'] += floor($data['reward_exp'] * 0.5);
+        break;
+
+      case Quest::TYPE_AID:
+        $data['reward_fame'] += floor($data['reward_fame'] * 0.5);
+        break;
+
+      case Quest::TYPE_INVESTIGATE:
+        $data['reward_gold'] += floor($data['reward_gold'] * 0.5);
+        break;
+    }
+
+    // Create the Quest.
+    $quest = new Quest ($data);
+    /*$quest->save();
+
+    // Queue up the cooldown if we need to.
+    if ($data['active'] == false) {
+      $quest->queue( $cooldown );
+    }*/
+
+    return $quest;
+  }
+
+  static function types () {
+    // Not included: Quest::TYPE_EXPLORE, Quest::TYPE_TRAIN
+    return Quest::$_types;
+  }
+
+  static function randomize_quest_types ($loc_type) {
+    // Set probabilities based on location type.
+    $loc_types = Quest::quest_probabilities();
+
+    $list = array();
+    if (!isset($loc_types[$loc_type])) return $list;
+
+    foreach ($loc_types[$loc_type] as $type => $prob) {
+      $count = $prob * 1000;
+      for ($i = 0; $i < $count; $i++) {
+        $list[] = $type;
+      }
+    }
+
+    $index = array_rand($list);
+
+    return $list[$index];
+  }
+
+  static function quest_probabilities () {
+    // Set probabilities based on location type.
+    $types = array();
+    $types[Location::TYPE_CREATURE] = array(
+      Quest::TYPE_FIGHT => 0.45,
+      Quest::TYPE_BOSS => 0.15,
+      Quest::TYPE_INVESTIGATE => 0.35,
+      Quest::TYPE_AID => 0.05,
+    );
+
+    $types[Location::TYPE_STRUCTURE] = array(
+      Quest::TYPE_FIGHT => 0.10,
+      Quest::TYPE_BOSS => 0.05,
+      Quest::TYPE_INVESTIGATE => 0.25,
+      Quest::TYPE_AID => 0.60,
+    );
+
+    $types[Location::TYPE_LANDMARK] = array(
+      Quest::TYPE_FIGHT => 0.12,
+      Quest::TYPE_BOSS => 0.08,
+      Quest::TYPE_INVESTIGATE => 0.75,
+      Quest::TYPE_AID => 0.05,
+    );
+
+    return $types;
+  }
+
 }
