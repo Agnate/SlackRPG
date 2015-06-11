@@ -9,6 +9,7 @@ class Quest extends RPGEntitySaveable {
   public $name;
   public $icon;
   public $type;
+  public $stars;
   public $created;
   public $active;
   public $permanent; // Always available.
@@ -20,12 +21,14 @@ class Quest extends RPGEntitySaveable {
   public $requirements;
   public $party_size_min;
   public $party_size_max;
-
+  public $level;
+  public $success_rate;
+  
   // Protected
   protected $_location;
 
   // Private vars
-  static $fields_int = array('created', 'reward_gold', 'reward_exp', 'reward_fame', 'duration', 'cooldown', 'party_size_min', 'party_size_max');
+  static $fields_int = array('stars', 'created', 'reward_gold', 'reward_exp', 'reward_fame', 'duration', 'cooldown', 'party_size_min', 'party_size_max', 'level', 'success_rate');
   static $db_table = 'quests';
   static $default_class = 'Quest';
   static $primary_key = 'qid';
@@ -66,14 +69,30 @@ class Quest extends RPGEntitySaveable {
     return $this->party_size_min .($this->party_size_max > 0 && $this->party_size_max != $this->party_size_min ? '-'.$this->party_size_max : '');
   }
 
-  public function get_duration () {
+  public function get_duration ($travel_modifier = null) {
     $duration = $this->duration;
     // Load up the location for this Quest.
     $location = Location::load(array('locid' => $this->locid));
-    if (!empty($location)) {
-      $duration += $location->get_duration();
-    }
+    if (!empty($location)) $duration += $location->get_duration($travel_modifier);
     return $duration;
+  }
+
+  public function get_success_rate ($guild, $adventurers) {
+    $rate = $this->success_rate;
+    // Adjust it based on the level of the adventurers vs. the level of the quest.
+    $levels = 0;
+    foreach ($adventurers as $adventurer) $levels += $adventurer->level;
+    $diff = min($levels / $this->level, 1);
+    // If the difference is less than 20%, they automatically fail.
+    if ($diff < 0.2) $rate = 0;
+    else {
+      // Modify the rate based on the level difference.
+      $rate *= $diff;
+      // Add the Guild modifier.
+      $rate += $guild->get_quest_success_modifier(true);
+    }
+
+    return $rate < 100 ? floor($rate) : 100;
   }
 
   public function queue_process ($queue = null) {
@@ -99,18 +118,27 @@ class Quest extends RPGEntitySaveable {
     // Disband the adventuring group.
     $advgroup->delete();
 
-    // Give the Guild its reward.
-    if ($this->reward_gold > 0) $guild->gold += $this->reward_gold;
-    if ($this->reward_fame > 0) $guild->fame += $this->reward_fame;
-    $guild->save();
+    // Determine if the quest was successful.
+    $success_rate = $this->get_success_rate($guild, $adventurers);
+    // Generate a number between 1-100 and see if it's successful.
+    $success = (rand(1, 100) <= $success_rate);
 
-    // Calculate the exp per adventurer.
-    $reward_exp = ceil($this->reward_exp / count($adventurers));
+    // If it's successful, give out the rewards.
+    $reward_exp = 0;
+    if ($success) {
+      // Give the Guild its reward.
+      if ($this->reward_gold > 0) $guild->gold += $this->reward_gold;
+      if ($this->reward_fame > 0) $guild->fame += $this->reward_fame;
+      $guild->save();
+
+      // Calculate the exp per adventurer.
+      $reward_exp = ceil($this->reward_exp / count($adventurers));
+    }
 
     // Bring all the adventurers home and give them their exp.
     foreach ($adventurers as $adventurer) {
       $adventurer->agid = 0;
-      if ($reward_exp > 0) $adventurer->give_exp( $reward_exp );
+      if (isset($reward_exp) && $reward_exp > 0) $adventurer->give_exp( $reward_exp );
       $adventurer->save();
     }
 
@@ -139,14 +167,14 @@ class Quest extends RPGEntitySaveable {
     $this->agid = 0;
     $this->gid = 0;
     $cooldown = 0;
-    if ($this->permanent) {
+    // Reactive if the quest is permanent or if the guild failed to complete it.
+    if ($this->permanent || !$success) {
+      // Create a temporary cooldown if it was a failed quest attempt.
+      if (!$success) $cooldown = (60 * 60) * ($this->stars * rand(3, 6));
       // If it needs a cooldown before activation, remember it.
-      if (!empty($this->cooldown)) {
-        $cooldown = $this->cooldown;
-      }
-      else {
-        $this->active = true;
-      }
+      else if (!empty($this->cooldown)) $cooldown = $this->cooldown;
+      // If there's no cooldown, it's instantly active.
+      if ($cooldown == 0) $this->active = true;
     }
     $this->save();
 
@@ -205,12 +233,16 @@ class Quest extends RPGEntitySaveable {
   static function generate_quest_type ($location, $type) {
     if (empty($location) || !is_a($location, 'Location')) return false;
 
+    $hours = 60 * 60;
+    $days = 24 * $hours;
+
     // Determine the star rating.
     $stars = rand($location->star_min, $location->star_max);
 
     $data = array(
       'locid' => $location->locid,
       'permanent' => false,
+      'stars' => $stars,
       'created' => time(),
       'type' => $type,
       'active' => true,
@@ -221,14 +253,29 @@ class Quest extends RPGEntitySaveable {
     $data['name'] = 'Test Quest';
     $data['icon'] = ':test:';
 
+    // Overrides for 1-star quests.
+    if ($stars == 1) {
+      $data['party_size_max'] = rand(2, 3);
+      $data['level'] = max(1, $data['party_size_max'] * rand(0, 3));
+      $data['success_rate'] = 100 - rand(0, 5);
+    }
+
+    // Overrides for 5-star quests.
+    if ($stars == 5) {
+      $data['success_rate'] = 100 - Quest::sum_multiple_randoms($stars, 3, 5);
+    }
+
     // Set some defaults.
-    $data['party_size_min'] = 1;
-    $data['party_size_max'] = 3;
-    $data['duration'] = (rand(2, 4) * $stars) * (60*60*24);
-    $data['reward_gold'] = $stars * rand(50, 250);
-    $data['reward_exp'] = ($stars * $data['party_size_max']) * rand(25, 75);
-    $data['reward_fame'] = $stars * rand(3, 8);
-    
+    if (!isset($data['party_size_min'])) $data['party_size_min'] = 1;
+    if (!isset($data['party_size_max'])) $data['party_size_max'] = 3;
+    $avg_party_size = ($data['party_size_max'] - $data['party_size_min'] / 2) + $data['party_size_min'];
+    if (!isset($data['duration'])) $data['duration'] = Quest::sum_multiple_randoms($stars, 2, 4) * $hours;
+    if (!isset($data['reward_gold'])) $data['reward_gold'] = Quest::sum_multiple_randoms($stars, 50, 250);
+    if (!isset($data['reward_exp'])) $data['reward_exp'] = Quest::sum_multiple_randoms(($stars * $avg_party_size), 25, 75);
+    if (!isset($data['reward_fame'])) $data['reward_fame'] = Quest::sum_multiple_randoms($stars, 3, 8);
+    if (!isset($data['level'])) $data['level'] = Quest::sum_multiple_randoms(($avg_party_size * $stars), 1, 4);
+    if (!isset($data['success_rate'])) $data['success_rate'] = 100 - Quest::sum_multiple_randoms($stars, 1, 4);
+
     // Calculate the rewards and information.
     switch ($type) {
       case Quest::TYPE_EXPLORE:
@@ -236,6 +283,8 @@ class Quest extends RPGEntitySaveable {
         $data['reward_exp'] = rand(5, 15);
         $data['reward_fame'] = 0;
         $data['duration'] = 0;
+        $data['level'] = 0;
+        $data['success_rate'] = 100;
         // Bonus reward if you discover a non-empty location.
         if ($location->type != Location::TYPE_EMPTY) {
           $data['reward_fame'] += $stars * 3;
@@ -245,13 +294,15 @@ class Quest extends RPGEntitySaveable {
 
       case Quest::TYPE_BOSS:
         $data['active'] = false;
-        $data['cooldown'] = (3 * 60 * 60 * 23); // 3 days less 3 hours.
+        $data['cooldown'] = (3 * $days) - (5 * $hours); // 3 days less 5 hours.
         $data['party_size_min'] = 2;
-        $data['party_size_max'] = rand(3, 5);
+        $data['party_size_max'] = $stars > 1 ? rand(3, 5) : $data['party_size_max'];
+        $avg_party_size = ($data['party_size_max'] - $data['party_size_min'] / 2) + $data['party_size_min'];
         $data['reward_gold'] = $stars * rand(200, 400);
         $data['reward_exp'] = ($stars * $data['reward_exp']) + 50;
         $data['reward_fame'] = ($data['reward_fame'] * 3) + 5;
-        $data['duration'] = (rand(4, 7) * $stars) * (60*60*24);
+        $data['duration'] = (rand(4, 7) * $stars) * (24*$hours);
+        $data['success_rate'] = $data['success_rate'] - rand(8, 15);
         break;
 
       case Quest::TYPE_FIGHT:
@@ -282,6 +333,15 @@ class Quest extends RPGEntitySaveable {
   static function types () {
     // Not included: Quest::TYPE_EXPLORE, Quest::TYPE_TRAIN
     return Quest::$_types;
+  }
+
+  /**
+   * Calculate multiple randomized numbers and add them together.
+   */
+  static function sum_multiple_randoms ($num, $min, $max) {
+    $value = 0;
+    for ($i = 1; $i <= $num; $i++) $value += rand($min, $max);
+    return $value;
   }
 
   static function randomize_quest_types ($loc_type) {

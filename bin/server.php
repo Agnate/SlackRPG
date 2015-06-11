@@ -41,6 +41,19 @@ function timer_process_queue () {
     // Process the queue item.
     $result = $item->queue_process($qitem);
 
+    // Expected result:
+    // $result = array(
+    //   'messages' => array(
+    //     'instant_message' => array(
+    //       'text' => $player_text,
+    //       'player' => $guild,
+    //     ),
+    //     'channel' => array(
+    //       'text' => $channel_text
+    //     ),
+    //   ),
+    // );
+
     // Figure out a way to send this notice to the player when their party has returned.
     if (is_array($result)) {
       //$logger->notice($result);
@@ -56,7 +69,7 @@ function timer_process_queue () {
           // Determine the channel to send it.
           $channel = null;
           if ($method == 'instant_message' && isset($info['player'])) $channel = get_user_channel($info['player']->slack_user_id);
-          send_message($msg, $channel);
+          if (!empty($channel) || $method == 'channel') send_message($msg, $channel);
           //$logger->notice("Msg to ".(empty($channel) ? '#channel' : $channel).": ".$msg);
         }
       }
@@ -85,7 +98,7 @@ function send_message ($text, $channel = null) {
 
 function get_user_channel ($slack_user_id) {
   global $im_channels;
-  return $im_channels[$slack_user_id];
+  return isset($im_channels[$slack_user_id]) ? $im_channels[$slack_user_id] : FALSE;
 }
 
 

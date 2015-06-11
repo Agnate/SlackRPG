@@ -175,15 +175,27 @@ class RPGSession {
     
     $response = array();
     $response[] = '*Guild name*: '.$guild->get_display_name(false);
-    $response[] = '*Fame*: '.$guild->fame;
+    $response[] = '*Fame*: '.$this->get_fame($guild->fame);
     $response[] = '*Founder:* @'.$guild->username;
-    $response[] = '*Founded on:* '.date('F j, Y', $guild->created);
+    $response[] = '*Founded on:* '.date('F j, Y \a\t g:i A', $guild->created);
     if ($guild_is_player) $response[] = '*Gold*: '.$this->get_currency($guild->gold);
-    $response[] = '*Adventurers*:'.($guild_is_player ? ' ('.$guild->get_adventurers_count().' / '.$guild->adventurer_limit.')' : '');
 
+    // Show adventurers.
+    $response[] = '*Adventurers*:'.($guild_is_player ? ' ('.$guild->get_adventurers_count().' / '.$guild->adventurer_limit.')' : '');
     foreach ($adventurers as $adventurer) {
       $adv_status = !empty($adventurer->agid) ? ' [Adventuring]' : '';
       $response[] = $adventurer->get_display_name(false) .($guild_is_player ? $adv_status : '');
+    }
+
+    // Show upgrades.
+    $upgrades = $guild->get_upgrades();
+    if ($guild_is_player && count($upgrades) > 0) {
+      $response[] = '';
+      $response[] = '*Upgrades*:';
+      foreach ($upgrades as $upgrade) {
+        $response[] = $upgrade->get_display_name();
+      }
+      $response[] = '';
     }
 
     $this->respond(implode("\n", $response));
@@ -242,15 +254,18 @@ class RPGSession {
 
     // Remove the gold.
     $player->gold -= $adventurer_cost;
-    $player->save();
+    $success = $player->save();
+    if ($success === false) {
+      $this->respond('Talk to Paul, as there was an error saving the purchase transaction.');
+      return FALSE;
+    }
 
     // Recruit the adventurer.
     $adventurer->gid = $player->gid;
     $adventurer->available = false;
     $success = $adventurer->save();
-
-    if (!$success) {
-      $this->respond('Talk to Paul, as there was an error saving this recruitment (and it probably didn\'t work).');
+    if ($success === false) {
+      $this->respond('Talk to Paul, as there was an error saving this recruitment.');
       return FALSE;
     }
 
@@ -281,9 +296,14 @@ class RPGSession {
       }
 
       $response = array();
+      $response[] = $this->get_difficulty_legend();
+      $response[] = '';
       $response[] = 'Quests available:';
       foreach ($quests as $quest) {
-        $response[] = $quest->name.' (adventurers required: '.$quest->get_party_size().')  `/rpg quest q'.$quest->qid.' [ADVENTURER NAMES (comma-separated)]`';
+        // Get the best adventurers available for questing.
+        $best_adventurers = $player->get_best_adventurers($quest->party_size_max);
+        $success_rate = $quest->get_success_rate($player, $best_adventurers);
+        $response[] = $this->get_difficulty($success_rate) .' '. $this->get_stars($quest->stars).' '.$quest->name.' (adventurers required: '.$quest->get_party_size().')  `/rpg quest q'.$quest->qid.' [ADVENTURER NAMES (comma-separated)]`';
       }
 
       // Also show the list of available adventurers.
@@ -302,7 +322,7 @@ class RPGSession {
     $qid = substr(array_shift($args), 1);
     $quest = Quest::load(array('qid' => $qid));
     if (empty($quest)) {
-      $this->respond("This quest is not available or does not exist.\n(You typed: `/rpg quest q".$qid." ".implode(' ', $args)."`)");
+      $this->respond("This quest is not available or does not exist.".$this->get_typed($cmd_word, $orig_args));
       return FALSE;
     }
 
@@ -346,7 +366,22 @@ class RPGSession {
         $response[] = 'There are '.abs($adventurer_diff).' too many adventurers for this quest. Please reduce the group to '.$quest->party_size_max.' adventurer'.($quest->party_size_max > 1 ? 's' : '').'.';
       }
 
-      $response[] = "(You typed: `/rpg quest q".$qid." ".$adventurer_args.(!empty($confirmation) ? ' '.$confirmation : '')."`)";
+      $response[] = $this->get_typed($cmd_word, $orig_args);
+      $this->respond(implode("\n", $response));
+      return FALSE;
+    }
+
+    // Check if the success rate is above 0%.
+    $success_rate = $quest->get_success_rate($player, $adventurers);
+    if ($success_rate <= 0) {
+      $response[] = 'Your adventuring party has no chance of completing this quest. Please choose stronger adventurers.';
+      $response[] = '';
+      $response[] = 'Adventurers available for quests:';
+      foreach ($player->get_adventurers() as $adventurer) {
+        if (!empty($adventurer->agid)) continue;
+        $response[] = $adventurer->get_display_name(in_array($adventurer, $adventurers));
+      }
+      $response[] = $this->get_typed($cmd_word, $orig_args);
       $this->respond(implode("\n", $response));
       return FALSE;
     }
@@ -359,16 +394,15 @@ class RPGSession {
       $confirmation = false;
     }
 
-    $duration = $quest->get_duration();
+    $duration = $quest->get_duration($player->get_travel_speed_modifier());
 
     // Display the confirmation message and code.
     if (empty($confirmation)) {
-      $response[] = '*Mission*: '.$quest->name;
+      $response[] = '*Quest*: '.$this->get_stars($quest->stars).' '.$quest->name;
       $response[] = '*Duration*: '.$this->get_duration_as_hours($duration);
+      $response[] = '*Success rate*: '.$this->get_difficulty($success_rate).' '.$success_rate.'% ';
       $response[] = '*Adventuring party*: ('.count($adventurers).')';
-      foreach ($adventurers as $adventurer) {
-        $response[] = $adventurer->get_display_name();
-      }
+      foreach ($adventurers as $adventurer) $response[] = $adventurer->get_display_name();
       $response[] = '';
       $response[] = 'To confirm your departure, type:';
       $response[] = '`/rpg quest q'.$quest->qid.' '.$adventurer_args.' CONFIRM`';
@@ -520,8 +554,7 @@ class RPGSession {
     $too_few = $num_adventurers < $min_allowed;
     if ($too_few) {
       $response[] = 'You need at least '.$min_allowed.' adventurer'.($min_allowed > 1 ? 's' : '').' to go exploring.';
-
-      $response[] = "(You typed: `/rpg explore ".$coord." ".$adventurer_args.(!empty($confirmation) ? ' '.$confirmation : '')."`)";
+      $response[] = $this->get_typed($cmd_word, $orig_args);
       $this->respond(implode("\n", $response));
       return FALSE;
     }
@@ -535,7 +568,7 @@ class RPGSession {
     }
 
     // Calculate the duration.
-    $duration = $location->get_duration();
+    $duration = $location->get_duration($player->get_travel_speed_modifier());
 
     // Display the confirmation message and code.
     if (empty($confirmation)) {
@@ -835,12 +868,56 @@ class RPGSession {
 
       $upgrades = $player->get_available_upgrades();
       foreach ($upgrades as $upgrade) {
-        $response[] = '*'.$upgrade->get_display_name() .'* for '. $this->get_currency($upgrade->cost) .' and '. $this->get_duration_as_hours($upgrade->duration);
+        $response[] = '*'.$upgrade->get_display_name() .'* for '. $this->get_currency($upgrade->cost) .' and '. $this->get_duration_as_hours($upgrade->duration).' `/rpg upgrade '.$upgrade->name_id.'`';
       }
 
       $this->respond(implode("\n", $response));
       return TRUE;
     }
+
+    // Load up the upgrade.
+    $upgrade_name = $args[0];
+    $upgrade = Upgrade::load(array('name_id' => $upgrade_name));
+    if (empty($upgrade)) {
+      $this->respond('The upgrade "'.$upgrade_name.'" is not available.');
+      return FALSE;
+    }
+
+    // Check if they already have this upgrade.
+    if ($player->has_upgrade($upgrade)) {
+      $this->respond('You already have *'.$upgrade->get_display_name(false).'*.');
+      return FALSE;
+    }
+
+    // Check that they meet the requirements.
+    if (!$player->meets_requirement($upgrade)) {
+      $this->respond('You do not meet the requirements of *'.$upgrade->get_display_name(false).'*.');
+      return FALSE;
+    }
+
+    // Try to purchase the upgrade.
+    if ($player->gold < $upgrade->cost) {
+      $this->respond('You do not have enough gold to purchase the upgrade *'.$upgrade->get_display_name(false).'*.');
+      return FALSE;
+    }
+
+    // Start the upgrade purchase.
+    $player->gold -= $upgrade->cost;
+    $success = $player->save();
+    if ($success === false) {
+      $this->respond('There was a problem saving your Guild when purchasing the '.$upgrade->get_display_name(false).' upgrade. Please talk to Paul.');
+      return FALSE;
+    }
+
+    // Queue the upgrade for completion.
+    $duration = $upgrade->duration;
+    $queue = $upgrade->queue( $duration, $player->gid );
+    if (empty($queue)) {
+      $this->respond('There was a problem adding the upgrade to the queue. Please talk to Paul.');
+      return FALSE;
+    }
+
+    $this->respond('*'. $upgrade->get_display_name(false) .'* was purchased for '.$this->get_currency($upgrade->cost).' and will be upgraded in '.$this->get_duration_as_hours($duration).'.');
   }
 
 
@@ -853,10 +930,10 @@ class RPGSession {
     $types = Location::types();
     $loc_type = array_rand($types);
     $loc_type = $types[$loc_type];
-    $star = rand(1, 5);
+    $star = 1; //rand(1, 5);
 
-    d($loc_type);
-    d($star);
+    // d($loc_type);
+    // d($star);
 
     $location = new Location (array(
       'locid' => 10,
@@ -865,14 +942,24 @@ class RPGSession {
       'type' => $loc_type,
       'created' => time(),
       'revealed' => false,
-      'star_min' => ($star > 1 ? $star - 1 : $star),
+      'star_min' => $star, //($star > 1 ? $star - 1 : $star),
       'star_max' => $star,
     ));
 
     // Create quests for the location.
     $quests = Quest::generate_quests($location);
 
-    d($quests);
+    // d($quests);
+
+    $quest = $quests[0];
+
+    // Get best adventurers.
+    $best_adventurers = $player->get_best_adventurers($quest->party_size_max);
+    $success_rate = $quest->get_success_rate($player, $best_adventurers);
+
+    d($success_rate);
+    
+    $this->respond($this->get_stars($quest->stars).' '.$quest->name.' (adventurers required: '.$quest->get_party_size().')  `/rpg quest q'.$quest->qid.' [ADVENTURER NAMES (comma-separated)]`');
   }
 
 
@@ -919,7 +1006,7 @@ class RPGSession {
   }
 
   protected function get_currency ($amount) {
-    return $amount.' gp';
+    return number_format($amount).' gp';
   }
 
   protected function get_duration_as_hours ($duration) {
@@ -929,15 +1016,35 @@ class RPGSession {
     $minutes = floor($seconds / 60);
     $seconds -= ($minutes * 60);
     
-    return ($hours > 0 ? $hours.' hours, ' : '').($minutes > 0 ? $minutes.' minutes, ' : '').($seconds.' seconds');
+    return ($hours > 0 ? $hours.' hours, ' : '').($minutes > 0 ? $minutes.' minutes, ' : '').($seconds > 0 ? $seconds.' seconds' : '');
   }
 
   protected function get_fame ($fame) {
-    return ':fame: '.$fame;
+    return ':fame: '.number_format($fame);
   }
 
   protected function get_typed ($cmd, $args) {
     return "\n(You typed: `/rpg ".$cmd." ".implode(' ', $args)."`)";
+  }
+
+  protected function get_stars ($stars, $max = 5) {
+    $text = '';
+    // for ($i = 1; $i <= $max; $i++) $text .= ($i <= $stars ? ':quest-star:' : ':quest-star-empty:');
+    for ($i = 1; $i <= $stars; $i++) $text .= ':star:';
+    return $text;
+  }
+
+  protected function get_difficulty ($rate) {
+    if ($rate <= 0) return ':rpg-quest-diff0:';
+    if ($rate <= 35) return ':rpg-quest-diff1:';
+    if ($rate <= 50) return ':rpg-quest-diff2:';
+    if ($rate <= 75) return ':rpg-quest-diff3:';
+    
+    return ':rpg-quest-diff4:';
+  }
+
+  protected function get_difficulty_legend () {
+    return 'Difficulty Legend:'."\n".':rpg-quest-diff0: Impossible, :rpg-quest-diff1: Risky, :rpg-quest-diff2: Difficult, :rpg-quest-diff3: Challenging, :rpg-quest-diff1: Recommended';
   }
 
   protected function addOrdinalNumberSuffix ($num) {

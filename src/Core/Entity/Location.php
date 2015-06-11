@@ -31,7 +31,7 @@ class Location extends RPGEntitySaveable {
 
   static $_types = array(Location::TYPE_CREATURE, Location::TYPE_STRUCTURE, Location::TYPE_LANDMARK);
 
-  const TRAVEL_MODIFIER = 5; // 10800 = 3 hours/tile (60 * 60 * 3)
+  const TRAVEL_BASE = 10800; // 10800 = 3 hours/tile (60 * 60 * 3)
 
   
   function __construct($data = array()) {
@@ -56,8 +56,9 @@ class Location extends RPGEntitySaveable {
     // Get the capital in the map.
     $capital = $map->get_capital();
     // Calculate the raw distance and multiply by a time constant.
-    if (empty($travel_modifier) && $travel_modifier !== 0) $travel_modifier = Location::TRAVEL_MODIFIER;
-    return sqrt(pow(($capital->row - $this->row), 2) + pow(($capital->col - $this->col), 2)) * $travel_modifier;
+    $travel_per_tile = Location::TRAVEL_BASE;
+    if (!empty($travel_modifier)) $travel_per_tile = floor($travel_per_tile * $travel_modifier);
+    return ceil(sqrt(pow(($capital->row - $this->row), 2) + pow(($capital->col - $this->col), 2)) * $travel_per_tile);
   }
 
   public function load_map () {

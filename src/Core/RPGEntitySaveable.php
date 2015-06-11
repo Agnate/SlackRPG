@@ -7,8 +7,9 @@ abstract class RPGEntitySaveable extends RPGEntity {
 
   /**
    * $duration -> defined in seconds from the current time. (eg. 40 = 40 seconds from now).
+   * $guild_id -> add an optional Guild ID (if necessary).
    */
-  public function queue ($duration, $save = true) {
+  public function queue ($duration, $guild_id = 0, $save = true) {
     // If we don't have a database table, we're done.
     if ( static::$db_table == '' ) return FALSE;
     if ( empty(static::$default_class) ) return FALSE;
@@ -21,6 +22,8 @@ abstract class RPGEntitySaveable extends RPGEntity {
       'created' => $time,
       'execute' => $time + $duration,
     );
+    if (!empty($guild_id)) $data['gid'] = $guild_id;
+
     $queue = new Queue ($data);
 
     $success = true;

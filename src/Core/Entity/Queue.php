@@ -3,6 +3,7 @@
 class Queue extends RPGEntitySaveable {
   // Fields
   public $queue_id;
+  public $gid;
   public $type;
   public $type_id;
   public $created;
