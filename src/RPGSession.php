@@ -1044,7 +1044,7 @@ class RPGSession {
   }
 
   protected function get_difficulty_legend () {
-    return 'Difficulty Legend:'."\n".':rpg-quest-diff0: Impossible, :rpg-quest-diff1: Risky, :rpg-quest-diff2: Difficult, :rpg-quest-diff3: Challenging, :rpg-quest-diff1: Recommended';
+    return 'Difficulty Legend:'."\n".':rpg-quest-diff0: Impossible, :rpg-quest-diff1: Risky, :rpg-quest-diff2: Difficult, :rpg-quest-diff3: Challenging, :rpg-quest-diff4: Recommended';
   }
 
   protected function addOrdinalNumberSuffix ($num) {
