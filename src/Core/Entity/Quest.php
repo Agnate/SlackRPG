@@ -23,12 +23,13 @@ class Quest extends RPGEntitySaveable {
   public $party_size_max;
   public $level;
   public $success_rate;
+  public $death_rate;
   
   // Protected
   protected $_location;
 
   // Private vars
-  static $fields_int = array('stars', 'created', 'reward_gold', 'reward_exp', 'reward_fame', 'duration', 'cooldown', 'party_size_min', 'party_size_max', 'level', 'success_rate');
+  static $fields_int = array('stars', 'created', 'reward_gold', 'reward_exp', 'reward_fame', 'duration', 'cooldown', 'party_size_min', 'party_size_max', 'level', 'success_rate', 'death_rate');
   static $db_table = 'quests';
   static $default_class = 'Quest';
   static $primary_key = 'qid';
@@ -38,10 +39,11 @@ class Quest extends RPGEntitySaveable {
   const TYPE_TRAIN = 'train';
   const TYPE_INVESTIGATE = 'investigate';
   const TYPE_AID = 'aid';
+  const TYPE_SPECIAL = 'special';
   const TYPE_FIGHT = 'fight';
   const TYPE_BOSS = 'boss';
 
-  static $_types = array(Quest::TYPE_INVESTIGATE, Quest::TYPE_AID, Quest::TYPE_FIGHT, Quest::TYPE_BOSS);
+  static $_types = array(Quest::TYPE_INVESTIGATE, Quest::TYPE_AID, Quest::TYPE_FIGHT, Quest::TYPE_BOSS, Quest::TYPE_SPECIAL);
 
   
   function __construct($data = array()) {
@@ -95,6 +97,15 @@ class Quest extends RPGEntitySaveable {
     return $rate < 100 ? floor($rate) : 100;
   }
 
+  public function get_death_rate ($guild, $adventurers) {
+    $rate = $this->death_rate;
+    // Get the death rate modifier from the Guild.
+    $mod = $guild->get_death_rate_modifier();
+    // Check if adventurers modify the death rate at all.
+    foreach ($adventurers as $adventurer) $mod -= (1 - $adventurer->get_death_rate_modifier());
+    return ceil($rate * $mod);
+  }
+
   public function queue_process ($queue = null) {
     // If we were give a Queue, destroy it.
     if (!empty($queue)) $queue->delete();
@@ -120,11 +131,13 @@ class Quest extends RPGEntitySaveable {
 
     // Determine if the quest was successful.
     $success_rate = $this->get_success_rate($guild, $adventurers);
+    $death_rate = $this->get_death_rate($guild, $adventurers);
     // Generate a number between 1-100 and see if it's successful.
     $success = (rand(1, 100) <= $success_rate);
 
     // If it's successful, give out the rewards.
     $reward_exp = 0;
+    $player_text = 'Your adventuring party *FAILED* '. $this->name .'.';
     if ($success) {
       // Give the Guild its reward.
       if ($this->reward_gold > 0) $guild->gold += $this->reward_gold;
@@ -133,16 +146,22 @@ class Quest extends RPGEntitySaveable {
 
       // Calculate the exp per adventurer.
       $reward_exp = ceil($this->reward_exp / count($adventurers));
+
+      $player_text = '*'. $this->name .'* was completed!';
     }
 
     // Bring all the adventurers home and give them their exp.
     foreach ($adventurers as $adventurer) {
       $adventurer->agid = 0;
       if (isset($reward_exp) && $reward_exp > 0) $adventurer->give_exp( $reward_exp );
+      // Calculate if the adventurer died during this adventure ONLY if they failed the quest.
+      if (!$success && $death_rate > 0 && rand(1, 100) <= $death_rate) {
+        $adventurer->dead = true;
+        $player_text .= "\n:rpg-tomb: RIP ".$adventurer->get_display_name().' died during the quest.';
+      }
       $adventurer->save();
     }
 
-    $player_text = $this->name .' was completed!';
     $channel_text = '';
 
     // If this is an exploration quest, reveal the location.
@@ -153,9 +172,7 @@ class Quest extends RPGEntitySaveable {
       $location->save();
 
       // Generate new Quests for the revealed location.
-      // $star_min = 1;
-      // $star_max = 2;
-      // $quests = Quest::generate_quests($location, $star_min, $star_max);
+      // $quests = Quest::generate_quests($location);
 
       if (!empty($location->name)) {
         $player_text .= " You discovered ".$location->name.".";
@@ -213,7 +230,7 @@ class Quest extends RPGEntitySaveable {
   /**
    * Generate quests for a location.
    */
-  static function generate_quests ($location) {
+  static function generate_quests ($location, $save = true) {
     if (empty($location) || !is_a($location, 'Location')) return false;
 
     $quests = array();
@@ -223,14 +240,14 @@ class Quest extends RPGEntitySaveable {
       // Determine the type.
       $type = Quest::randomize_quest_types($location->type);
       // Generate the quest.
-      $quest = Quest::generate_quest_type($location, $type);
+      $quest = Quest::generate_quest_type($location, $type, $save);
       $quests[] = $quest;
     }
 
     return $quests;
   }
 
-  static function generate_quest_type ($location, $type) {
+  static function generate_quest_type ($location, $type, $save = true) {
     if (empty($location) || !is_a($location, 'Location')) return false;
 
     $hours = 60 * 60;
@@ -320,12 +337,13 @@ class Quest extends RPGEntitySaveable {
 
     // Create the Quest.
     $quest = new Quest ($data);
-    /*$quest->save();
-
-    // Queue up the cooldown if we need to.
-    if ($data['active'] == false) {
-      $quest->queue( $cooldown );
-    }*/
+    
+    // If we need to save it, do so and queue up the cooldown if there is one.
+    if ($save) {
+      $quest->save();
+      // Queue up the cooldown if we need to.
+      if ($cooldown > 0 && !$quest->active) $quest->queue($cooldown);
+    }
 
     return $quest;
   }
@@ -369,22 +387,25 @@ class Quest extends RPGEntitySaveable {
     $types[Location::TYPE_CREATURE] = array(
       Quest::TYPE_FIGHT => 0.45,
       Quest::TYPE_BOSS => 0.15,
-      Quest::TYPE_INVESTIGATE => 0.35,
+      Quest::TYPE_INVESTIGATE => 0.30,
       Quest::TYPE_AID => 0.05,
+      Quest::TYPE_SPECIAL => 0.05,
     );
 
     $types[Location::TYPE_STRUCTURE] = array(
       Quest::TYPE_FIGHT => 0.10,
-      Quest::TYPE_BOSS => 0.05,
+      Quest::TYPE_BOSS => 0.02,
       Quest::TYPE_INVESTIGATE => 0.25,
-      Quest::TYPE_AID => 0.60,
+      Quest::TYPE_AID => 0.50,
+      Quest::TYPE_SPECIAL => 0.13,
     );
 
     $types[Location::TYPE_LANDMARK] = array(
-      Quest::TYPE_FIGHT => 0.12,
+      Quest::TYPE_FIGHT => 0.17,
       Quest::TYPE_BOSS => 0.08,
-      Quest::TYPE_INVESTIGATE => 0.75,
+      Quest::TYPE_INVESTIGATE => 0.65,
       Quest::TYPE_AID => 0.05,
+      Quest::TYPE_SPECIAL => 0.05,
     );
 
     return $types;

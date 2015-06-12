@@ -15,6 +15,10 @@ class Adventurer extends RPGEntitySaveable {
   public $exp_tnl;
   public $class;
   public $champion;
+  public $dead;
+
+  // Protected
+  protected $_death_rate_modifier;
 
   // Private vars
   static $fields_int = array('created', 'level', 'popularity', 'exp', 'exp_tnl');
@@ -31,6 +35,7 @@ class Adventurer extends RPGEntitySaveable {
     if (empty($this->created)) $this->created = time();
     if (empty($this->available)) $this->available = false;
     if (empty($this->champion)) $this->champion = false;
+    if (empty($this->_death_rate_modifier)) $this->_death_rate_modifier = 1;
   }
 
   public function get_display_name ($bold = true, $include_champion = true) {
@@ -40,4 +45,22 @@ class Adventurer extends RPGEntitySaveable {
   public function give_exp ($exp) {
     $this->exp += $exp;
   }
+
+  public function get_death_rate_modifier () {
+    return $this->_death_rate_modifier;
+  }
+
+  /**
+   * $mod -> Should be a decimal representation of a percentage (example: 0.2 for 20%).
+   */
+  // public function set_death_rate_modifier ($mod) {
+  //   $this->_death_rate_modifier = $mod;
+  // }
+
+  /**
+   * $mod -> Should be a decimal representation of a percentage (example: 0.2 for 20%).
+   */
+  // public function add_death_rate_modifier ($mod) {
+  //   $this->_death_rate_modifier += $mod;
+  // }
 }

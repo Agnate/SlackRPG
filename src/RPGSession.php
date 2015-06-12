@@ -303,7 +303,8 @@ class RPGSession {
         // Get the best adventurers available for questing.
         $best_adventurers = $player->get_best_adventurers($quest->party_size_max);
         $success_rate = $quest->get_success_rate($player, $best_adventurers);
-        $response[] = $this->get_difficulty($success_rate) .' '. $this->get_stars($quest->stars).' '.$quest->name.' (adventurers required: '.$quest->get_party_size().')  `/rpg quest q'.$quest->qid.' [ADVENTURER NAMES (comma-separated)]`';
+        $death_rate = $quest->death_rate;
+        $response[] = $this->get_difficulty($success_rate) .' '.($death_rate > 0 ? ':skull: ' : ''). $this->get_stars($quest->stars).' '.$quest->name.' (adventurers required: '.$quest->get_party_size().')  `/rpg quest q'.$quest->qid.' [ADVENTURER NAMES (comma-separated)]`';
       }
 
       // Also show the list of available adventurers.
@@ -395,12 +396,14 @@ class RPGSession {
     }
 
     $duration = $quest->get_duration($player->get_travel_speed_modifier());
+    $death_rate = $quest->get_death_rate($player, $adventurers);
 
     // Display the confirmation message and code.
     if (empty($confirmation)) {
       $response[] = '*Quest*: '.$this->get_stars($quest->stars).' '.$quest->name;
       $response[] = '*Duration*: '.$this->get_duration_as_hours($duration);
-      $response[] = '*Success rate*: '.$this->get_difficulty($success_rate).' '.$success_rate.'% ';
+      $response[] = '*Chance of Success*: '.$this->get_difficulty($success_rate).' '.$success_rate.'%';
+      if ($death_rate > 0) $response[] = '*Chance of Death*: :skull: '.$death_rate.'%';
       $response[] = '*Adventuring party*: ('.count($adventurers).')';
       foreach ($adventurers as $adventurer) $response[] = $adventurer->get_display_name();
       $response[] = '';
@@ -572,7 +575,7 @@ class RPGSession {
 
     // Display the confirmation message and code.
     if (empty($confirmation)) {
-      $response[] = '*Mission*: Exploration';
+      $response[] = '*Quest*: Exploration';
       $response[] = '*Duration*: '.$this->get_duration_as_hours($duration);
       $response[] = '*Adventuring party*: ('.count($adventurers).')';
       foreach ($adventurers as $adventurer) {
@@ -857,6 +860,9 @@ class RPGSession {
    * Upgrade your Guild with additional benefits.
    */
   protected function cmd_upgrade ($args = array()) {
+    $orig_args = $args;
+    $cmd_word = 'upgrade';
+
     // Load the player and fail out if they have not created a Guild.
     $player = $this->load_current_player();
 
@@ -876,7 +882,7 @@ class RPGSession {
     }
 
     // Load up the upgrade.
-    $upgrade_name = $args[0];
+    $upgrade_name = array_shift($args);
     $upgrade = Upgrade::load(array('name_id' => $upgrade_name));
     if (empty($upgrade)) {
       $this->respond('The upgrade "'.$upgrade_name.'" is not available.');
@@ -899,6 +905,21 @@ class RPGSession {
     if ($player->gold < $upgrade->cost) {
       $this->respond('You do not have enough gold to purchase the upgrade *'.$upgrade->get_display_name(false).'*.');
       return FALSE;
+    }
+
+    // Check that they confirmed the upgrade.
+    $response = array();
+    $confirm = array_pop($args);
+    if ($confirm != 'CONFIRM') {
+      $response[] = '*Upgrade*: '.$upgrade->get_display_name(false);
+      if (!empty($upgrade->description)) $response[] = '*Description*: '.$upgrade->description;
+      $response[] = '*Cost*: '.$this->get_currency($upgrade->cost);
+      $response[] = '*Duration*: '.$this->get_duration_as_hours($upgrade->duration);
+      $response[] = '';
+      $response[] = 'To confirm your departure, type:';
+      $response[] = '`/rpg '.$cmd_word.' '.implode(' ', $orig_args).' CONFIRM`';
+      $this->respond(implode("\n", $response));
+      return TRUE;
     }
 
     // Start the upgrade purchase.
@@ -947,19 +968,9 @@ class RPGSession {
     ));
 
     // Create quests for the location.
-    $quests = Quest::generate_quests($location);
+    $quests = Quest::generate_quests($location, false);
 
-    // d($quests);
-
-    $quest = $quests[0];
-
-    // Get best adventurers.
-    $best_adventurers = $player->get_best_adventurers($quest->party_size_max);
-    $success_rate = $quest->get_success_rate($player, $best_adventurers);
-
-    d($success_rate);
-    
-    $this->respond($this->get_stars($quest->stars).' '.$quest->name.' (adventurers required: '.$quest->get_party_size().')  `/rpg quest q'.$quest->qid.' [ADVENTURER NAMES (comma-separated)]`');
+    d($quests);
   }
 
 
@@ -1044,7 +1055,7 @@ class RPGSession {
   }
 
   protected function get_difficulty_legend () {
-    return 'Difficulty Legend:'."\n".':rpg-quest-diff0: Impossible, :rpg-quest-diff1: Risky, :rpg-quest-diff2: Difficult, :rpg-quest-diff3: Challenging, :rpg-quest-diff4: Recommended';
+    return 'Difficulty Legend:'."\n".':rpg-quest-diff0: Impossible, :rpg-quest-diff1: Risky, :rpg-quest-diff2: Difficult, :rpg-quest-diff3: Challenging, :rpg-quest-diff4: Recommended, :skull: Adventurers can die';
   }
 
   protected function addOrdinalNumberSuffix ($num) {

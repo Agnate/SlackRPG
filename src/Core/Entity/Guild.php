@@ -18,8 +18,10 @@ class Guild extends RPGEntitySaveable {
   protected $_adventurers;
   protected $_renown;
   protected $_upgrades;
+  protected $_queued_upgrades;
   protected $_travel_speed_modifier;
   protected $_quest_success_modifier;
+  protected $_death_rate_modifier;
 
   // Private vars
   static $fields_int = array('created', 'updated', 'gold', 'fame', 'adventurer_limit');
@@ -40,6 +42,7 @@ class Guild extends RPGEntitySaveable {
     if (empty($this->_renown)) $this->_renown = -9999;
     if (empty($this->_travel_speed_modifier)) $this->_travel_speed_modifier = 1;
     if (empty($this->_quest_success_modifier)) $this->_quest_success_modifier = 1;
+    if (empty($this->_death_rate_modifier)) $this->_death_rate_modifier = 1;
 
     // Convert upgrades.
     $this->load_upgrades();
@@ -62,7 +65,7 @@ class Guild extends RPGEntitySaveable {
 
   public function load_adventurers () {
     // Get all adventurers in this Guild.
-    $this->_adventurers = Adventurer::load_multiple( array('gid' => $this->gid) );
+    $this->_adventurers = Adventurer::load_multiple( array('gid' => $this->gid, 'dead' => false) );
   }
 
   public function get_adventurers () {
@@ -180,6 +183,26 @@ class Guild extends RPGEntitySaveable {
     return TRUE;
   }
 
+  public function get_queued_upgrades () {
+    if (!is_array($this->_queued_upgrades)) {
+      // Get any upgrades that are in the queue.
+      $queues = Queue::load_multiple(array('gid' => $this->gid, 'type' => 'Upgrade'));
+      $this->_queued_upgrades = array();
+      foreach ($queues as $queue) {
+        $upgrade = $queue->process();
+        $this->_queued_upgrades[$upgrade->name_id] = $upgrade;
+      }
+    }
+    return $this->_queued_upgrades;
+  }
+
+  public function upgrade_is_queued ($upgrade) {
+    $upgrade_name = is_string($upgrade) ? $upgrade : $upgrade->name_id;
+    // Get all queued upgrades.
+    $queued_upgrades = $this->get_queued_upgrades();
+    return isset($queued_upgrades[$upgrade_name]);
+  }
+
   public function get_available_upgrades () {
     // Load all Upgrades.
     $all = Upgrade::load_multiple(array());
@@ -187,7 +210,7 @@ class Guild extends RPGEntitySaveable {
     // Weed out the upgrades that aren't available
     foreach ($all as $key => $upgrade) {
       // If they can upgrade to this, keep it.
-      if (!$this->has_upgrade($upgrade) && $this->meets_requirement($upgrade)) continue;
+      if (!$this->has_upgrade($upgrade) && !$this->upgrade_is_queued($upgrade) && $this->meets_requirement($upgrade)) continue;
       // Remove anything that cannot be upgraded now.
       unset($all[$key]);
     }
@@ -231,6 +254,24 @@ class Guild extends RPGEntitySaveable {
    */
   public function add_quest_success_modifier ($mod) {
     $this->_quest_success_modifier += $mod;
+  }
+
+  public function get_death_rate_modifier () {
+    return $this->_death_rate_modifier;
+  }
+
+  /**
+   * $mod -> Should be a decimal representation of a percentage (example: 0.2 for 20%).
+   */
+  public function set_death_rate_modifier ($mod) {
+    $this->_death_rate_modifier = $mod;
+  }
+
+  /**
+   * $mod -> Should be a decimal representation of a percentage (example: 0.2 for 20%).
+   */
+  public function add_death_rate_modifier ($mod) {
+    $this->_death_rate_modifier += $mod;
   }
 
 

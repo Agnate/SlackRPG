@@ -31,7 +31,7 @@ class Location extends RPGEntitySaveable {
 
   static $_types = array(Location::TYPE_CREATURE, Location::TYPE_STRUCTURE, Location::TYPE_LANDMARK);
 
-  const TRAVEL_BASE = 10800; // 10800 = 3 hours/tile (60 * 60 * 3)
+  const TRAVEL_BASE = 5; // 10800 = 3 hours/tile (60 * 60 * 3)
 
   
   function __construct($data = array()) {

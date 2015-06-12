@@ -49,6 +49,7 @@ function update_version_0_0_0 ($forced = false) {
   $adventurers_table[] = "exp_tnl INT(10) UNSIGNED NOT NULL";
   $adventurers_table[] = "class VARCHAR(100) NOT NULL";
   $adventurers_table[] = "champion TINYINT(1) NOT NULL";
+  $adventurers_table[] = "dead TINYINT(1) NOT NULL";
   $adventurers_table[] = "PRIMARY KEY ( aid )";
   add_update_query( "CREATE TABLE IF NOT EXISTS adventurers (". implode(',', $adventurers_table) .")" );
 
@@ -75,6 +76,7 @@ function update_version_0_0_0 ($forced = false) {
   $quests_table[] = "party_size_max INT(10) UNSIGNED NOT NULL";
   $quests_table[] = "level INT(10) UNSIGNED NOT NULL";
   $quests_table[] = "success_rate INT(10) UNSIGNED NOT NULL";
+  $quests_table[] = "death_rate INT(10) UNSIGNED NOT NULL";
   $quests_table[] = "PRIMARY KEY ( qid )";
   add_update_query( "CREATE TABLE IF NOT EXISTS quests (". implode(',', $quests_table) .")" );
 
@@ -141,11 +143,11 @@ function update_version_0_0_0 ($forced = false) {
 
   // Add some Quests.
   $quests = array();
-  $quests[] = array(':name' => 'Permanent Quest', ':icon' => ':quest1:', ':type' => 'standard', ':locid' => 3, ':stars' => 1, ':created' => $time, ':active' => true, ':permanent' => true, ':reward_gold' => 100, ':reward_exp' => 150, ':reward_fame' => 0, ':duration' => 20, ':cooldown' => 10, ':party_size_min' => 1, ':party_size_max' => 1, ':level' => 5, ':success_rate' => 100);
-  $quests[] = array(':name' => 'Fancy Quest', ':icon' => ':quest2:', ':type' => 'standard', ':locid' => 2, ':stars' => 4, ':created' => $time, ':active' => true, ':permanent' => false, ':reward_gold' => 500, ':reward_exp' => 450, ':reward_fame' => 10, ':duration' => 50, ':cooldown' => 60, ':party_size_min' => 1, ':party_size_max' => 3, ':level' => 30, ':success_rate' => 80);
-  //$quests[] = array(':name' => '', ':icon' => '', ':type' => '', ':locid' => 0, ':stars' => 0, ':created' => $time, ':active' => false, ':permanent' => false, ':reward_gold' => 0, ':reward_exp' => 0, ':duration' => 0, ':cooldown' => 0, ':party_size_min' => 1, ':party_size_max' => 0, ':level' => 1, ':success_rate' => 100);
+  $quests[] = array(':name' => 'Permanent Quest', ':icon' => ':quest1:', ':type' => 'standard', ':locid' => 3, ':stars' => 1, ':created' => $time, ':active' => true, ':permanent' => true, ':reward_gold' => 100, ':reward_exp' => 150, ':reward_fame' => 0, ':duration' => 20, ':cooldown' => 10, ':party_size_min' => 1, ':party_size_max' => 1, ':level' => 5, ':success_rate' => 100, ':death_rate' => 0);
+  $quests[] = array(':name' => 'Fancy Quest', ':icon' => ':quest2:', ':type' => 'standard', ':locid' => 2, ':stars' => 4, ':created' => $time, ':active' => true, ':permanent' => false, ':reward_gold' => 500, ':reward_exp' => 450, ':reward_fame' => 10, ':duration' => 50, ':cooldown' => 60, ':party_size_min' => 1, ':party_size_max' => 3, ':level' => 30, ':success_rate' => 80, ':death_rate' => 5);
+  //$quests[] = array(':name' => '', ':icon' => '', ':type' => '', ':locid' => 0, ':stars' => 0, ':created' => $time, ':active' => false, ':permanent' => false, ':reward_gold' => 0, ':reward_exp' => 0, ':duration' => 0, ':cooldown' => 0, ':party_size_min' => 1, ':party_size_max' => 0, ':level' => 1, ':success_rate' => 100, ':death_rate' => 0);
   foreach ($quests as $quest) {
-    add_update_query("INSERT INTO quests (name, icon, type, locid, stars, created, active, permanent, reward_gold, reward_exp, reward_fame, duration, cooldown, party_size_min, party_size_max, level, success_rate) VALUES (:name, :icon, :type, :locid, :stars, :created, :active, :permanent, :reward_gold, :reward_exp, :reward_fame, :duration, :cooldown, :party_size_min, :party_size_max, :level, :success_rate)", $quest);
+    add_update_query("INSERT INTO quests (name, icon, type, locid, stars, created, active, permanent, reward_gold, reward_exp, reward_fame, duration, cooldown, party_size_min, party_size_max, level, success_rate, death_rate) VALUES (:name, :icon, :type, :locid, :stars, :created, :active, :permanent, :reward_gold, :reward_exp, :reward_fame, :duration, :cooldown, :party_size_min, :party_size_max, :level, :success_rate, :death_rate)", $quest);
   }
 
   // Add a Map.
@@ -177,14 +179,14 @@ function update_version_0_0_0 ($forced = false) {
   $upgrades[] = array(':name_id' => "speed1", ':name' => "Transportation: Horse", ':description' => "increase speed by 5%", ':cost' => 5000, ':duration' => (24 * $hours), ':requires' => '');
   $upgrades[] = array(':name_id' => "speed2", ':name' => "Transportation: Pegasus", ':description' => "increase speed by 5%", ':cost' => 15000, ':duration' => (48 * $hours), ':requires' => 'speed1');
   $upgrades[] = array(':name_id' => "speed3", ':name' => "Transportation: Airship", ':description' => "increase speed by 10%", ':cost' => 30000, ':duration' => (72 * $hours), ':requires' => 'speed2');
-  $upgrades[] = array(':name_id' => "equip1", ':name' => "Equipment: Iron", ':description' => "", ':cost' => 3000, ':duration' => (24 * $hours), ':requires' => '');
-  $upgrades[] = array(':name_id' => "equip2", ':name' => "Equipment: Steel", ':description' => "", ':cost' => 5000, ':duration' => (24 * $hours), ':requires' => 'equip1');
-  $upgrades[] = array(':name_id' => "equip3", ':name' => "Equipment: Mithril ", ':description' => "", ':cost' => 10000, ':duration' => (36 * $hours), ':requires' => 'equip2');
-  $upgrades[] = array(':name_id' => "equip4", ':name' => "Equipment: Inlaid Crystal", ':description' => "", ':cost' => 15000, ':duration' => (36 * $hours), ':requires' => 'equip3');
-  $upgrades[] = array(':name_id' => "equip5", ':name' => "Equipment: Diamond-edged", ':description' => "", ':cost' => 20000, ':duration' => (48 * $hours), ':requires' => 'equip4');
-  $upgrades[] = array(':name_id' => "equip6", ':name' => "Equipment: Adamantine", ':description' => "", ':cost' => 30000, ':duration' => (48 * $hours), ':requires' => 'equip5');
-  $upgrades[] = array(':name_id' => "equip7", ':name' => "Equipment: Demonite", ':description' => "", ':cost' => 50000, ':duration' => (72 * $hours), ':requires' => 'equip6');
-  $upgrades[] = array(':name_id' => "equip8", ':name' => "Equipment: Godstone", ':description' => "", ':cost' => 75000, ':duration' => (72 * $hours), ':requires' => 'equip7');
+  $upgrades[] = array(':name_id' => "equip1", ':name' => "Equipment: Iron", ':description' => "increase quest success rate by 2%", ':cost' => 3000, ':duration' => (24 * $hours), ':requires' => '');
+  $upgrades[] = array(':name_id' => "equip2", ':name' => "Equipment: Steel", ':description' => "increase quest success rate by 2%", ':cost' => 5000, ':duration' => (24 * $hours), ':requires' => 'equip1');
+  $upgrades[] = array(':name_id' => "equip3", ':name' => "Equipment: Mithril ", ':description' => "increase quest success rate by 2%", ':cost' => 10000, ':duration' => (36 * $hours), ':requires' => 'equip2');
+  $upgrades[] = array(':name_id' => "equip4", ':name' => "Equipment: Inlaid Crystal", ':description' => "increase quest success rate by 2%", ':cost' => 15000, ':duration' => (36 * $hours), ':requires' => 'equip3');
+  $upgrades[] = array(':name_id' => "equip5", ':name' => "Equipment: Diamond-edged", ':description' => "increase quest success rate by 2%", ':cost' => 20000, ':duration' => (48 * $hours), ':requires' => 'equip4');
+  $upgrades[] = array(':name_id' => "equip6", ':name' => "Equipment: Adamantine", ':description' => "increase quest success rate by 2%", ':cost' => 30000, ':duration' => (48 * $hours), ':requires' => 'equip5');
+  $upgrades[] = array(':name_id' => "equip7", ':name' => "Equipment: Demonite", ':description' => "increase quest success rate by 2%", ':cost' => 50000, ':duration' => (72 * $hours), ':requires' => 'equip6');
+  $upgrades[] = array(':name_id' => "equip8", ':name' => "Equipment: Godstone", ':description' => "increase quest success rate by 2%", ':cost' => 75000, ':duration' => (72 * $hours), ':requires' => 'equip7');
   //$upgrades[] = array(':name_id' => "", ':name' => "", ':description' => "", ':cost' => 0, ':duration' => 0, ':requires' => '');
   foreach ($upgrades as $upgrade) {
     add_update_query("INSERT INTO upgrades (name_id, name, description, cost, duration, requires) VALUES (:name_id, :name, :description, :cost, :duration, :requires)", $upgrade);
