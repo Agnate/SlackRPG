@@ -113,6 +113,11 @@ class Upgrade extends RPGEntitySaveable {
       case 'equip8':
         $guild->add_quest_success_modifier(0.02);
         break;
+
+      case 'heal1':
+      case 'heal2':
+        $guild->add_death_rate_modifier(-0.02);
+        break;
     }
 
     return TRUE;

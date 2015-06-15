@@ -186,7 +186,10 @@ function update_version_0_0_0 ($forced = false) {
   $upgrades[] = array(':name_id' => "equip5", ':name' => "Equipment: Diamond-edged", ':description' => "increase quest success rate by 2%", ':cost' => 20000, ':duration' => (48 * $hours), ':requires' => 'equip4');
   $upgrades[] = array(':name_id' => "equip6", ':name' => "Equipment: Adamantine", ':description' => "increase quest success rate by 2%", ':cost' => 30000, ':duration' => (48 * $hours), ':requires' => 'equip5');
   $upgrades[] = array(':name_id' => "equip7", ':name' => "Equipment: Demonite", ':description' => "increase quest success rate by 2%", ':cost' => 50000, ':duration' => (72 * $hours), ':requires' => 'equip6');
-  $upgrades[] = array(':name_id' => "equip8", ':name' => "Equipment: Godstone", ':description' => "increase quest success rate by 2%", ':cost' => 75000, ':duration' => (72 * $hours), ':requires' => 'equip7');
+  $upgrades[] = array(':name_id' => "equip8", ':name' => "Equipment: Godsteel", ':description' => "increase quest success rate by 2%", ':cost' => 75000, ':duration' => (72 * $hours), ':requires' => 'equip7');
+  $upgrades[] = array(':name_id' => "heal1", ':name' => "Healer's Garden", ':description' => "reduce death rate by 2%", ':cost' => 25000, ':duration' => (48 * $hours), ':requires' => '');
+  $upgrades[] = array(':name_id' => "heal2", ':name' => "Apothecary", ':description' => "reduce death rate by 2%", ':cost' => 50000, ':duration' => (72 * $hours), ':requires' => 'heal1');
+
   //$upgrades[] = array(':name_id' => "", ':name' => "", ':description' => "", ':cost' => 0, ':duration' => 0, ':requires' => '');
   foreach ($upgrades as $upgrade) {
     add_update_query("INSERT INTO upgrades (name_id, name, description, cost, duration, requires) VALUES (:name_id, :name, :description, :cost, :duration, :requires)", $upgrade);

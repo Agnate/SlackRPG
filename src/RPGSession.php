@@ -947,6 +947,18 @@ class RPGSession {
     // Load the player and fail out if they have not created a Guild.
     $player = $this->load_current_player();
 
+    
+    $adventurers = $player->get_adventurers();
+    $adventurer = $adventurers[0];
+
+    d($adventurer);
+
+    $adventurer->give_exp(1050);
+
+    d($adventurer);
+
+    return false;
+
     // Create a fake location.
     $types = Location::types();
     $loc_type = array_rand($types);

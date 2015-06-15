@@ -26,6 +26,8 @@ class Adventurer extends RPGEntitySaveable {
   static $default_class = 'Adventurer';
   static $primary_key = 'aid';
 
+  const LEVEL_CAP = 20;
+
   
   function __construct($data = array()) {
     // Perform regular constructor.
@@ -44,6 +46,30 @@ class Adventurer extends RPGEntitySaveable {
 
   public function give_exp ($exp) {
     $this->exp += $exp;
+    // Check if they level up.
+    $leveled_up = FALSE;
+    while ($this->exp >= $this->exp_tnl) {
+      $leveled_up = $this->level_up() || $leveled_up;
+    }
+    return $leveled_up;
+  }
+
+  protected function level_up () {
+    if ($this->level >= Adventurer::LEVEL_CAP) return FALSE;
+    // Level up!
+    $this->level++;
+    $this->exp_tnl = $this->calculate_exp_tnl();
+    return TRUE;
+  }
+
+  public function calculate_exp_tnl ($level = null) {
+    if (empty($level)) $level = $this->level + 1;
+    $level--;
+    // Crude level numbers for now.
+    if ($level <= 5) return ($level * 100);
+    if ($level <= 10) return ($level * 200);
+    if ($level <= 15) return ($level * 500);
+    return ($level * 1000);
   }
 
   public function get_death_rate_modifier () {
