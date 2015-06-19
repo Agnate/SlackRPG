@@ -139,6 +139,27 @@ function update_version_0_0_0 ($forced = false) {
   $adventurer_class_table[] = "PRIMARY KEY ( acid )";
   add_update_query( "CREATE TABLE IF NOT EXISTS adventurer_classes (". implode(',', $adventurer_class_table) .")" );
 
+  // Create ItemTemplate table.
+  $item_template_table = array();
+  $item_template_table[] = "itid INT(11) UNSIGNED AUTO_INCREMENT";
+  $item_template_table[] = "name_id VARCHAR(100) NOT NULL";
+  $item_template_table[] = "name VARCHAR(255) NOT NULL";
+  $item_template_table[] = "icon VARCHAR(100) NOT NULL";
+  $item_template_table[] = "type VARCHAR(100) NOT NULL";
+  $item_template_table[] = "PRIMARY KEY ( itid )";
+  add_update_query( "CREATE TABLE IF NOT EXISTS item_templates (". implode(',', $item_template_table) .")" );
+
+  // Create Item table.
+  $item_table = array();
+  $item_table[] = "iid INT(11) UNSIGNED AUTO_INCREMENT";
+  $item_table[] = "itid INT(11) UNSIGNED NOT NULL";
+  $item_table[] = "name_id VARCHAR(100) NOT NULL";
+  $item_table[] = "name VARCHAR(255) NOT NULL";
+  $item_table[] = "icon VARCHAR(100) NOT NULL";
+  $item_table[] = "type VARCHAR(100) NOT NULL";
+  $item_table[] = "PRIMARY KEY ( iid )";
+  add_update_query( "CREATE TABLE IF NOT EXISTS items (". implode(',', $item_table) .")" );
+
   // Add some Adventurers.
   $adventurers = array();
   $adventurers[] = array(':gid' => '', ':name' => 'Antoine Delorisci', ':icon' => ':antoine:', ':gender' => 'male', ':created' => $time, ':available' => true, ':level' => '1', ':exp' => 0, ':exp_tnl' => 1, ':class' => 'leywalker', ':champion' => false);
@@ -221,5 +242,28 @@ function update_version_0_0_0 ($forced = false) {
   //$adventurer_classes[] = array(':name_id' => "", ':name' => "", ':icon' => "", ':class_name' => "");
   foreach ($adventurer_classes as $adventurer_class) {
     add_update_query("INSERT INTO adventurer_classes (name_id, name, icon, class_name) VALUES (:name_id, :name, :icon, :class_name)", $adventurer_class);
+  }
+
+  // Add ItemTemplates.
+  $item_templates = array();
+  $item_templates[] = array(':name_id' => 'powerstone_shaman', ':name' => 'Shaman Powerstone', ':icon' => '', ':type' => 'powerstone');
+  $item_templates[] = array(':name_id' => 'powerstone_brigand', ':name' => 'Brigand Powerstone', ':icon' => '', ':type' => 'powerstone');
+  $item_templates[] = array(':name_id' => 'powerstone_judge', ':name' => 'Judge Powerstone', ':icon' => '', ':type' => 'powerstone');
+  $item_templates[] = array(':name_id' => 'powerstone_magus', ':name' => 'Magus Powerstone', ':icon' => '', ':type' => 'powerstone');
+  $item_templates[] = array(':name_id' => 'powerstone_dragoon', ':name' => 'Dragoon Powerstone', ':icon' => '', ':type' => 'powerstone');
+  $item_templates[] = array(':name_id' => 'powerstone_strider', ':name' => 'Strider Powerstone', ':icon' => '', ':type' => 'powerstone');
+  $item_templates[] = array(':name_id' => 'powerstone_oracle', ':name' => 'Oracle Powerstone', ':icon' => '', ':type' => 'powerstone');
+  $item_templates[] = array(':name_id' => 'powerstone_juggernaut', ':name' => 'Juggernaut Powerstone', ':icon' => '', ':type' => 'powerstone');
+  $item_templates[] = array(':name_id' => 'ore_iron', ':name' => 'Iron Ore', ':icon' => '', ':type' => 'ore');
+  $item_templates[] = array(':name_id' => 'ore_steel', ':name' => 'Steel', ':icon' => '', ':type' => 'ore');
+  $item_templates[] = array(':name_id' => 'ore_mithril', ':name' => 'Mithril Ore', ':icon' => '', ':type' => 'ore');
+  $item_templates[] = array(':name_id' => 'ore_crystal', ':name' => 'Crystal Shard', ':icon' => '', ':type' => 'ore');
+  $item_templates[] = array(':name_id' => 'ore_diamond', ':name' => 'Diamond', ':icon' => '', ':type' => 'ore');
+  $item_templates[] = array(':name_id' => 'ore_adamantine', ':name' => 'Adamantine', ':icon' => '', ':type' => 'ore');
+  $item_templates[] = array(':name_id' => 'ore_demonite', ':name' => 'Demonite', ':icon' => '', ':type' => 'ore');
+  $item_templates[] = array(':name_id' => 'ore_godstone', ':name' => 'Godstone', ':icon' => '', ':type' => 'ore');
+  //$item_templates[] = array(':name_id' => '', ':name' => '', ':icon' => '', ':type' => '');
+  foreach ($item_templates as $item_template) {
+    add_update_query("INSERT INTO item_templates (name_id, name, icon, type) VALUES (:name_id, :name, :icon, :type)", $item_template);
   }
 }
