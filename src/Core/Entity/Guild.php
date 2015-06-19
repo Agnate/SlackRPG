@@ -258,6 +258,9 @@ class Guild extends RPGEntitySaveable {
     // Always "remove" any Item objects from an Inventory.
     if ($item instanceof Item == false) return FALSE;
 
+    // Remove item ownership.
+    $item->gid = 0;
+
     // Get the current items.
     $items = &$this->get_items();
 

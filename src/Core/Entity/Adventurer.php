@@ -111,7 +111,7 @@ class Adventurer extends RPGEntitySaveable {
     $class_name = is_string($class) ? $class : $class->name_id;
     $this->class = $class_name;
     // Sync up the adventurer class.
-    $this->load_adventurer_class();
+    $this->calculate_bonus();
   }
 
   public function load_bonus () {

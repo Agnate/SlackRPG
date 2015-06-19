@@ -30,6 +30,7 @@ class RPGSession {
     $this->register_callback(array('recruit'), 'cmd_recruit');
     $this->register_callback(array('dismiss'), 'cmd_dismiss');
     $this->register_callback(array('champion'), 'cmd_champion');
+    $this->register_callback(array('powerup', 'power'), 'cmd_powerup');
     $this->register_callback(array('edit'), 'cmd_edit');
     $this->register_callback(array('upgrades', 'upgrade'), 'cmd_upgrade');
     $this->register_callback(array('items', 'item', 'inventory', 'inv'), 'cmd_inventory');
@@ -1080,10 +1081,109 @@ class RPGSession {
     }
 
     // Show the item details.
-    $response = array();
     $response[] = $item->get_display_name();
     $response[] = $item->get_description();
 
+    $this->respond($response);
+  }
+
+  /**
+   * Power up an Adventurer.
+   */
+  protected function cmd_powerup ($args = array()) {
+    $orig_args = $args;
+    $cmd_word = 'powerup';
+
+    // Load the player and fail out if they have not created a Guild.
+    $player = $this->load_current_player();
+    
+    // You must specify class name and then the adventurer name.
+    if (empty($args) || empty($args[0])) {
+      $this->respond('You must specify the adventurer name and then the class name. Example: `/rpg powerup Morgan LeClair Shaman`');
+      return FALSE;
+    }
+
+    $response = array();
+
+    // Get the class name.
+    $class_name = array_pop($args);
+    $adventurer_class = AdventurerClass::load(array('name_id' => $class_name), true);
+    if (empty($adventurer_class)) {
+      $response[] = 'Please specify a valid class name. Example: `/rpg powerup Morgan LeClair Shaman`';
+      $response[] = $this->get_typed($cmd_word, $orig_args);
+      $this->respond($response);
+      return FALSE;
+    }
+
+    // If they didn't specify an adventurer name, error out.
+    if (empty($args) || empty($args[0])) {
+      $response[] = 'Please specify a valid adventurer name. Example: `/rpg powerup Morgan LeClair Shaman`';
+      $response[] = $this->get_typed($cmd_word, $orig_args);
+      $this->respond($response);
+      return FALSE;
+    }
+
+    // Get the adventurer name.
+    $adventurer_name = implode(' ', $args);
+    $adventurer = Adventurer::load(array('gid' => $player->gid, 'name' => $adventurer_name), true);
+    if (empty($adventurer)) {
+      $response[] = 'Please specify a valid class name. Example: `/rpg powerup Morgan LeClair Shaman`';
+      $response[] = $this->get_typed($cmd_word, $orig_args);
+      $this->respond($response);
+      return FALSE;
+    }
+
+    // If the adventurer is out adventuring, error out.
+    if (!empty($adventurer->agid)) {
+      $this->respond($adventurer->get_display_name().' is currently out on an adventure. You can only power up an Adventurer once they have returned.');
+      return FALSE;
+    }
+
+    // Check if the adventurer already has a class.
+    if (!empty($adventurer->class)) {
+      $this->respond($adventurer->get_display_name().' has already been powered up. Please choose an adventurer that has not been powered up.');
+      return FALSE;
+    }
+
+    // Check if the player has the item they need to powerup.
+    $item_needed = 'powerstone_'.$adventurer_class->name_id;
+    $items = &$player->get_items();
+    $has_item = false;
+    foreach ($items as &$item) {
+      if ($item->name_id != $item_needed) continue;
+      $has_item = true;
+      break;
+    }
+
+    // If they do not have the item, we're done.
+    if (!$has_item) {
+      // Get ItemTemplate for the name.
+      $item_template = ItemTemplate::load(array('name_id' => $item_needed));
+      $response[] = 'A '.$item_template->get_display_name().' is required to power up '.$adventure->get_display_name().' as a '.$adventurer_class->get_display_name().'.';
+      $response[] = $this->get_typed($cmd_word, $orig_args);
+      $this->respond($response);
+      return FALSE;
+    }
+
+    // Power up the Adventurer.
+    $adventurer->set_adventurer_class($adventurer_class);
+    $success = $adventurer->save();
+    if ($success === false) {
+      $this->respond('There was an error saving your Adventurer during the power up. Please talk to Paul.');
+      return FALSE;
+    }
+
+    // Remove the item.
+    $success = $player->remove_item($item);
+    if ($success === false) {
+      $this->respond('There was an error saving the item used to power up your Adventurer. Please talk to Paul.');
+      return FALSE;
+    }
+    
+    // If successful, delete the item permanently.
+    $item->delete();
+    
+    $response[] = $adventurer->get_display_name().' has been powered up as a '.$adventurer_class->get_display_name().'!';
     $this->respond($response);
   }
 

@@ -19,4 +19,8 @@ class ItemTemplate extends RPGEntitySaveable {
     // Perform regular constructor.
     parent::__construct( $data );
   }
+
+  public function get_display_name ($bold = true) {
+    return (!empty($this->icon) ? $this->icon.' ' : '').($bold ? '*' : '').$this->name.($bold ? '*' : '');
+  }
 }
