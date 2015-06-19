@@ -32,6 +32,7 @@ class RPGSession {
     $this->register_callback(array('champion'), 'cmd_champion');
     $this->register_callback(array('edit'), 'cmd_edit');
     $this->register_callback(array('upgrades', 'upgrade'), 'cmd_upgrade');
+    $this->register_callback(array('items', 'item', 'inventory', 'inv'), 'cmd_inventory');
 
     $this->register_callback(array('quest'), 'cmd_quest');
     $this->register_callback(array('map'), 'cmd_map');
@@ -160,13 +161,13 @@ class RPGSession {
       $adventurers[] = $adventurer;
     }
 
-    $this->respond('@'.$player->username.' just created a Guild called '.$player->get_display_name().'!', RPGSession::CHANNEL, false);
+    $this->respond('@'.$player->username.' just registered a Guild called '.$player->get_display_name().'!', RPGSession::CHANNEL, false);
 
     $response = array();
-    $response[] = 'You just registered your new Guild, '.$player->get_display_name().', and '.$num_adventurers.' new adventurer'.($num_adventurers > 1 ? 's' : '').' have joined you!';
+    $response[] = 'You just registered '.$player->get_display_name().' and '.$num_adventurers.' new adventurer'.($num_adventurers > 1 ? 's' : '').' have joined you!';
     $response[] = 'Welcome,';
     foreach ($adventurers as $adventurer) $response[] = $adventurer->get_display_name();
-    $this->respond(implode("\n", $response));
+    $this->respond($response);
   }
 
 
@@ -218,7 +219,7 @@ class RPGSession {
       $response[] = '';
     }
 
-    $this->respond(implode("\n", $response));
+    $this->respond($response);
   }
 
 
@@ -247,7 +248,7 @@ class RPGSession {
         $response[] = $adventurer->get_display_name().' for '.$this->get_currency($adventurer_cost).'  `/rpg recruit '.$adventurer->name.'`';
       }
 
-      $this->respond(implode("\n", $response));
+      $this->respond($response);
       return FALSE;
     }
 
@@ -352,7 +353,7 @@ class RPGSession {
       $response[] = '';
       $response[] = 'To confirm the dismissal, type:';
       $response[] = '`/rpg '.$cmd_word.' '.implode(' ', $orig_args).' CONFIRM`';
-      $this->respond(implode("\n", $response));
+      $this->respond($response);
       return FALSE;
     }
 
@@ -411,7 +412,7 @@ class RPGSession {
         $response[] = $adventurer->get_display_name();
       }
 
-      $this->respond(implode("\n", $response));
+      $this->respond($response);
       return FALSE;
     }
 
@@ -464,7 +465,7 @@ class RPGSession {
       }
 
       $response[] = $this->get_typed($cmd_word, $orig_args);
-      $this->respond(implode("\n", $response));
+      $this->respond($response);
       return FALSE;
     }
 
@@ -479,7 +480,7 @@ class RPGSession {
         $response[] = $adventurer->get_display_name(in_array($adventurer, $adventurers));
       }
       $response[] = $this->get_typed($cmd_word, $orig_args);
-      $this->respond(implode("\n", $response));
+      $this->respond($response);
       return FALSE;
     }
     
@@ -505,7 +506,7 @@ class RPGSession {
       $response[] = '';
       $response[] = 'To confirm your departure, type:';
       $response[] = '`/rpg quest q'.$quest->qid.' '.$adventurer_args.' CONFIRM`';
-      $this->respond(implode("\n", $response));
+      $this->respond($response);
       return FALSE;
     }
 
@@ -622,7 +623,7 @@ class RPGSession {
         if (!empty($adventurer->agid)) continue;
         $response[] = $adventurer->get_display_name();
       }
-      $this->respond(implode("\n", $response));
+      $this->respond($response);
       return FALSE;
     }
 
@@ -657,7 +658,7 @@ class RPGSession {
     if ($too_few) {
       $response[] = 'You need at least '.$min_allowed.' adventurer'.($min_allowed > 1 ? 's' : '').' to go exploring.';
       $response[] = $this->get_typed($cmd_word, $orig_args);
-      $this->respond(implode("\n", $response));
+      $this->respond($response);
       return FALSE;
     }
     
@@ -683,7 +684,7 @@ class RPGSession {
       $response[] = '';
       $response[] = 'To confirm your departure, type:';
       $response[] = '`/rpg explore '.$coord.' '.$adventurer_args.' CONFIRM`';
-      $this->respond(implode("\n", $response));
+      $this->respond($response);
       return FALSE;
     }
 
@@ -796,7 +797,7 @@ class RPGSession {
     $response[] = '';
     $response[] = 'To explore a location on the map, type: `/rpg explore [LETTER][NUMBER] [ADVENTURER NAMES (comma-separated)]` (ex: `/rpg explore A4 Morgan, Gareth`).';
 
-    $this->respond(implode("\n", $response));
+    $this->respond($response);
   }
 
 
@@ -819,7 +820,7 @@ class RPGSession {
         if (!empty($adventurer->agid)) continue;
         $response[] = $adventurer->get_display_name();
       }
-      $this->respond(implode("\n", $response));
+      $this->respond($response);
       return FALSE;
     }
 
@@ -834,7 +835,7 @@ class RPGSession {
         if (!empty($adventurer->agid)) continue;
         $response[] = $adventurer->get_display_name();
       }
-      $this->respond(implode("\n", $response));
+      $this->respond($response);
       return FALSE;
     }
 
@@ -864,7 +865,7 @@ class RPGSession {
     if (!empty($old)) $response[] = $old->name.' was denounced as the old Champion.';
     $response[] = 'All hail '.$champion->get_display_name().', the new Champion of '.$player->get_display_name().'!';
 
-    $this->respond(implode("\n", $response));
+    $this->respond($response);
   }
 
 
@@ -908,7 +909,7 @@ class RPGSession {
       $response[] = 'To view all Guilds, type: `/rpg leader all`.';
     }
 
-    $this->respond(implode("\n", $response));
+    $this->respond($response);
   }
 
 
@@ -925,7 +926,7 @@ class RPGSession {
       $response[] = 'You may edit the following information:';
       $response[] = '- Guild emoji: `/rpg edit icon [ICON]`';
 
-      $this->respond(implode("\n", $response));
+      $this->respond($response);
       return FALSE;
     }
 
@@ -976,7 +977,7 @@ class RPGSession {
         $response[] = '*'.$upgrade->get_display_name() .'* for '. $this->get_currency($upgrade->cost) .' and '. $this->get_duration_as_hours($upgrade->duration).' `/rpg upgrade '.$upgrade->name_id.'`';
       }
 
-      $this->respond(implode("\n", $response));
+      $this->respond($response);
       return TRUE;
     }
 
@@ -1017,7 +1018,7 @@ class RPGSession {
       $response[] = '';
       $response[] = 'To confirm your departure, type:';
       $response[] = '`/rpg '.$cmd_word.' '.implode(' ', $orig_args).' CONFIRM`';
-      $this->respond(implode("\n", $response));
+      $this->respond($response);
       return TRUE;
     }
 
@@ -1042,21 +1043,77 @@ class RPGSession {
 
 
 
+  /**
+   * See your inventory of items.
+   */
+  protected function cmd_inventory ($args = array()) {
+    // Load the player and fail out if they have not created a Guild.
+    $player = $this->load_current_player();
+    $response = array();
+
+    // If there's no item name, show the whole inventory.
+    if (empty($args) || empty($args[0])) {
+      // Get the Guild's items.
+      $items = $player->get_items();
+      $response[] = 'Your inventory:';
+      // Compact same-name items.
+      $compact_items = $this->compact_items($items);
+      foreach ($compact_items as $citemid => $citems) {
+        $count = count($citems);
+        if ($count <= 0) continue;
+        $response[] = ($count > 1 ? $count.'x ' : ''). $citems[0]->get_display_name();
+      }
+
+      if (empty($compact_items)) $response[] = '_Empty_';
+
+      $this->respond($response);
+      return TRUE;
+    }
+
+    // Show more details about the item named.
+    $item_name = implode(' ', $args);
+    $item = Item::load(array('gid' => $player->gid, 'name' => $item_name), true);
+
+    if (empty($item)) {
+      $this->respond('You do not have an item named "'.$item_name.'".');
+      return FALSE;
+    }
+
+    // Show the item details.
+    $response = array();
+    $response[] = $item->get_display_name();
+    $response[] = $item->get_description();
+
+    $this->respond($response);
+  }
+
+
+
   protected function cmd_test ($args = array()) {
     // Load the player and fail out if they have not created a Guild.
     $player = $this->load_current_player();
+
+    // Give the player a powerstone.
+    $item_template = ItemTemplate::load(array('name_id' => 'powerstone_shaman'));
+    
+    $items = &$player->get_items();
+    
+    d($items);
+    $player->add_item($item_template);
+    d($items);
+    $item = $items[0];
+    $player->remove_item($item);
+    d($items);
+
+    return false;
     
     //$adventurers = $player->get_adventurers();
     //$adventurer = $adventurers[0];
 
     // $adventurer = Adventurer::load(array('name' => 'cath', 'gid' => $player->gid), true);
-
     // d($adventurer);
-
     // $adventurer->give_exp(100);
-
     // d($adventurer);
-
     // return false;
 
     // Create a fake location.
@@ -1263,6 +1320,18 @@ class RPGSession {
     return $response;
   }
 
+  protected function compact_items ($items) {
+    $compact_items = array();
+
+    // Compact same-name items.
+    foreach ($items as &$item) {
+      if (!isset($compact_items[$item->itid])) $compact_items[$item->itid] = array();
+      $compact_items[$item->itid][] = $item;
+    }
+
+    return $compact_items;
+  }
+
 
   /* =============================================================================
       _   ______  _   __      __________  __  _____  ______    _   ______  _____
@@ -1328,7 +1397,9 @@ class RPGSession {
   }
 
   public function respond ($text = null, $location = RPGSession::PERSONAL, $exit = true) {
-    if (!is_null($text)) $this->response['text'] = $text;
+    if (is_array($text)) $text = implode("\n", $text);
+    else if (!is_string($text)) $text = '';
+    $this->response['text'] = $text;
 
     if (isset($_REQUEST['forced_debug_mode']) && $_REQUEST['forced_debug_mode'] == 'true') {
       echo '<head><link rel="stylesheet" type="text/css" href="debug/css/debug.css"></head>';

@@ -20,6 +20,7 @@ class Guild extends RPGEntitySaveable {
   protected $_upgrades;
   protected $_queued_upgrades;
   protected $_bonus;
+  protected $_items;
 
   // Private vars
   static $fields_int = array('created', 'updated', 'gold', 'fame', 'adventurer_limit');
@@ -226,6 +227,52 @@ class Guild extends RPGEntitySaveable {
     return $this->_bonus;
   }
 
+  public function load_items () {
+    // Load all items this Guild has.
+    $this->_items = Item::load_multiple(array('gid' => $this->gid));
+  }
+
+  public function &get_items () {
+    if (!is_array($this->_items)) $this->load_items();
+    return $this->_items;
+  }
+
+  public function add_item ($item_template) {
+    // Always "add" any ItemTemplate objects.
+    if ($item_template instanceof ItemTemplate == false) return FALSE;
+
+    // Get the current items.
+    $items = &$this->get_items();
+
+    // Create the inventory item.
+    $item = new Item (array('gid' => $this->gid), $item_template);
+    $success = $item->save();
+
+    // Add the item into the inventory.
+    if ($success) $items[] = &$item;
+
+    return $success ? $item : $success;
+  }
+
+  public function remove_item ($item) {
+    // Always "remove" any Item objects from an Inventory.
+    if ($item instanceof Item == false) return FALSE;
+
+    // Get the current items.
+    $items = &$this->get_items();
+
+    // Remove from this player's inventory.
+    foreach ($items as $key => &$invitem) {
+      if ($invitem == $item) {
+        array_splice($items, $key, 1);
+        break;
+      }
+    }
+
+    // Save the item.
+    return $item->save();
+  }
+
   
 
   /* =================================
@@ -237,14 +284,18 @@ class Guild extends RPGEntitySaveable {
                                      
   ==================================== */
 
-  static function load ($data, $find_partials = false, $load_adventurers = false) {
+  static function load ($data, $find_partials = false, $load_adventurers = false, $load_items = false) {
     // Load the Guild.
     $guild = parent::load($data, $find_partials);
 
-    // Load the inventory.
+    // Load the Adventurers.
     if ($load_adventurers && !empty($guild)) {
-      // Get the inventory.
       $guild->load_adventurers();
+    }
+
+    // Load the Items.
+    if ($load_items && !empty($guild)) {
+      $guild->load_items();
     }
 
     return $guild;

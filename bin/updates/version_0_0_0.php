@@ -153,6 +153,7 @@ function update_version_0_0_0 ($forced = false) {
   $item_table = array();
   $item_table[] = "iid INT(11) UNSIGNED AUTO_INCREMENT";
   $item_table[] = "itid INT(11) UNSIGNED NOT NULL";
+  $item_table[] = "gid INT(11) UNSIGNED NOT NULL";
   $item_table[] = "name_id VARCHAR(100) NOT NULL";
   $item_table[] = "name VARCHAR(255) NOT NULL";
   $item_table[] = "icon VARCHAR(100) NOT NULL";

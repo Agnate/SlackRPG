@@ -4,10 +4,13 @@ class Item extends RPGEntitySaveable {
   // Fields
   public $iid;
   public $itid; // ItemTemplate ID
+  public $gid;
   public $name_id;
   public $name;
   public $icon;
   public $type;
+
+  protected $_description;
   
   // Private vars
   static $fields_int = array();
@@ -30,9 +33,16 @@ class Item extends RPGEntitySaveable {
 
     // Perform regular constructor.
     parent::__construct($data);
+
+    // Load up the item description.
+    $this->_description = ItemDesc::get($this);
   }
 
-  public function get_display_name () {
-    return $this->name;
+  public function get_display_name ($bold = true) {
+    return (!empty($this->icon) ? $this->icon.' ' : '').($bold ? '*' : '').$this->name.($bold ? '*' : '');
+  }
+
+  public function get_description () {
+    return $this->_description;
   }
 }
