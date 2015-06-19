@@ -147,7 +147,26 @@ class RPGSession {
       return FALSE;
     }
 
-    $this->respond('@'.$player->username.' just created a Guild called '.$player->get_display_name().'!', RPGSession::CHANNEL);
+    // Add new adventurers to the Guild.
+    $num_adventurers = 2;
+    $adventurers = array();
+    for ($i = 0; $i < $num_adventurers; $i++) {
+      // Generate the adventurer.
+      $adventurer = Adventurer::generate_new_adventurer(false, false);
+      $adventurer->gid = $player->gid;
+      $adventurer->available = false;
+      //if ($i == 0) $adventurer->champion = true;
+      $adventurer->save();
+      $adventurers[] = $adventurer;
+    }
+
+    $this->respond('@'.$player->username.' just created a Guild called '.$player->get_display_name().'!', RPGSession::CHANNEL, false);
+
+    $response = array();
+    $response[] = 'You just registered your new Guild, '.$player->get_display_name().', and '.$num_adventurers.' new adventurer'.($num_adventurers > 1 ? 's' : '').' have joined you!';
+    $response[] = 'Welcome,';
+    foreach ($adventurers as $adventurer) $response[] = $adventurer->get_display_name();
+    $this->respond(implode("\n", $response));
   }
 
 
