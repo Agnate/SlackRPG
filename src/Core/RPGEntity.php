@@ -101,11 +101,14 @@ abstract class RPGEntity {
     return $new_row;
   }
 
-  public static function load_multiple ($data) {
+  /**
+   * Loads multiple rows of data based on the query $data provided.
+   * $data -> An array of exact values that the query will search for.
+   * $special -> The text here is tacted onto the end of the query. It's useful for things like "order by" and "limit".
+   */
+  public static function load_multiple ($data, $special = "") {
     // If we don't have a database table, we're done.
-    if (static::$db_table == '') {
-      return FALSE;
-    }
+    if (static::$db_table == '') return FALSE;
 
     // Generate the database tokens.
     $tokens = array();
@@ -116,15 +119,9 @@ abstract class RPGEntity {
     }
 
     $where = array();
-    foreach ($tokens as $key => $token) {
-      $where[] = $key .'='. $token;
-    }
+    foreach ($tokens as $key => $token) $where[] = $key .'='. $token;
 
-    // if (count($where) <= 0) {
-    //   return FALSE;
-    // }
-
-    $query = "SELECT * FROM ". static::$db_table .(count($where) > 0 ? " WHERE ". implode(' AND ', $where) : "");
+    $query = "SELECT * FROM ". static::$db_table .(count($where) > 0 ? " WHERE ". implode(' AND ', $where) : "") .(!empty($special) ? " ".$special : "");
     $query = pdo_prepare($query);
 
     if (static::$default_class != '' && class_exists(static::$default_class)) {

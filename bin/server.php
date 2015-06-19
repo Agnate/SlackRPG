@@ -5,8 +5,11 @@
 
 require_once('config.php');
 require_once('includes/db.inc');
-require(RPG_SERVER_ROOT.'/vendor/autoload.php');
+require_once(RPG_SERVER_ROOT.'/vendor/autoload.php');
 require_once(RPG_SERVER_ROOT.'/src/autoload.php');
+
+// Load in any extra resources we need.
+require_once(RPG_SERVER_ROOT.'/bin/server/timer_refresh_tavern.php');
 
 // Create API call to start websocket connection.
 use Frlnc\Slack\Http\SlackResponseFactory;
@@ -21,6 +24,33 @@ use Frlnc\Slack\Core\Commander;
 /_/ /___/_/  /_/_____/_/ |_|/____/  
                                     
 ===================================== */
+
+$tavern_refresh_time = '23:59:59';
+$next_tavern_refresh = strtotime(date('Y-m-d').' '.$tavern_refresh_time);
+
+/**
+ * Remove available Adventurers from tavern and create new ones.
+ */
+function timer_refresh_tavern () {
+  global $logger, $next_tavern_refresh;
+
+  //$logger->notice("Next Tavern Refresh: ".$next_tavern_refresh." -- Time: ".time());
+
+  // If we need to refresh the tavern, do so now.
+  if (time() >= $next_tavern_refresh) {
+    // Set the next tavern refresh time.
+    $next_tavern_refresh = strtotime('+1 day', $next_tavern_refresh);
+    
+    // Clean out the tavern of available adventurers.
+    clean_out_tavern();
+
+    // Generate new adventurers from the tavern.
+    generate_new_adventurers();
+
+    $logger->notice("Tavern cleared! Next Tavern Refresh: ".$next_tavern_refresh);
+  }
+  
+}
 
 /**
  * Check for any queue items that need to be executed and completed.
@@ -147,8 +177,15 @@ if (isset($body['ok']) && $body['ok']) {
 // Create websocket connection.
 $loop = \React\EventLoop\Factory::create();
 
+
+
+
 // Add any timers necessary.
 $loop->addPeriodicTimer(5, 'timer_process_queue');
+$loop->addPeriodicTimer(5, 'timer_refresh_tavern');
+
+
+
 
 $logger = new \Zend\Log\Logger();
 $writer = new Zend\Log\Writer\Stream("php://output");

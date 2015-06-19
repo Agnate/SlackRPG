@@ -71,11 +71,17 @@ class Quest extends RPGEntitySaveable {
     return $this->party_size_min .($this->party_size_max > 0 && $this->party_size_max != $this->party_size_min ? '-'.$this->party_size_max : '');
   }
 
-  public function get_duration ($travel_modifier = null) {
+  public function get_duration ($guild, $adventurers) {
     $duration = $this->duration;
+    // Get quest duration modifier.
+    $duration_mod = $guild->get_bonus()->get_mod(Bonus::QUEST_SPEED, $this);
+    foreach ($adventurers as $adventurer) $duration_mod += $adventurer->get_bonus()->get_mod(Bonus::QUEST_SPEED, $this, Bonus::MOD_DIFF);
+    // Modify quest duration.
+    $duration = ceil($duration * $duration_mod);
+
     // Load up the location for this Quest.
     $location = Location::load(array('locid' => $this->locid));
-    if (!empty($location)) $duration += $location->get_duration($travel_modifier);
+    if (!empty($location)) $duration += $location->get_duration($guild, $adventurers);
     return $duration;
   }
 
@@ -83,16 +89,16 @@ class Quest extends RPGEntitySaveable {
     $rate = $this->success_rate;
     // Adjust it based on the level of the adventurers vs. the level of the quest.
     $levels = 0;
-    foreach ($adventurers as $adventurer) $levels += $adventurer->level;
-    $diff = min($levels / $this->level, 1);
-    // If the difference is less than 20%, they automatically fail.
-    if ($diff < 0.2) $rate = 0;
-    else {
-      // Modify the rate based on the level difference.
-      $rate *= $diff;
-      // Add the Guild modifier.
-      $rate += $guild->get_quest_success_modifier(true);
+    // Get the quest success rate from the Guild.
+    $mod = $guild->get_bonus()->get_mod(Bonus::QUEST_SUCCESS, $this, Bonus::MOD_HUNDREDS);
+    foreach ($adventurers as $adventurer) {
+      $levels += $adventurer->level;
+      $mod += $adventurer->get_bonus()->get_mod(Bonus::QUEST_SUCCESS, $this, Bonus::MOD_HUNDREDS);
     }
+    $diff = min($levels / $this->level, 1);
+    // Modify the rate based on the level difference, then add the bonuses.
+    $rate *= $diff;
+    $rate += $mod;
 
     return $rate < 100 ? floor($rate) : 100;
   }
@@ -100,10 +106,31 @@ class Quest extends RPGEntitySaveable {
   public function get_death_rate ($guild, $adventurers) {
     $rate = $this->death_rate;
     // Get the death rate modifier from the Guild.
-    $mod = $guild->get_death_rate_modifier();
+    $mod = $guild->get_bonus()->get_mod(Bonus::DEATH_RATE, $this);
     // Check if adventurers modify the death rate at all.
-    foreach ($adventurers as $adventurer) $mod -= (1 - $adventurer->get_death_rate_modifier());
+    foreach ($adventurers as $adventurer) $mod -= $adventurer->get_bonus()->get_mod(Bonus::DEATH_RATE, $this, Bonus::MOD_DIFF);
     return ceil($rate * $mod);
+  }
+
+  public function get_reward_gold ($guild, $adventurers) {
+    $gold = $this->reward_gold;
+    $mod = $guild->get_bonus()->get_mod(Bonus::QUEST_REWARD_GOLD, $this);
+    foreach ($adventurers as $adventurer) $mod += $adventurer->get_bonus()->get_mod(Bonus::QUEST_REWARD_GOLD, $this, Bonus::MOD_DIFF);
+    return ceil($gold * $mod);
+  }
+
+  public function get_reward_fame ($guild, $adventurers) {
+    $fame = $this->reward_fame;
+    $mod = $guild->get_bonus()->get_mod(Bonus::QUEST_REWARD_FAME, $this);
+    foreach ($adventurers as $adventurer) $mod += $adventurer->get_bonus()->get_mod(Bonus::QUEST_REWARD_FAME, $this, Bonus::MOD_DIFF);
+    return ceil($fame * $mod);
+  }
+
+  public function get_reward_exp ($guild, $adventurers) {
+    $exp = $this->reward_exp;
+    $mod = $guild->get_bonus()->get_mod(Bonus::QUEST_REWARD_EXP, $this);
+    foreach ($adventurers as $adventurer) $mod += $adventurer->get_bonus()->get_mod(Bonus::QUEST_REWARD_EXP, $this, Bonus::MOD_DIFF);
+    return ceil($exp * $mod);
   }
 
   public function queue_process ($queue = null) {
@@ -139,13 +166,15 @@ class Quest extends RPGEntitySaveable {
     $reward_exp = 0;
     $player_text = 'Your adventuring party *FAILED* '. $this->name .'.';
     if ($success) {
+      $reward_gold = $this->get_reward_gold($guild, $adventurers);
+      $reward_fame = $this->get_reward_fame($guild, $adventurers);
       // Give the Guild its reward.
-      if ($this->reward_gold > 0) $guild->gold += $this->reward_gold;
-      if ($this->reward_fame > 0) $guild->fame += $this->reward_fame;
+      if ($reward_gold > 0) $guild->gold += $reward_gold;
+      if ($reward_fame > 0) $guild->fame += $reward_fame;
       $guild->save();
 
       // Calculate the exp per adventurer.
-      $reward_exp = ceil($this->reward_exp / count($adventurers));
+      $reward_exp = ceil($this->get_reward_exp($guild, $adventurers) / count($adventurers));
 
       $player_text = '*'. $this->name .'* was completed!';
     }

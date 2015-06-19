@@ -19,9 +19,7 @@ class Guild extends RPGEntitySaveable {
   protected $_renown;
   protected $_upgrades;
   protected $_queued_upgrades;
-  protected $_travel_speed_modifier;
-  protected $_quest_success_modifier;
-  protected $_death_rate_modifier;
+  protected $_bonus;
 
   // Private vars
   static $fields_int = array('created', 'updated', 'gold', 'fame', 'adventurer_limit');
@@ -40,9 +38,9 @@ class Guild extends RPGEntitySaveable {
     // Add default adventurer limit.
     if (empty($this->adventurer_limit)) $this->adventurer_limit = Guild::DEFAULT_ADVENTURER_LIMIT;
     if (empty($this->_renown)) $this->_renown = -9999;
-    if (empty($this->_travel_speed_modifier)) $this->_travel_speed_modifier = 1;
-    if (empty($this->_quest_success_modifier)) $this->_quest_success_modifier = 1;
-    if (empty($this->_death_rate_modifier)) $this->_death_rate_modifier = 1;
+
+    // Load up the bonus object.
+    $this->load_bonus();
 
     // Convert upgrades.
     $this->load_upgrades();
@@ -218,62 +216,17 @@ class Guild extends RPGEntitySaveable {
     return $all;
   }
 
-  public function get_travel_speed_modifier () {
-    return $this->_travel_speed_modifier;
+  public function load_bonus () {
+    if (empty($this->_bonus)) $this->_bonus = new Bonus ();
+    return $this->_bonus;
   }
 
-  /**
-   * $mod -> Should be a decimal representation of a percentage (example: 0.2 for 20%).
-   */
-  public function set_travel_speed_modifier ($mod) {
-    $this->_travel_speed_modifier = $mod;
+  public function get_bonus () {
+    if (empty($this->_bonus)) $this->load_bonus();
+    return $this->_bonus;
   }
 
-  /**
-   * $mod -> Should be a decimal representation of a percentage (example: 0.2 for 20%).
-   */
-  public function add_travel_speed_modifier ($mod) {
-    $this->_travel_speed_modifier += $mod;
-  }
-
-
-  public function get_quest_success_modifier ($as_hundreds = false) {
-    if ($as_hundreds) return floor(($this->_quest_success_modifier - 1) * 100);
-    return $this->_quest_success_modifier;
-  }
-
-  /**
-   * $mod -> Should be a decimal representation of a percentage (example: 0.2 for 20%).
-   */
-  public function set_quest_success_modifier ($mod) {
-    $this->_quest_success_modifier = $mod;
-  }
-
-  /**
-   * $mod -> Should be a decimal representation of a percentage (example: 0.2 for 20%).
-   */
-  public function add_quest_success_modifier ($mod) {
-    $this->_quest_success_modifier += $mod;
-  }
-
-  public function get_death_rate_modifier () {
-    return $this->_death_rate_modifier;
-  }
-
-  /**
-   * $mod -> Should be a decimal representation of a percentage (example: 0.2 for 20%).
-   */
-  public function set_death_rate_modifier ($mod) {
-    $this->_death_rate_modifier = $mod;
-  }
-
-  /**
-   * $mod -> Should be a decimal representation of a percentage (example: 0.2 for 20%).
-   */
-  public function add_death_rate_modifier ($mod) {
-    $this->_death_rate_modifier += $mod;
-  }
-
+  
 
   /* =================================
      ______________  ________________
@@ -284,12 +237,12 @@ class Guild extends RPGEntitySaveable {
                                      
   ==================================== */
 
-  static function load ( $data, $find_partials = false, $load_adventurers = false ) {
+  static function load ($data, $find_partials = false, $load_adventurers = false) {
     // Load the Guild.
-    $guild = parent::load( $data, $find_partials );
+    $guild = parent::load($data, $find_partials);
 
     // Load the inventory.
-    if ( $load_adventurers && !empty($guild) ) {
+    if ($load_adventurers && !empty($guild)) {
       // Get the inventory.
       $guild->load_adventurers();
     }

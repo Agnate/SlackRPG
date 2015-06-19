@@ -28,6 +28,7 @@ class RPGSession {
 
     $this->register_callback(array('register'), 'cmd_register');
     $this->register_callback(array('recruit'), 'cmd_recruit');
+    $this->register_callback(array('dismiss'), 'cmd_dismiss');
     $this->register_callback(array('champion'), 'cmd_champion');
     $this->register_callback(array('edit'), 'cmd_edit');
     $this->register_callback(array('upgrades', 'upgrade'), 'cmd_upgrade');
@@ -51,7 +52,7 @@ class RPGSession {
   protected function cmd_help( $args = array() ) {
     $response = array();
     $response[] = '*Commands:*';
-    $response[] = 'Register Guild: `/rpg register [GUILD EMOJI] [GUILD NAME]` (example: `/rpg register :skull: Death\'s Rattle`)';
+    $response[] = 'Register Guild: `/rpg register [GUILD EMOJI] [GUILD NAME]` (example: `/rpg register :fake-icon: Death\'s Rattle`)';
     $response[] = 'Guild status: `/rpg status [GUILD NAME]`';
     $response[] = 'Leaderboard rankings: `/rpg leaderboard [all]`';
     $response[] = 'Recruit Adventurers: `/rpg recruit`';
@@ -276,6 +277,82 @@ class RPGSession {
 
 
   /**
+   * Dismiss a current Adventurer.
+   */
+  protected function cmd_dismiss ($args = array()) {
+    $orig_args = $args;
+    $cmd_word = 'dismiss';
+
+    // Load the player and fail out if they have not created a Guild.
+    $player = $this->load_current_player();
+    
+    // If no Adventurer is selected, list the available ones.
+    if (empty($args) || empty($args[0])) {
+      $this->respond("You must select an Adventurer to dismiss.");
+      return FALSE;
+    }
+
+    // Check the last argument for the confirmation code.
+    $confirmation = false;
+    if (!empty($args) && strpos($args[count($args)-1], 'CONFIRM') === 0) {
+      $confirmation = array_pop($args);
+    }
+
+    // They chose a name, so let's check if that adventurer is available.
+    $adventurer = Adventurer::load(array('name' => implode(' ', $args), 'gid' => $player->gid), true);
+    if (empty($adventurer)) {
+      $this->respond('You do not have an Adventurer by the name of "'.implode(' ', $args).'".');
+      return FALSE;
+    }
+
+    // If the adventurer is out adventuring, error out.
+    if (!empty($adventurer->agid)) {
+      $this->respond($adventurer->get_display_name().' is currently out on an adventure. You can only dismiss an Adventurer once they have returned.');
+      return FALSE;
+    }
+
+    $response = array();
+
+    // Check for a valid confirmation code.
+    if (!empty($confirmation) && $confirmation != 'CONFIRM') {
+      $response[] = 'The confirmation code "'.$confirmation.'" is invalid. The code should be: `CONFIRM`.';
+      $response[] = '';
+      // Re-display the confirmation text.
+      $confirmation = false;
+    }
+
+    // Display the confirmation message and code.
+    if (empty($confirmation)) {
+      $response[] = 'Are you sure you want to dismiss *'.$adventurer->name.'*? '.$adventurer->get_pronoun(true).' will return to the Tavern for other Guilds to recruit.';
+      $response[] = '';
+      $response[] = '*Name*: '.$adventurer->get_display_name(false, true, false, true, false);
+      if (!empty($adventurer->class)) $response[] = '*Class*: '.$adventurer->class;
+      $response[] = '*Level*: '.$adventurer->level;
+      //$response[] = '*Popularity*: '.$adventurer->popularity;
+      $response[] = '*Experience*: '.$adventurer->exp;
+      $response[] = '';
+      $response[] = 'To confirm the dismissal, type:';
+      $response[] = '`/rpg '.$cmd_word.' '.implode(' ', $orig_args).' CONFIRM`';
+      $this->respond(implode("\n", $response));
+      return FALSE;
+    }
+
+    // Dismiss the adventurer.
+    $adventurer->gid = 0;
+    $adventurer->available = true;
+    $success = $adventurer->save();
+    if ($success === false) {
+      $this->respond('Talk to Paul, as there was an error dismissing your Adventurer.');
+      return FALSE;
+    }
+
+    $this->respond($player->get_display_name().' has dismissed an adventurer, '.$adventurer->get_display_name().', who is now available in the Tavern.', RPGSession::CHANNEL, false);
+    $this->respond('You have dismissed '.$adventurer->get_display_name().'.');
+  }
+
+
+
+  /**
    * See and go on quests.
    */
   protected function cmd_quest ($args = array()) {
@@ -395,7 +472,7 @@ class RPGSession {
       $confirmation = false;
     }
 
-    $duration = $quest->get_duration($player->get_travel_speed_modifier());
+    $duration = $quest->get_duration($player, $adventurers);
     $death_rate = $quest->get_death_rate($player, $adventurers);
 
     // Display the confirmation message and code.
@@ -547,13 +624,16 @@ class RPGSession {
     }
     // Get the list of adventurers.
     $adventurers = $success['data']['adventurers'];
+    $has_strider = false;
+    foreach ($adventurers as $adventurer) $has_strider = $has_strider || ($adventurer->class == 'strider');
 
 
     $response = array();
 
     // Check the party size requirement.
     $num_adventurers = count($adventurers);
-    $min_allowed = 2;
+    // Check if a Strider is in the list of adventurers, and if so, only require 1 minimum.
+    $min_allowed = $has_strider ? 1 : 2;
     $too_few = $num_adventurers < $min_allowed;
     if ($too_few) {
       $response[] = 'You need at least '.$min_allowed.' adventurer'.($min_allowed > 1 ? 's' : '').' to go exploring.';
@@ -571,7 +651,7 @@ class RPGSession {
     }
 
     // Calculate the duration.
-    $duration = $location->get_duration($player->get_travel_speed_modifier());
+    $duration = $location->get_duration($player, $adventurers);
 
     // Display the confirmation message and code.
     if (empty($confirmation)) {
@@ -946,18 +1026,19 @@ class RPGSession {
   protected function cmd_test ($args = array()) {
     // Load the player and fail out if they have not created a Guild.
     $player = $this->load_current_player();
-
     
-    $adventurers = $player->get_adventurers();
-    $adventurer = $adventurers[0];
+    //$adventurers = $player->get_adventurers();
+    //$adventurer = $adventurers[0];
 
-    d($adventurer);
+    // $adventurer = Adventurer::load(array('name' => 'cath', 'gid' => $player->gid), true);
 
-    $adventurer->give_exp(1050);
+    // d($adventurer);
 
-    d($adventurer);
+    // $adventurer->give_exp(100);
 
-    return false;
+    // d($adventurer);
+
+    // return false;
 
     // Create a fake location.
     $types = Location::types();
@@ -977,12 +1058,49 @@ class RPGSession {
       'revealed' => false,
       'star_min' => $star, //($star > 1 ? $star - 1 : $star),
       'star_max' => $star,
+      'row' => 13,
+      'col' => 13,
     ));
 
     // Create quests for the location.
-    $quests = Quest::generate_quests($location, false);
+    //$quests = Quest::generate_quests($location, false);
+    //d($quests);
 
-    d($quests);
+    $quest_data = array(
+      'locid' => 10,
+      'name' => 'Test Quest',
+      'type' => Quest::TYPE_INVESTIGATE,
+      'stars' => 1,
+      'active' => true,
+      'reward_gold' => 300,
+      'reward_exp' => 200,
+      'reward_fame' => 100,
+      'duration' => 1000,
+      'party_size_min' => 1,
+      'party_size_max' => 3,
+      'level' => 6,
+      'success_rate' => 75,
+      'death_rate' => 25,
+    );
+    $quest = new Quest ($quest_data);
+    d($quest_data);
+    d($player);
+
+    $adventurers = $player->get_best_adventurers($quest->party_size_max);
+    d($adventurers);
+
+    d($quest->reward_exp);
+    d($quest->get_reward_exp($player, $adventurers));
+
+    d($quest->reward_gold);
+    d($quest->get_reward_gold($player, $adventurers));
+
+    d($quest->reward_fame);
+    d($quest->get_reward_fame($player, $adventurers));
+
+    d($quest->get_death_rate($player, $adventurers));
+    d($quest->get_success_rate($player, $adventurers));
+    d($quest->get_duration($player, $adventurers));
   }
 
 
@@ -1029,7 +1147,7 @@ class RPGSession {
   }
 
   protected function get_currency ($amount) {
-    return number_format($amount).' gp';
+    return ':moneybag: '.number_format($amount).' gp';
   }
 
   protected function get_duration_as_hours ($duration) {
@@ -1043,7 +1161,7 @@ class RPGSession {
   }
 
   protected function get_fame ($fame) {
-    return ':fame: '.number_format($fame);
+    return ':trophy: '.number_format($fame);
   }
 
   protected function get_typed ($cmd, $args) {

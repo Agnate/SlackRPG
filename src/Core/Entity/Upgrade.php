@@ -81,14 +81,16 @@ class Upgrade extends RPGEntitySaveable {
   public function apply_bonus ($guild) {
     if (empty($guild)) return FALSE;
 
+    $bonus = $guild->get_bonus();
+
     switch ($this->name_id) {
       case 'speed1':
       case 'speed2':
-        $guild->add_travel_speed_modifier(-0.05);
+        $bonus->add_mod(Bonus::TRAVEL_SPEED, -0.05);
         break;
 
       case 'speed3':
-        $guild->add_travel_speed_modifier(-0.10);
+        $bonus->add_mod(Bonus::TRAVEL_SPEED, -0.10);
         break;
 
       case 'dorm1':
@@ -111,12 +113,12 @@ class Upgrade extends RPGEntitySaveable {
       case 'equip6':
       case 'equip7':
       case 'equip8':
-        $guild->add_quest_success_modifier(0.02);
+        $bonus->add_mod(Bonus::QUEST_SUCCESS, 0.02);
         break;
 
       case 'heal1':
       case 'heal2':
-        $guild->add_death_rate_modifier(-0.02);
+        $bonus->add_mod(Bonus::DEATH_RATE, -0.02);
         break;
     }
 

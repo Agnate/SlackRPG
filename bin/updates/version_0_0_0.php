@@ -50,6 +50,7 @@ function update_version_0_0_0 ($forced = false) {
   $adventurers_table[] = "class VARCHAR(100) NOT NULL";
   $adventurers_table[] = "champion TINYINT(1) NOT NULL";
   $adventurers_table[] = "dead TINYINT(1) NOT NULL";
+  $adventurers_table[] = "gender VARCHAR(10) NOT NULL";
   $adventurers_table[] = "PRIMARY KEY ( aid )";
   add_update_query( "CREATE TABLE IF NOT EXISTS adventurers (". implode(',', $adventurers_table) .")" );
 
@@ -128,17 +129,27 @@ function update_version_0_0_0 ($forced = false) {
   $upgrade_table[] = "PRIMARY KEY ( upid )";
   add_update_query( "CREATE TABLE IF NOT EXISTS upgrades (". implode(',', $upgrade_table) .")" );
 
+  // Create Adventurer Class table.
+  $adventurer_class_table = array();
+  $adventurer_class_table[] = "acid INT(11) UNSIGNED AUTO_INCREMENT";
+  $adventurer_class_table[] = "name_id VARCHAR(100) NOT NULL";
+  $adventurer_class_table[] = "name VARCHAR(255) NOT NULL";
+  $adventurer_class_table[] = "icon VARCHAR(100) NOT NULL";
+  $adventurer_class_table[] = "class_name VARCHAR(100) NOT NULL";
+  $adventurer_class_table[] = "PRIMARY KEY ( acid )";
+  add_update_query( "CREATE TABLE IF NOT EXISTS adventurer_classes (". implode(',', $adventurer_class_table) .")" );
+
   // Add some Adventurers.
   $adventurers = array();
-  $adventurers[] = array(':gid' => '', ':name' => 'Antoine Delorisci', ':icon' => ':antoine:', ':created' => $time, ':available' => true, ':level' => '1', ':exp' => 0, ':exp_tnl' => 1, ':class' => '', ':champion' => false);
-  $adventurers[] = array(':gid' => '', ':name' => 'Catherine Hemsley', ':icon' => ':catherine:', ':created' => $time, ':available' => true, ':level' => '1', ':exp' => 0, ':exp_tnl' => 1, ':class' => '', ':champion' => false);
-  $adventurers[] = array(':gid' => '', ':name' => 'Gareth Lockheart', ':icon' => ':gareth:', ':created' => $time, ':available' => true, ':level' => '1', ':exp' => 0, ':exp_tnl' => 1, ':class' => '', ':champion' => false);
-  $adventurers[] = array(':gid' => '', ':name' => 'Reginald Tigerlily', ':icon' => ':reginald:', ':created' => $time, ':available' => true, ':level' => '1', ':exp' => 0, ':exp_tnl' => 1, ':class' => '', ':champion' => false);
-  $adventurers[] = array(':gid' => '', ':name' => 'Morgan LeClaire', ':icon' => ':morgan:', ':created' => $time, ':available' => true, ':level' => '1', ':exp' => 0, ':exp_tnl' => 1, ':class' => '', ':champion' => false);
-  $adventurers[] = array(':gid' => '', ':name' => 'Freya von Alfheimr', ':icon' => ':freya:', ':created' => $time, ':available' => true, ':level' => '1', ':exp' => 0, ':exp_tnl' => 1, ':class' => '', ':champion' => false);
-  //$adventurers[] = array(':gid' => '', ':name' => '', ':icon' => '', ':created' => '', ':available' => '', ':level' => '', ':exp' => 0, ':exp_tnl' => 1, ':class' => '', ':champion' => false);
+  $adventurers[] = array(':gid' => '', ':name' => 'Antoine Delorisci', ':icon' => ':antoine:', ':gender' => 'male', ':created' => $time, ':available' => true, ':level' => '1', ':exp' => 0, ':exp_tnl' => 1, ':class' => 'leywalker', ':champion' => false);
+  $adventurers[] = array(':gid' => '', ':name' => 'Catherine Hemsley', ':icon' => ':catherine:', ':gender' => 'female', ':created' => $time, ':available' => true, ':level' => '1', ':exp' => 0, ':exp_tnl' => 1, ':class' => '', ':champion' => false);
+  $adventurers[] = array(':gid' => '', ':name' => 'Gareth Lockheart', ':icon' => ':gareth:', ':gender' => 'male', ':created' => $time, ':available' => true, ':level' => '1', ':exp' => 0, ':exp_tnl' => 1, ':class' => '', ':champion' => false);
+  $adventurers[] = array(':gid' => '', ':name' => 'Reginald Tigerlily', ':icon' => ':reginald:', ':gender' => 'male', ':created' => $time, ':available' => true, ':level' => '1', ':exp' => 0, ':exp_tnl' => 1, ':class' => 'judge', ':champion' => false);
+  $adventurers[] = array(':gid' => '', ':name' => 'Morgan LeClaire', ':icon' => ':morgan:', ':gender' => 'female', ':created' => $time, ':available' => true, ':level' => '1', ':exp' => 0, ':exp_tnl' => 1, ':class' => '', ':champion' => false);
+  $adventurers[] = array(':gid' => '', ':name' => 'Freya von Alfheimr', ':icon' => ':freya:', ':gender' => 'female', ':created' => $time, ':available' => true, ':level' => '1', ':exp' => 0, ':exp_tnl' => 1, ':class' => 'magus', ':champion' => false);
+  //$adventurers[] = array(':gid' => '', ':name' => '', ':icon' => '', ':gender' => '', ':created' => '', ':available' => '', ':level' => '', ':exp' => 0, ':exp_tnl' => 1, ':class' => '', ':champion' => false);
   foreach ($adventurers as $adventurer) {
-    add_update_query("INSERT INTO adventurers (gid, name, icon, created, available, level, exp, exp_tnl, class, champion) VALUES (:gid, :name, :icon, :created, :available, :level, :exp, :exp_tnl, :class, :champion)", $adventurer);
+    add_update_query("INSERT INTO adventurers (gid, name, icon, gender, created, available, level, exp, exp_tnl, class, champion) VALUES (:gid, :name, :icon, :gender, :created, :available, :level, :exp, :exp_tnl, :class, :champion)", $adventurer);
   }
 
   // Add some Quests.
@@ -189,9 +200,26 @@ function update_version_0_0_0 ($forced = false) {
   $upgrades[] = array(':name_id' => "equip8", ':name' => "Equipment: Godsteel", ':description' => "increase quest success rate by 2%", ':cost' => 75000, ':duration' => (72 * $hours), ':requires' => 'equip7');
   $upgrades[] = array(':name_id' => "heal1", ':name' => "Healer's Garden", ':description' => "reduce death rate by 2%", ':cost' => 25000, ':duration' => (48 * $hours), ':requires' => '');
   $upgrades[] = array(':name_id' => "heal2", ':name' => "Apothecary", ':description' => "reduce death rate by 2%", ':cost' => 50000, ':duration' => (72 * $hours), ':requires' => 'heal1');
-
   //$upgrades[] = array(':name_id' => "", ':name' => "", ':description' => "", ':cost' => 0, ':duration' => 0, ':requires' => '');
   foreach ($upgrades as $upgrade) {
     add_update_query("INSERT INTO upgrades (name_id, name, description, cost, duration, requires) VALUES (:name_id, :name, :description, :cost, :duration, :requires)", $upgrade);
+  }
+
+  // Add some Adventurer Classes.
+  $adventurer_classes = array();
+  //$adventurer_classes[] = array(':name_id' => "vagabond", ':name' => "Vagabond", ':icon' => "", ':class_name' => "");
+  $adventurer_classes[] = array(':name_id' => "shaman", ':name' => "Shaman", ':icon' => "", ':class_name' => "");
+  $adventurer_classes[] = array(':name_id' => "brigand", ':name' => "Brigand", ':icon' => "", ':class_name' => "");
+  $adventurer_classes[] = array(':name_id' => "judge", ':name' => "Judge", ':icon' => "", ':class_name' => "");
+  $adventurer_classes[] = array(':name_id' => "magus", ':name' => "Magus", ':icon' => "", ':class_name' => "");
+  //$adventurer_classes[] = array(':name_id' => "leywalker", ':name' => "Leywalker", ':icon' => "", ':class_name' => "");
+  $adventurer_classes[] = array(':name_id' => "dragoon", ':name' => "Dragoon", ':icon' => "", ':class_name' => "");
+  $adventurer_classes[] = array(':name_id' => "strider", ':name' => "Strider", ':icon' => "", ':class_name' => "");
+  $adventurer_classes[] = array(':name_id' => "oracle", ':name' => "Oracle", ':icon' => "", ':class_name' => "");
+  $adventurer_classes[] = array(':name_id' => "juggernaut", ':name' => "Juggernaut", ':icon' => "", ':class_name' => "");
+  //$adventurer_classes[] = array(':name_id' => "artificer", ':name' => "Artificer", ':icon' => "", ':class_name' => "");
+  //$adventurer_classes[] = array(':name_id' => "", ':name' => "", ':icon' => "", ':class_name' => "");
+  foreach ($adventurer_classes as $adventurer_class) {
+    add_update_query("INSERT INTO adventurer_classes (name_id, name, icon, class_name) VALUES (:name_id, :name, :icon, :class_name)", $adventurer_class);
   }
 }

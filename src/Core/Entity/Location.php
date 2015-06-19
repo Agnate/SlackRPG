@@ -50,15 +50,21 @@ class Location extends RPGEntitySaveable {
     return Location::get_letter($this->col) .$this->row;
   }
 
-  public function get_duration ($travel_modifier = null) {
+  public function get_duration ($guild, $adventurers) {
     // Get the map so we can find the town location.
     $map = $this->get_map();
     // Get the capital in the map.
     $capital = $map->get_capital();
     // Calculate the raw distance and multiply by a time constant.
-    $travel_per_tile = Location::TRAVEL_BASE;
-    if (!empty($travel_modifier)) $travel_per_tile = floor($travel_per_tile * $travel_modifier);
+    $travel_speed_modifier = $this->calculate_travel_speed_modifier($guild, $adventurers);
+    $travel_per_tile = Location::TRAVEL_BASE * $travel_speed_modifier;
     return ceil(sqrt(pow(($capital->row - $this->row), 2) + pow(($capital->col - $this->col), 2)) * $travel_per_tile);
+  }
+
+  public function calculate_travel_speed_modifier ($guild, $adventurers) {
+    $mod = $guild->get_bonus()->get_mod(Bonus::TRAVEL_SPEED, $this);
+    foreach ($adventurers as $adventurer) $mod += $adventurer->get_bonus()->get_mod(Bonus::TRAVEL_SPEED, $this, Bonus::MOD_DIFF);
+    return $mod;
   }
 
   public function load_map () {
