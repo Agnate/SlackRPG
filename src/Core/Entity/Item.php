@@ -17,6 +17,7 @@ class Item extends RPGEntitySaveable {
   static $db_table = 'items';
   static $default_class = 'Item';
   static $primary_key = 'iid';
+  static $partials = array('name', 'name_id');
 
   
   function __construct($data = array(), ItemTemplate $template = null) {

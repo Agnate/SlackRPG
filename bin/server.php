@@ -7,6 +7,7 @@ require_once('config.php');
 require_once('includes/db.inc');
 require_once(RPG_SERVER_ROOT.'/vendor/autoload.php');
 require_once(RPG_SERVER_ROOT.'/src/autoload.php');
+require_once(RPG_SERVER_ROOT.'/src/RPGSession.php');
 
 // Load in any extra resources we need.
 require_once(RPG_SERVER_ROOT.'/bin/server/timer_refresh_tavern.php');
@@ -171,6 +172,18 @@ if (isset($body['ok']) && $body['ok']) {
   }
 }
 
+// Create list of Users.
+$response = $commander->execute('users.list', array());
+$body = $response->getBody();
+$user_list = array();
+if (isset($body['ok']) && $body['ok']) {
+  foreach ($body['members'] as $member) {
+    if ($member['deleted']) continue;
+    $user_list[$member['id']] = $member;
+  }
+}
+
+//echo var_export($im_channels, true)."\n";
 //echo var_export($response->toArray(), true)."\n";
 
 
@@ -209,7 +222,50 @@ $client->on("message", function($message) use ($client, $logger) {
   // Only keep track of messages.
   $data = json_decode($message->getData(), true);
   if (isset($data['type']) && $data['type'] == 'message') {
-    $logger->notice("Got message: ".$message->getData());
+    // Skip if we don't have the appropriate data.
+    if (!isset($data['user'])) return;
+    if (!isset($data['channel'])) return;
+
+    global $im_channels, $user_list;
+    $user_id = $data['user'];
+    $channel = $data['channel'];
+
+    // Get the personal message channel.
+    if (!isset($im_channels[$user_id])) return;
+    $im_channel = $im_channels[$user_id];
+
+    // Check that it is a personal message channel.
+    if ($channel != $im_channel) return;
+
+    // Check that the user data exists.
+    if (!isset($user_list[$user_id])) return;
+    $user = $user_list[$user_id];
+
+    $logger->notice("Got personal message from user: ".$message->getData());
+
+    // Get the message text.
+    $text = $data['text'];
+
+    // Bust it up and send it as a command to RPGSession.
+    $session_data = array(
+      'user_id' => $user_id,
+      'user_name' => $user['name'],
+    );
+    $session = new RPGSession ();
+    $response = $session->handle($text, $session_data);
+    //$logger->notice($response);
+
+    // Send the message to the user.
+    if (isset($response['text']) && !empty($response['text'])) {
+      $response_msg = $response['text'];
+      $response_channel = (isset($response['channel']) && !empty($response['channel'])) ? get_user_channel($response['channel']) : null;
+      send_message($response_msg, $response_channel);
+    }
+
+    // If there's a global message, send that.
+    if (isset($response['global_text']) && !empty($response['global_text'])) {
+      send_message($response['global_text']);
+    }
   }
 });
 

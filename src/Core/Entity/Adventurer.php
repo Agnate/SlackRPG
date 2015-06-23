@@ -97,6 +97,10 @@ class Adventurer extends RPGEntitySaveable {
     return ($level * 1000);
   }
 
+  public function has_adventurer_class () {
+    return !empty($this->class);
+  }
+
   public function load_adventurer_class () {
     if (empty($this->class)) return;
     $this->_adventurer_class = AdventurerClass::load(array('name_id' => $this->class));

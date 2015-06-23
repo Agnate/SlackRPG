@@ -12,7 +12,6 @@ class RPGSession {
 
   const CHANNEL = 'channel';
   const PERSONAL = 'personal';
-  const IM = 'instant_message';
   
   function __construct() {
     $this->response['username'] = 'RPG';
@@ -54,20 +53,33 @@ class RPGSession {
   protected function cmd_help( $args = array() ) {
     $response = array();
     $response[] = '*Commands:*';
-    $response[] = 'Register Guild: `/rpg register [GUILD EMOJI] [GUILD NAME]` (example: `/rpg register :fake-icon: Death\'s Rattle`)';
-    $response[] = 'Guild status: `/rpg status [GUILD NAME]`';
-    $response[] = 'Leaderboard rankings: `/rpg leaderboard [all]`';
-    $response[] = 'Recruit Adventurers: `/rpg recruit`';
-    $response[] = 'Quests: `/rpg quest`';
-    $response[] = 'View and explore the Map: `/rpg explore`';
-    $response[] = 'Set your guild\'s Champion: `/rpg champion [NAME]`';
-    $response[] = 'Edit your guild\'s information: `/rpg edit`';
+    $response[] = 'Register Guild: `register [GUILD EMOJI] [GUILD NAME]` (example: `register :fake-icon: Death\'s Rattle`)';
+    $response[] = 'Leaderboard rankings: `leaderboard [all]`';
+    $response[] = '';
+
+    $response[] = 'Guild status: `status [GUILD NAME]`';
+    $response[] = 'Set your guild\'s Champion: `champion [NAME]`';
+    $response[] = 'Edit your guild\'s information: `edit`';
+    $response[] = '';
+
+    $response[] = 'Quests: `quest`';
+    $response[] = 'View and explore the Map: `explore`';
+    $response[] = 'Upgrade your Guild: `upgrade`';
+    $response[] = '';
+
+    $response[] = 'Recruit Adventurers: `recruit`';
+    $response[] = 'Dismiss an Adventurer: `dismiss`';
+    $response[] = 'Power Up an Adventurer: `powerup`';
+    $response[] = '';
+
+    $response[] = 'Inventory: `inv`';
+    $response[] = 'View an item: `item [ITEM NAME]`';
     $response[] = '';
     
     $response[] = '*Other*';
-    $response[] = 'See recent updates: `/rpg updates [VERSION]` (Exclude the version to show the newest updates)';
+    $response[] = 'See recent updates: `updates [VERSION]` (Exclude the version to show the newest updates)';
 
-    $this->respond( implode("\n", $response), RPGSession::PERSONAL );
+    $this->respond($response);
   }
 
 
@@ -96,7 +108,7 @@ class RPGSession {
 
     if ($update) {
       array_unshift($response, '*Update '.$version.'*');
-      $this->respond( implode("\n", $response), (isset($args[1]) && $args[1] == 'monkey123' ? RPGSession::CHANNEL : RPGSession::PERSONAL) );
+      $this->respond($response, (isset($args[1]) && $args[1] == 'monkey123' ? RPGSession::CHANNEL : RPGSession::PERSONAL) );
     }
   }
 
@@ -115,14 +127,14 @@ class RPGSession {
 
     // Check if they gave a Guild name.
     if (empty($args) || count($args) < 2 || empty($args[0]) || empty($args[1])) {
-      $this->respond('Please select a Guild name. Type: `/rpg register [GUILD EMOJI] [GUILD NAME]` (example: `/rpg register :skull: Death\'s Rattle`).');
+      $this->respond('Please select a Guild name. Type: `register [GUILD EMOJI] [GUILD NAME]` (example: `register :skull: Death\'s Rattle`).');
       return FALSE;
     }
 
     // Extract the icon and confirm the format.
     $icon = array_shift($args);
     if (strpos($icon, ':') !== 0 || strrpos($icon, ':') !== strlen($icon)-1) {
-      $this->respond('You must enter an emoji icon as the first argument (example: `/rpg register :skull: Death\'s Rattle`).');
+      $this->respond('You must enter an emoji icon as the first argument (example: `register :skull: Death\'s Rattle`).');
       return FALSE;
     }
 
@@ -162,7 +174,7 @@ class RPGSession {
       $adventurers[] = $adventurer;
     }
 
-    $this->respond('@'.$player->username.' just registered a Guild called '.$player->get_display_name().'!', RPGSession::CHANNEL, false);
+    $this->respond('@'.$player->username.' just registered a Guild called '.$player->get_display_name().'!', RPGSession::CHANNEL);
 
     $response = array();
     $response[] = 'You just registered '.$player->get_display_name().' and '.$num_adventurers.' new adventurer'.($num_adventurers > 1 ? 's' : '').' have joined you!';
@@ -178,7 +190,7 @@ class RPGSession {
    */
   protected function cmd_status ($args = array()) {
     // Load the player and fail out if they have not created a Guild.
-    $player = $this->load_current_player();
+    if (!($player = $this->load_current_player())) return;
     $guild = $player;
     $guild_is_player = true;
 
@@ -230,7 +242,7 @@ class RPGSession {
    */
   protected function cmd_recruit ($args = array()) {
     // Load the player and fail out if they have not created a Guild.
-    $player = $this->load_current_player();
+    if (!($player = $this->load_current_player())) return;
     
     // If no Adventurer is selected, list the available ones.
     if (empty($args) || empty($args[0])) {
@@ -246,7 +258,7 @@ class RPGSession {
       $response[] = 'Adventurers in the Tavern:';
       foreach ($adventurers as $adventurer) {
         $adventurer_cost = $adventurer->level * 250;
-        $response[] = $adventurer->get_display_name().' for '.$this->get_currency($adventurer_cost).'  `/rpg recruit '.$adventurer->name.'`';
+        $response[] = $adventurer->get_display_name().' for '.$this->get_currency($adventurer_cost).'  `recruit '.$adventurer->name.'`';
       }
 
       $this->respond($response);
@@ -291,7 +303,7 @@ class RPGSession {
       return FALSE;
     }
 
-    $this->respond($player->get_display_name().' has recruited a new adventurer, '.$adventurer->get_display_name().'.', RPGSession::CHANNEL, false);
+    $this->respond($player->get_display_name().' has recruited a new adventurer, '.$adventurer->get_display_name().'.', RPGSession::CHANNEL);
     $this->respond('You recruited '.$adventurer->get_display_name().' for '.$this->get_currency($adventurer_cost).'.');
   }
 
@@ -305,7 +317,7 @@ class RPGSession {
     $cmd_word = 'dismiss';
 
     // Load the player and fail out if they have not created a Guild.
-    $player = $this->load_current_player();
+    if (!($player = $this->load_current_player())) return;
     
     // If no Adventurer is selected, list the available ones.
     if (empty($args) || empty($args[0])) {
@@ -353,7 +365,7 @@ class RPGSession {
       $response[] = '*Experience*: '.$adventurer->exp;
       $response[] = '';
       $response[] = 'To confirm the dismissal, type:';
-      $response[] = '`/rpg '.$cmd_word.' '.implode(' ', $orig_args).' CONFIRM`';
+      $response[] = '`'.$cmd_word.' '.implode(' ', $orig_args).' CONFIRM`';
       $this->respond($response);
       return FALSE;
     }
@@ -367,7 +379,7 @@ class RPGSession {
       return FALSE;
     }
 
-    $this->respond($player->get_display_name().' has dismissed an adventurer, '.$adventurer->get_display_name().', who is now available in the Tavern.', RPGSession::CHANNEL, false);
+    $this->respond($player->get_display_name().' has dismissed an adventurer, '.$adventurer->get_display_name().', who is now available in the Tavern.', RPGSession::CHANNEL);
     $this->respond('You have dismissed '.$adventurer->get_display_name().'.');
   }
 
@@ -381,7 +393,7 @@ class RPGSession {
     $cmd_word = 'quest';
 
     // Load the player and fail out if they have not created a Guild.
-    $player = $this->load_current_player();
+    if (!($player = $this->load_current_player())) return;
 
     // If no Quest is selected, list the available ones.
     if (empty($args) || empty($args[0])) {
@@ -402,7 +414,7 @@ class RPGSession {
         $best_adventurers = $player->get_best_adventurers($quest->party_size_max);
         $success_rate = $quest->get_success_rate($player, $best_adventurers);
         $death_rate = $quest->death_rate;
-        $response[] = $this->get_difficulty($success_rate) .' '.($death_rate > 0 ? ':skull: ' : ''). $this->get_stars($quest->stars).' '.$quest->name.' (adventurers required: '.$quest->get_party_size().')  `/rpg quest q'.$quest->qid.' [ADVENTURER NAMES (comma-separated)]`';
+        $response[] = $this->get_difficulty($success_rate) .' '.($death_rate > 0 ? ':skull: ' : ''). $this->get_stars($quest->stars).' '.$quest->name.' (adventurers required: '.$quest->get_party_size().')  `quest q'.$quest->qid.' [ADVENTURER NAMES (comma-separated)]`';
       }
 
       // Also show the list of available adventurers.
@@ -427,7 +439,7 @@ class RPGSession {
 
     // Get the adventurers going.
     if (empty($args)) {
-      $this->respond('Please choose Adventurers to go on this quest. Type: `/rpg quest q'.$quest->qid.' [ADVENTURER NAMES (comma-separated)]`');
+      $this->respond('Please choose Adventurers to go on this quest. Type: `quest q'.$quest->qid.' [ADVENTURER NAMES (comma-separated)]`');
       return FALSE;
     }
 
@@ -457,12 +469,12 @@ class RPGSession {
     $too_many = $num_adventurers > $quest->party_size_max;
     if ($too_few || $too_many) {
       if ($too_few) {
-        $response[] = 'You need at least '.$quest->party_size_min.' adventurer'.($quest->party_size_min > 1 ? 's' : '').' to embark on this quest.';
+        $response[] = 'You need at least '.$quest->party_size_min.' adventurer'.($quest->party_size_min == 1 ? '' : 's').' to embark on this quest.';
       }
       
       if ($too_many) {
         $adventurer_diff = $num_adventurers - $quest->party_size_max;
-        $response[] = 'There are '.abs($adventurer_diff).' too many adventurers for this quest. Please reduce the group to '.$quest->party_size_max.' adventurer'.($quest->party_size_max > 1 ? 's' : '').'.';
+        $response[] = 'There are '.abs($adventurer_diff).' too many adventurers for this quest. Please reduce the group to '.$quest->party_size_max.' adventurer'.($quest->party_size_max == 1 ? '' : 's').'.';
       }
 
       $response[] = $this->get_typed($cmd_word, $orig_args);
@@ -506,7 +518,7 @@ class RPGSession {
       foreach ($adventurers as $adventurer) $response[] = $adventurer->get_display_name();
       $response[] = '';
       $response[] = 'To confirm your departure, type:';
-      $response[] = '`/rpg quest q'.$quest->qid.' '.$adventurer_args.' CONFIRM`';
+      $response[] = '`quest q'.$quest->qid.' '.$adventurer_args.' CONFIRM`';
       $this->respond($response);
       return FALSE;
     }
@@ -574,11 +586,11 @@ class RPGSession {
     $cmd_word = 'explore';
 
     // Load the player and fail out if they have not created a Guild.
-    $player = $this->load_current_player();
+    if (!($player = $this->load_current_player())) return;
 
     // If there's no coordinates entered, show the map.
     if (empty($args) || empty($args[0])) {
-      $this->cmd_map($args);
+      $this->respond($this->cmd_map($args));
       return;
     }
 
@@ -588,7 +600,7 @@ class RPGSession {
     $row = preg_replace('/[^0-9]/', '', $coord);
     $col = preg_replace('/[^a-zA-Z]/', '', $coord);
     if (empty($row) || empty($col)) {
-      $this->respond('Please enter the coordinates without any spaces. Example: `/rpg explore A4 [ADVENTURER NAMES (comma-separated)]`');
+      $this->respond('Please enter the coordinates without any spaces. Example: `explore A4 [ADVENTURER NAMES (comma-separated)]`');
       return false;
     }
 
@@ -599,8 +611,11 @@ class RPGSession {
     ));
     // Check if the Location exists.
     if (empty($location)) {
-      $this->respond("Location ".$coord." is not on the map.\n", RPGSession::PERSONAL, false);
-      $this->cmd_map($args);
+      $response = array();
+      $response[] = 'Location '.$coord.' is not on the map.';
+      $response[] = '';
+      $response[] = implode("\n", $this->cmd_map($args));
+      $this->respond($response);
       return;
     }
     // Check if the Location is already revealed.
@@ -608,7 +623,7 @@ class RPGSession {
       // Load up the Guild that revealed this location.
       $guild = Guild::load(array('gid' => $location->gid));
       $revealed_text = empty($guild) ? '' : ' by '.$guild->get_display_name();
-      if ($guild->gid == $player->gid) $revealed_text = ' you';
+      if ($guild->gid == $player->gid) $revealed_text = ' by you';
       $this->respond('Location '.$coord.' was already explored'.$revealed_text.'.');
       return false;
     }
@@ -616,7 +631,7 @@ class RPGSession {
     // Get the adventurers going.
     if (empty($args)) {
       $response = array();
-      $response[] = 'Please choose Adventurers to go exploring. Type: `/rpg explore '.$coord.' [ADVENTURER NAMES (comma-separated)]`';
+      $response[] = 'Please choose Adventurers to go exploring. Type: `explore '.$coord.' [ADVENTURER NAMES (comma-separated)]`';
       // Also show the list of available adventurers.
       $response[] = '';
       $response[] = 'Adventurers available for exploring:';
@@ -684,7 +699,7 @@ class RPGSession {
       }
       $response[] = '';
       $response[] = 'To confirm your departure, type:';
-      $response[] = '`/rpg explore '.$coord.' '.$adventurer_args.' CONFIRM`';
+      $response[] = '`explore '.$coord.' '.$adventurer_args.' CONFIRM`';
       $this->respond($response);
       return FALSE;
     }
@@ -706,6 +721,8 @@ class RPGSession {
       'cooldown' => 0,
       'min_party_size' => 2,
       'max_party_size' => 0,
+      'success_rate' => 100,
+      'death_rate' => 0,
     ));
     $success = $quest->save();
     if ($success === false) {
@@ -773,7 +790,7 @@ class RPGSession {
    */
   protected function cmd_map ($args = array()) {
     // Load the player and fail out if they have not created a Guild.
-    $player = $this->load_current_player();
+    if (!($player = $this->load_current_player())) return;
 
     $season = $this->load_current_season();
     $map = Map::load(array('season' => $season));
@@ -784,7 +801,7 @@ class RPGSession {
 
     foreach ($locations as $location) {
       if ($location->revealed) continue;
-      $response[] = $location->get_display_name().': `/rpg explore '.$location->get_coord_name().' [ADVENTURER NAMES (comma-separated)]`';
+      $response[] = $location->get_display_name().': `explore '.$location->get_coord_name().' [ADVENTURER NAMES (comma-separated)]`';
     }
 
     // Also show the list of available adventurers.
@@ -796,9 +813,9 @@ class RPGSession {
     }
 
     $response[] = '';
-    $response[] = 'To explore a location on the map, type: `/rpg explore [LETTER][NUMBER] [ADVENTURER NAMES (comma-separated)]` (ex: `/rpg explore A4 Morgan, Gareth`).';
+    $response[] = 'To explore a location on the map, type: `explore [LETTER][NUMBER] [ADVENTURER NAMES (comma-separated)]` (ex: `explore A4 Morgan, Gareth`).';
 
-    $this->respond($response);
+    return $response;
   }
 
 
@@ -809,7 +826,7 @@ class RPGSession {
    */
   protected function cmd_champion ($args = array()) {
     // Load the player and fail out if they have not created a Guild.
-    $player = $this->load_current_player();
+    if (!($player = $this->load_current_player())) return;
     $response = array();
 
     // Make sure they give a name.
@@ -876,7 +893,7 @@ class RPGSession {
    */
   protected function cmd_leaderboard ($args = array()) {
     // Load the player and fail out if they have not created a Guild.
-    $player = $this->load_current_player();
+    if (!($player = $this->load_current_player())) return;
 
     $orig_max = 10;
     $max = $orig_max;
@@ -907,7 +924,7 @@ class RPGSession {
 
     if ($max == $orig_max) {
       $response[] = '';
-      $response[] = 'To view all Guilds, type: `/rpg leader all`.';
+      $response[] = 'To view all Guilds, type: `leader all`.';
     }
 
     $this->respond($response);
@@ -920,12 +937,12 @@ class RPGSession {
    */
   protected function cmd_edit ($args = array()) {
     // Load the player and fail out if they have not created a Guild.
-    $player = $this->load_current_player();
+    if (!($player = $this->load_current_player())) return;
     $response = array();
 
     if (empty($args) || empty($args[0])) {
       $response[] = 'You may edit the following information:';
-      $response[] = '- Guild emoji: `/rpg edit icon [ICON]`';
+      $response[] = '- Guild emoji: `edit icon [ICON]`';
 
       $this->respond($response);
       return FALSE;
@@ -933,13 +950,13 @@ class RPGSession {
 
     if ($args[0] == 'icon') {
       if (!isset($args[1])) {
-        $this->respond('You must include the new emoji icon alias (example: `/rpg edit icon :skull:`).');
+        $this->respond('You must include the new emoji icon alias (example: `edit icon :skull:`).');
         return FALSE;
       }
 
       $icon = $args[1];
       if (strpos($icon, ':') !== 0 || strrpos($icon, ':') !== strlen($icon)-1) {
-        $this->respond('You must include a valid emoji icon alias (example: `/rpg edit icon :skull:`).');
+        $this->respond('You must include a valid emoji icon alias (example: `edit icon :skull:`).');
         return FALSE;
       }
 
@@ -965,7 +982,7 @@ class RPGSession {
     $cmd_word = 'upgrade';
 
     // Load the player and fail out if they have not created a Guild.
-    $player = $this->load_current_player();
+    if (!($player = $this->load_current_player())) return;
 
     // If there are no arguments, list the upgrades.
     if (empty($args) || empty($args[0])) {
@@ -975,7 +992,7 @@ class RPGSession {
 
       $upgrades = $player->get_available_upgrades();
       foreach ($upgrades as $upgrade) {
-        $response[] = '*'.$upgrade->get_display_name() .'* for '. $this->get_currency($upgrade->cost) .' and '. $this->get_duration_as_hours($upgrade->duration).' `/rpg upgrade '.$upgrade->name_id.'`';
+        $response[] = '*'.$upgrade->get_display_name() .'* for '. $this->get_currency($upgrade->cost) .' and '. $this->get_duration_as_hours($upgrade->duration).' `upgrade '.$upgrade->name_id.'`';
       }
 
       $this->respond($response);
@@ -1018,7 +1035,7 @@ class RPGSession {
       $response[] = '*Duration*: '.$this->get_duration_as_hours($upgrade->duration);
       $response[] = '';
       $response[] = 'To confirm your departure, type:';
-      $response[] = '`/rpg '.$cmd_word.' '.implode(' ', $orig_args).' CONFIRM`';
+      $response[] = '`'.$cmd_word.' '.implode(' ', $orig_args).' CONFIRM`';
       $this->respond($response);
       return TRUE;
     }
@@ -1049,7 +1066,7 @@ class RPGSession {
    */
   protected function cmd_inventory ($args = array()) {
     // Load the player and fail out if they have not created a Guild.
-    $player = $this->load_current_player();
+    if (!($player = $this->load_current_player())) return;
     $response = array();
 
     // If there's no item name, show the whole inventory.
@@ -1095,21 +1112,51 @@ class RPGSession {
     $cmd_word = 'powerup';
 
     // Load the player and fail out if they have not created a Guild.
-    $player = $this->load_current_player();
+    if (!($player = $this->load_current_player())) return;
+    $response = array();
     
     // You must specify class name and then the adventurer name.
     if (empty($args) || empty($args[0])) {
-      $this->respond('You must specify the adventurer name and then the class name. Example: `/rpg powerup Morgan LeClair Shaman`');
+      $response[] = 'You must specify the adventurer name and then the class name. Example: `powerup Morgan LeClair Shaman`';
+      $response[] = '';
+
+      // Show class powerstones.
+      $items = $player->get_items();
+      $powerstones = array();
+      foreach ($items as $item) {
+        if ($item->type != ItemType::POWERSTONE) continue;
+        if (isset($powerstones[$item->name_id])) continue;
+        $powerstones[$item->name_id] = $item;
+      }
+
+      $response[] = '*Powerstones available to use*:';
+      foreach ($powerstones as $powerstone) {
+        $response[] = $powerstone->get_display_name(false);
+      }
+      if (empty(($powerstones))) $response[] = '_None_';
+      
+      // Show adventurers.
+      $response[] = '';
+      $response[] = '*Adventurers available for a Power Up*:';
+      $adventurers = $player->get_adventurers();
+      foreach ($adventurers as $adventurer) {
+        // Skip adventurers that already have a class.
+        if ($adventurer->has_adventurer_class()) continue;
+        // Skip adventurers that are out adventuring.
+        if (!empty($adventurer->agid)) continue;
+        $response[] = $adventurer->get_display_name(false);
+      }
+      if (empty(($adventurers))) $response[] = '_None_';
+
+      $this->respond($response);
       return FALSE;
     }
-
-    $response = array();
 
     // Get the class name.
     $class_name = array_pop($args);
     $adventurer_class = AdventurerClass::load(array('name_id' => $class_name), true);
     if (empty($adventurer_class)) {
-      $response[] = 'Please specify a valid class name. Example: `/rpg powerup Morgan LeClair Shaman`';
+      $response[] = 'Please specify a valid class name. Example: `powerup Morgan LeClair Shaman`';
       $response[] = $this->get_typed($cmd_word, $orig_args);
       $this->respond($response);
       return FALSE;
@@ -1117,7 +1164,7 @@ class RPGSession {
 
     // If they didn't specify an adventurer name, error out.
     if (empty($args) || empty($args[0])) {
-      $response[] = 'Please specify a valid adventurer name. Example: `/rpg powerup Morgan LeClair Shaman`';
+      $response[] = 'Please specify an adventurer to Power Up. Example: `powerup Morgan LeClair Shaman`';
       $response[] = $this->get_typed($cmd_word, $orig_args);
       $this->respond($response);
       return FALSE;
@@ -1127,7 +1174,7 @@ class RPGSession {
     $adventurer_name = implode(' ', $args);
     $adventurer = Adventurer::load(array('gid' => $player->gid, 'name' => $adventurer_name), true);
     if (empty($adventurer)) {
-      $response[] = 'Please specify a valid class name. Example: `/rpg powerup Morgan LeClair Shaman`';
+      $response[] = 'Please specify a valid adventurer name. Example: `powerup Morgan LeClair Shaman`';
       $response[] = $this->get_typed($cmd_word, $orig_args);
       $this->respond($response);
       return FALSE;
@@ -1191,7 +1238,7 @@ class RPGSession {
 
   protected function cmd_test ($args = array()) {
     // Load the player and fail out if they have not created a Guild.
-    $player = $this->load_current_player();
+    if (!($player = $this->load_current_player())) return;
 
     // Give the player a powerstone.
     $item_template = ItemTemplate::load(array('name_id' => 'powerstone_shaman'));
@@ -1298,7 +1345,7 @@ class RPGSession {
     $player = $this->get_current_player();
 
     if (empty($player)) {
-      $this->respond('You must register your Guild before you can begin playing. Type: `/rpg register [GUILD EMOJI] [GUILD NAME]`');
+      $this->respond('You must register your Guild before you can begin playing. Type: `register [GUILD EMOJI] [GUILD NAME]`');
       return FALSE;
     }
 
@@ -1341,7 +1388,7 @@ class RPGSession {
   }
 
   protected function get_typed ($cmd, $args) {
-    return "\n(You typed: `/rpg ".$cmd." ".implode(' ', $args)."`)";
+    return "\n(You typed: `".$cmd." ".implode(' ', $args)."`)";
   }
 
   protected function get_stars ($stars, $max = 5) {
@@ -1460,15 +1507,15 @@ class RPGSession {
     $callback = $this->commands['bad_command'];
     $args = array($input);
     
-    foreach( $this->commands as $cmd_key => $cmd ) {
+    foreach ($this->commands as $cmd_key => $cmd) {
       $check = strpos($input, $cmd_key);
-      if ( $check !== false && $check === 0 ) {
+      if ($check !== false && $check === 0) {
         $args = explode(' ', trim(str_replace($cmd_key, '', $input)));
 
         $cmd_args = array();
-        if ( is_array($cmd) ) {
+        if (is_array($cmd)) {
           $callback = $cmd['callback'];
-          if ( isset($cmd['args'])  &&  is_array($cmd['args'])  &&  !empty($cmd['args']) ) {
+          if (isset($cmd['args']) && is_array($cmd['args']) && !empty($cmd['args'])) {
             $cmd_args = $cmd['args'];
           }
         }
@@ -1479,7 +1526,7 @@ class RPGSession {
       }
     }
 
-    if ( !empty($cmd_args) ) $this->{$callback}($cmd_args, $args);
+    if (!empty($cmd_args)) $this->{$callback}($cmd_args, $args);
     else $this->{$callback}($args);
     return $this->response;
   }
@@ -1496,34 +1543,24 @@ class RPGSession {
     return preg_replace(array_keys($info), array_values($info), $string);
   }
 
-  public function respond ($text = null, $location = RPGSession::PERSONAL, $exit = true) {
+  public function respond ($text = null, $location = RPGSession::PERSONAL) {
     if (is_array($text)) $text = implode("\n", $text);
     else if (!is_string($text)) $text = '';
-    $this->response['text'] = $text;
 
-    if (isset($_REQUEST['forced_debug_mode']) && $_REQUEST['forced_debug_mode'] == 'true') {
+    // Set the channel.
+    $this->response['channel'] = ($location == RPGSession::PERSONAL) ? $this->data['user_id'] : null;
+
+    // Set the global and/or private text.
+    if ($location == RPGSession::CHANNEL) $this->response['global_text'] = $text;
+    else $this->response['text'] = $text;
+
+    // If this is debug mode through the browser, just spit it out.
+    if (isset($this->data['forced_debug_mode']) && $this->data['forced_debug_mode'] == 'true') {
       echo '<head><link rel="stylesheet" type="text/css" href="debug/css/debug.css"></head>';
       echo '<u>CHANNEL: '. $location .'</u><br><br>';
       echo '<div class="channel-'.$location.'">'.$this->_convert_to_markup($this->response['text']).'</div><br><br>';
-      if ($exit) exit;
       return;
     }
-
-    if ($location == RPGSession::PERSONAL) {
-      echo $this->response['text'];
-    }
-    else if ($location == RPGSession::CHANNEL || $location == RPGSession::IM) {
-      // Message the user directly via private message.
-      $channel = NULL;
-      if ($location == RPGSession::IM) {
-        $channel = '@'.$this->data['user_name'];
-      }
-
-      $msg = new SlackMessage (SLACK_WEBHOOK, SLACK_BOT_USERNAME, SLACK_BOT_ICON);
-      $msg->send($this->response['text'], $channel);
-    }
-
-    if ($exit) exit;
   }
 
   protected function _digest_msg ( $msg, $tokens ) {

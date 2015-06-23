@@ -87,6 +87,7 @@ class Quest extends RPGEntitySaveable {
 
   public function get_success_rate ($guild, $adventurers) {
     $rate = $this->success_rate;
+
     // Adjust it based on the level of the adventurers vs. the level of the quest.
     $levels = 0;
     // Get the quest success rate from the Guild.
@@ -95,10 +96,17 @@ class Quest extends RPGEntitySaveable {
       $levels += $adventurer->level;
       $mod += $adventurer->get_bonus()->get_mod(Bonus::QUEST_SUCCESS, $this, Bonus::MOD_HUNDREDS);
     }
-    $diff = min($levels / $this->level, 1);
+      
     // Modify the rate based on the level difference, then add the bonuses.
-    $rate *= $diff;
+    if ($this->level > 0) {
+      $diff = min($levels / $this->level, 1);
+      $rate *= $diff;
+    }
+
     $rate += $mod;
+
+    // Prevent odd issues where Explore rate gets reduced.
+    if ($this->type == Quest::TYPE_EXPLORE) $rate = 100;
 
     return $rate < 100 ? floor($rate) : 100;
   }
