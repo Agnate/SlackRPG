@@ -60,6 +60,10 @@ class Adventurer extends RPGEntitySaveable {
     return $capitalize ? ucwords($pronoun) : $pronoun;
   }
 
+  public function get_gender ($capitalize = false) {
+    return $capitalize ? ucwords($this->gender) : $this->gender;
+  }
+
   public function give_exp ($exp) {
     $this->exp += $exp;
     // Check if they level up.

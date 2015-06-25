@@ -175,11 +175,48 @@ class Guild extends RPGEntitySaveable {
     if (empty($requires)) return TRUE;
 
     $keys = array_keys($this->_upgrades);
-    foreach ($requires as $upgrade_name) {
-      if (!in_array($upgrade_name, $keys)) return FALSE;
+    foreach ($requires as $requirement) {
+      if ($requirement->type != 'upgrade') continue;
+      if (!in_array($requirement->name_id, $keys)) return FALSE;
     }
 
     return TRUE;
+  }
+
+  public function has_required_items ($upgrade) {
+    $requires = $upgrade->get_requires();
+    $items = array();
+    if (empty($requires)) return $items;
+
+    $inventory = &$this->get_items();
+    $compact = $this->compact_items($inventory);
+
+    foreach ($requires as $requirement) {
+      if ($requirement->type != 'item') continue;
+
+      // Find the item in the inventory.
+      if (!isset($compact[$requirement->name_id])) return FALSE;
+      if (count($compact[$requirement->name_id]) < $requirement->qty) return FALSE;
+
+      // Remove the number of items we need.
+      for ($i = 0; $i < $requirement->qty; $i++) {
+        $items[] = array_pop($compact[$requirement->name_id]);
+      }
+    }
+
+    return $items;
+  }
+
+  protected function compact_items ($items) {
+    $compact_items = array();
+
+    // Compact same-name items.
+    foreach ($items as &$item) {
+      if (!isset($compact_items[$item->name_id])) $compact_items[$item->name_id] = array();
+      $compact_items[$item->name_id][] = $item;
+    }
+
+    return $compact_items;
   }
 
   public function get_queued_upgrades () {

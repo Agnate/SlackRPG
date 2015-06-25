@@ -32,17 +32,78 @@ class Upgrade extends RPGEntitySaveable {
   }
 
   public function load_requires () {
-    if ($this->requires == '') $this->_requires = array();
-    else $this->_requires = explode(',', $this->requires);
+    $this->_requires = $this->__decode_requires($this->requires);
   }
 
-  protected function _update_upgrades_to_string () {
-    $this->requires = implode(',', $this->_requires);
+  /**
+   * Format for the array-version of the list of requirements:
+   *
+   * $list -> an array of Requirement objects.
+   *
+   * Examples:
+   *    an upgrade requires 3 iron ore:
+   *    $list = array(
+   *      new Requirement (array('name_id => 'ore_iron', 'qty' => 3))
+   *    );
+   *
+   *    an upgrade requires 1 iron ore and 2 steel ingots:
+   *    $list = array(
+   *      new Requirement (array('name_id => 'ore_iron', 'qty' => 1)),
+   *      new Requirement (array('name_id => 'ore_steel', 'qty' => 2)),
+   *    );
+   */
+  public function __encode_requires ($list) {
+    if (empty($list)) return '';
+    $items = array();
+
+    // Loop through the list and encode it.
+    foreach ($list as $requirement) {
+      // Skip any item without a name_id.
+      if (empty($requirement->name_id)) continue;
+      $items[] = $requirement->encode();
+    }
+
+    return implode('|', $items);
+  }
+
+  /**
+   * Format for the string-version of the list of requirements:
+   *
+   * $value -> "TYPE,NAME_ID,QTY|TYPE,NAME_ID,QTY"   (item separator = "|", divider between type, name_id, and quantity = ",")
+   *
+   * Examples:
+   *    an upgrade requires 3 iron ore returns -->  "item,ore_iron,3"
+   *    an upgrade requires 1 iron ore and 2 steel ingots returns -->  "item,ore_iron|item,ore_steel,2"
+   *    an upgrade requires 2 iron ore and a previous upgrade equip1 returns -->  "item,ore_iron,2|upgrade,equip1"
+   */
+  public function __decode_requires ($requirements) {
+    $list = array();
+    if ($requirements == '') return $list;
+    
+    // Bust up the requirements by the primary separator.
+    $requirements = explode('|', $requirements);
+
+    // Sub-divide each requirement to find the name_id and quantity.
+    foreach ($requirements as $value) {
+      $list[] = Requirement::from($value);
+    }
+
+    return $list;
   }
 
   public function get_requires () {
     if (empty($this->_requires)) $this->load_requires();
     return $this->_requires;
+  }
+
+  public function get_required_items () {
+    if (empty($this->_requires)) $this->load_requires();
+    $item_requirements = array();
+    foreach ($item_requirements as $requirement) {
+      if ($requirement->type != 'item') continue;
+      $item_requirements[] = $requirement;
+    }
+    return $item_requirements;
   }
 
   public function queue_process ($queue = null) {

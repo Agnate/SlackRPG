@@ -9,11 +9,13 @@ class Item extends RPGEntitySaveable {
   public $name;
   public $icon;
   public $type;
+  public $rarity_lo;
+  public $rarity_hi;
 
   protected $_description;
   
   // Private vars
-  static $fields_int = array();
+  static $fields_int = array('rarity_lo', 'rarity_hi');
   static $db_table = 'items';
   static $default_class = 'Item';
   static $primary_key = 'iid';

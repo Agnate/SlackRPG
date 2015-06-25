@@ -26,19 +26,21 @@ class RPGSession {
     $this->register_callback(array('updates', 'update'), 'cmd_updates');
 
     $this->register_callback(array('register'), 'cmd_register');
-    $this->register_callback(array('recruit'), 'cmd_recruit');
-    $this->register_callback(array('dismiss'), 'cmd_dismiss');
-    $this->register_callback(array('champion'), 'cmd_champion');
-    $this->register_callback(array('powerup', 'power'), 'cmd_powerup');
     $this->register_callback(array('edit'), 'cmd_edit');
     $this->register_callback(array('upgrades', 'upgrade'), 'cmd_upgrade');
     $this->register_callback(array('items', 'item', 'inventory', 'inv'), 'cmd_inventory');
 
+    $this->register_callback(array('recruit'), 'cmd_recruit');
+    $this->register_callback(array('status'), 'cmd_status');
+    $this->register_callback(array('dismiss'), 'cmd_dismiss');
+    $this->register_callback(array('champion'), 'cmd_champion');
+    $this->register_callback(array('powerup', 'power'), 'cmd_powerup');
+    
     $this->register_callback(array('quest'), 'cmd_quest');
     $this->register_callback(array('map'), 'cmd_map');
     $this->register_callback(array('explore'), 'cmd_explore');
 
-    $this->register_callback(array('status'), 'cmd_status');
+    $this->register_callback(array('report'), 'cmd_report');
     $this->register_callback(array('leaderboard', 'leader'), 'cmd_leaderboard');
 
 
@@ -57,21 +59,23 @@ class RPGSession {
     $response[] = 'Leaderboard rankings: `leaderboard [all]`';
     $response[] = '';
 
-    $response[] = 'Guild status: `status [GUILD NAME]`';
-    $response[] = 'Set your guild\'s Champion: `champion [NAME]`';
-    $response[] = 'Edit your guild\'s information: `edit`';
+    $response[] = 'Guild information: `report [GUILD NAME]` (leave guild name blank to see your own report)';
+    $response[] = 'Set your Guild\'s Champion: `champion [NAME]`';
+    $response[] = 'Edit your Guild\'s information: `edit`';
     $response[] = '';
 
+    $response[] = 'View the Map: `map`';
+    $response[] = 'Explore the Map: `explore`';
     $response[] = 'Quests: `quest`';
-    $response[] = 'View and explore the Map: `explore`';
-    $response[] = 'Upgrade your Guild: `upgrade`';
     $response[] = '';
 
     $response[] = 'Recruit Adventurers: `recruit`';
+    $response[] = 'View an Adventurer\'s status: `status [ADVENTURER NAME]`';
     $response[] = 'Dismiss an Adventurer: `dismiss`';
     $response[] = 'Power Up an Adventurer: `powerup`';
     $response[] = '';
 
+    $response[] = 'Upgrade your Guild: `upgrade`';
     $response[] = 'Inventory: `inv`';
     $response[] = 'View an item: `item [ITEM NAME]`';
     $response[] = '';
@@ -186,9 +190,9 @@ class RPGSession {
 
 
   /**
-   * Show your Guild status.
+   * Show your Guild report.
    */
-  protected function cmd_status ($args = array()) {
+  protected function cmd_report ($args = array()) {
     // Load the player and fail out if they have not created a Guild.
     if (!($player = $this->load_current_player())) return;
     $guild = $player;
@@ -209,10 +213,10 @@ class RPGSession {
     
     $response = array();
     $response[] = '*Guild name*: '.$guild->get_display_name(false);
-    $response[] = '*Fame*: '.$this->get_fame($guild->fame);
+    $response[] = '*Fame*: '.Display::get_fame($guild->fame);
     $response[] = '*Founder:* @'.$guild->username;
     $response[] = '*Founded on:* '.date('F j, Y \a\t g:i A', $guild->created);
-    if ($guild_is_player) $response[] = '*Gold*: '.$this->get_currency($guild->gold);
+    if ($guild_is_player) $response[] = '*Gold*: '.Display::get_currency($guild->gold);
 
     // Show adventurers.
     $response[] = '*Adventurers*:'.($guild_is_player ? ' ('.$guild->get_adventurers_count().' / '.$guild->adventurer_limit.')' : '');
@@ -258,7 +262,7 @@ class RPGSession {
       $response[] = 'Adventurers in the Tavern:';
       foreach ($adventurers as $adventurer) {
         $adventurer_cost = $adventurer->level * 250;
-        $response[] = $adventurer->get_display_name().' for '.$this->get_currency($adventurer_cost).'  `recruit '.$adventurer->name.'`';
+        $response[] = $adventurer->get_display_name().' for '.Display::get_currency($adventurer_cost).'  `recruit '.$adventurer->name.'`';
       }
 
       $this->respond($response);
@@ -304,7 +308,47 @@ class RPGSession {
     }
 
     $this->respond($player->get_display_name().' has recruited a new adventurer, '.$adventurer->get_display_name().'.', RPGSession::CHANNEL);
-    $this->respond('You recruited '.$adventurer->get_display_name().' for '.$this->get_currency($adventurer_cost).'.');
+    $this->respond('You recruited '.$adventurer->get_display_name().' for '.Display::get_currency($adventurer_cost).'.');
+  }
+
+
+
+  /**
+   * See status of an Adventurer.
+   */
+  protected function cmd_status ($args = array()) {
+    $orig_args = $args;
+    $cmd_word = 'status';
+
+    // Load the player and fail out if they have not created a Guild.
+    if (!($player = $this->load_current_player())) return;
+
+    $response = array();
+
+    // If no Adventurer is selected, list the available ones.
+    if (empty($args) || empty($args[0])) {
+      $response[] = '*Your Adventurers*:';
+      $adventurers = $player->get_adventurers();
+      foreach ($adventurers as $adventurer) {
+        $response[] = $adventurer->get_display_name(false);
+      }
+      $response[] = '';
+      $response[] = 'Type `status [ADVENTURER NAME]` to see the status of that Adventurer.';
+      $this->respond($response);
+      return FALSE;
+    }
+
+    // They chose a name, so let's check if that adventurer is available.
+    $adventurer_name = implode(' ', $args);
+    $adventurer = Adventurer::load(array('name' => $adventurer_name, 'gid' => $player->gid), true);
+    if (empty($adventurer)) {
+      $this->respond('You do not have an Adventurer by the name of "'.$adventurer_name.'".');
+      return FALSE;
+    }
+
+    // Show the status.
+    $response[] = $this->show_adventurer_status($adventurer);
+    $this->respond($response);
   }
 
 
@@ -358,11 +402,7 @@ class RPGSession {
     if (empty($confirmation)) {
       $response[] = 'Are you sure you want to dismiss *'.$adventurer->name.'*? '.$adventurer->get_pronoun(true).' will return to the Tavern for other Guilds to recruit.';
       $response[] = '';
-      $response[] = '*Name*: '.$adventurer->get_display_name(false, true, false, true, false);
-      if (!empty($adventurer->class)) $response[] = '*Class*: '.$adventurer->class;
-      $response[] = '*Level*: '.$adventurer->level;
-      //$response[] = '*Popularity*: '.$adventurer->popularity;
-      $response[] = '*Experience*: '.$adventurer->exp;
+      $response[] = $this->show_adventurer_status($adventurer);
       $response[] = '';
       $response[] = 'To confirm the dismissal, type:';
       $response[] = '`'.$cmd_word.' '.implode(' ', $orig_args).' CONFIRM`';
@@ -406,7 +446,7 @@ class RPGSession {
       }
 
       $response = array();
-      $response[] = $this->get_difficulty_legend();
+      $response[] = Display::get_difficulty_legend();
       $response[] = '';
       $response[] = 'Quests available:';
       foreach ($quests as $quest) {
@@ -414,7 +454,7 @@ class RPGSession {
         $best_adventurers = $player->get_best_adventurers($quest->party_size_max);
         $success_rate = $quest->get_success_rate($player, $best_adventurers);
         $death_rate = $quest->death_rate;
-        $response[] = $this->get_difficulty($success_rate) .' '.($death_rate > 0 ? ':skull: ' : ''). $this->get_stars($quest->stars).' '.$quest->name.' (adventurers required: '.$quest->get_party_size().')  `quest q'.$quest->qid.' [ADVENTURER NAMES (comma-separated)]`';
+        $response[] = Display::get_difficulty($success_rate) .' '.($death_rate > 0 ? ':skull: ' : ''). Display::get_stars($quest->stars).' '.$quest->name.' (adventurers required: '.$quest->get_party_size().')  `quest q'.$quest->qid.' [ADVENTURER NAMES (comma-separated)]`';
       }
 
       // Also show the list of available adventurers.
@@ -510,9 +550,9 @@ class RPGSession {
 
     // Display the confirmation message and code.
     if (empty($confirmation)) {
-      $response[] = '*Quest*: '.$this->get_stars($quest->stars).' '.$quest->name;
-      $response[] = '*Duration*: '.$this->get_duration_as_hours($duration);
-      $response[] = '*Chance of Success*: '.$this->get_difficulty($success_rate).' '.$success_rate.'%';
+      $response[] = '*Quest*: '.Display::get_stars($quest->stars).' '.$quest->name;
+      $response[] = '*Duration*: '.Display::get_duration_as_hours($duration);
+      $response[] = '*Chance of Success*: '.Display::get_difficulty($success_rate).' '.$success_rate.'%';
       if ($death_rate > 0) $response[] = '*Chance of Death*: :skull: '.$death_rate.'%';
       $response[] = '*Adventuring party*: ('.count($adventurers).')';
       foreach ($adventurers as $adventurer) $response[] = $adventurer->get_display_name();
@@ -573,7 +613,7 @@ class RPGSession {
     $last_name = ($name_count > 1) ? ', and '.array_pop($names) : '';
     $names = implode(', ', $names).$last_name;
 
-    $this->respond($names.' embark'.($name_count == 1 ? 's' : '').' on the quest to '.$quest->name.' returning in '.$this->get_duration_as_hours($duration).'.');
+    $this->respond($names.' embark'.($name_count == 1 ? 's' : '').' on the quest to '.$quest->name.' returning in '.Display::get_duration_as_hours($duration).'.');
   }
 
 
@@ -692,7 +732,7 @@ class RPGSession {
     // Display the confirmation message and code.
     if (empty($confirmation)) {
       $response[] = '*Quest*: Exploration';
-      $response[] = '*Duration*: '.$this->get_duration_as_hours($duration);
+      $response[] = '*Duration*: '.Display::get_duration_as_hours($duration);
       $response[] = '*Adventuring party*: ('.count($adventurers).')';
       foreach ($adventurers as $adventurer) {
         $response[] = $adventurer->get_display_name();
@@ -710,7 +750,7 @@ class RPGSession {
       'locid' => $location->locid,
       'type' => Quest::TYPE_EXPLORE,
       'name' => 'Explore '.$location->get_coord_name(),
-      'icon' => ':explore:',
+      'icon' => ':mag_right:',
       'created' => time(),
       'active' => false,
       'permanent' => false,
@@ -780,7 +820,7 @@ class RPGSession {
     $last_name = ($name_count > 1) ? ', and '.array_pop($names) : '';
     $names = implode(', ', $names).$last_name;
 
-    $this->respond($names.' set'.($name_count == 1 ? 's' : '').' off to explore '.$location->get_coord_name().' returning in '.$this->get_duration_as_hours($duration).'.');
+    $this->respond($names.' set'.($name_count == 1 ? 's' : '').' off to explore '.$location->get_coord_name().' returning in '.Display::get_duration_as_hours($duration).'.');
   }
 
 
@@ -918,7 +958,7 @@ class RPGSession {
     $count = 0;
     foreach ($guilds as $guild) {
       $count++;
-      $response[] = $this->addOrdinalNumberSuffix($count).': ('.$this->get_fame($guild->get_total_points()).') '.$guild->get_display_name();
+      $response[] = Display::addOrdinalNumberSuffix($count).': ('.Display::get_fame($guild->get_total_points()).') '.$guild->get_display_name();
       if ($count == $max) break;
     }
 
@@ -992,7 +1032,7 @@ class RPGSession {
 
       $upgrades = $player->get_available_upgrades();
       foreach ($upgrades as $upgrade) {
-        $response[] = '*'.$upgrade->get_display_name() .'* for '. $this->get_currency($upgrade->cost) .' and '. $this->get_duration_as_hours($upgrade->duration).' `upgrade '.$upgrade->name_id.'`';
+        $response[] = '*'.$upgrade->get_display_name() .'* for '. Display::get_currency($upgrade->cost) .' and '. Display::get_duration_as_hours($upgrade->duration).' `upgrade '.$upgrade->name_id.'`';
       }
 
       $this->respond($response);
@@ -1019,6 +1059,13 @@ class RPGSession {
       return FALSE;
     }
 
+    // See if they have the required items.
+    $items = $player->has_required_items($upgrade);
+    if ($items === FALSE) {
+      $this->respond('You do not have all of the required items to upgrade to *'.$upgrade->get_display_name(false).'*.');
+      return FALSE;
+    }
+
     // Try to purchase the upgrade.
     if ($player->gold < $upgrade->cost) {
       $this->respond('You do not have enough gold to purchase the upgrade *'.$upgrade->get_display_name(false).'*.');
@@ -1031,13 +1078,19 @@ class RPGSession {
     if ($confirm != 'CONFIRM') {
       $response[] = '*Upgrade*: '.$upgrade->get_display_name(false);
       if (!empty($upgrade->description)) $response[] = '*Description*: '.$upgrade->description;
-      $response[] = '*Cost*: '.$this->get_currency($upgrade->cost);
-      $response[] = '*Duration*: '.$this->get_duration_as_hours($upgrade->duration);
+      $response[] = '*Cost*: '.Display::get_currency($upgrade->cost);
+      $response[] = '*Duration*: '.Display::get_duration_as_hours($upgrade->duration);
       $response[] = '';
       $response[] = 'To confirm your departure, type:';
       $response[] = '`'.$cmd_word.' '.implode(' ', $orig_args).' CONFIRM`';
       $this->respond($response);
       return TRUE;
+    }
+
+    // Remove the items they used to purchase the upgrade.
+    foreach ($items as $item) {
+      $player->remove_item($item);
+      $item->delete();
     }
 
     // Start the upgrade purchase.
@@ -1056,7 +1109,7 @@ class RPGSession {
       return FALSE;
     }
 
-    $this->respond('*'. $upgrade->get_display_name(false) .'* was purchased for '.$this->get_currency($upgrade->cost).' and will be upgraded in '.$this->get_duration_as_hours($duration).'.');
+    $this->respond('*'. $upgrade->get_display_name(false) .'* was purchased for '.Display::get_currency($upgrade->cost).' and will be upgraded in '.Display::get_duration_as_hours($duration).'.');
   }
 
 
@@ -1240,19 +1293,59 @@ class RPGSession {
     // Load the player and fail out if they have not created a Guild.
     if (!($player = $this->load_current_player())) return;
 
-    // Give the player a powerstone.
-    $item_template = ItemTemplate::load(array('name_id' => 'powerstone_shaman'));
+    // Test encoding and decoding upgrade requirements.
+    // $list = array(
+    //   new Requirement (array('type' => 'item', 'name_id' => 'ore_steel', 'qty' => 3)),
+    //   new Requirement (array('type' => 'item', 'name_id' => 'ore_steel')),
+    //   Requirement::from('item,ore_iron'),
+    //   Requirement::from('item,ore_iron,2'),
+    //   Requirement::from('upgrade,equip1'),
+    // );
+
+    // d($list);
+
+    // $upgrade = Upgrade::load(array('name_id' => 'equip2'));
+
+    // d($upgrade);
+
+    // return false;
+
+
+
+    // Generate a random item.
+    // $items = ItemTemplate::random(20, 3, 4);
+    // d($items);
+
+    // return false;
+
+
+
+    // Give the player an ore.
+    $item_template = ItemTemplate::load(array('name_id' => 'ore_iron'));
     
     $items = &$player->get_items();
     
-    d($items);
     $player->add_item($item_template);
-    d($items);
-    $item = $items[0];
-    $player->remove_item($item);
-    d($items);
-
+    
     return false;
+
+
+
+    // Give the player a powerstone.
+    // $item_template = ItemTemplate::load(array('name_id' => 'powerstone_shaman'));
+    
+    // $items = &$player->get_items();
+    
+    // d($items);
+    // $player->add_item($item_template);
+    // d($items);
+    // $item = $items[0];
+    // $player->remove_item($item);
+    // d($items);
+
+    // return false;
+
+
     
     //$adventurers = $player->get_adventurers();
     //$adventurer = $adventurers[0];
@@ -1262,6 +1355,8 @@ class RPGSession {
     // $adventurer->give_exp(100);
     // d($adventurer);
     // return false;
+
+
 
     // Create a fake location.
     $types = Location::types();
@@ -1369,58 +1464,8 @@ class RPGSession {
     return $this->curplayer;
   }
 
-  protected function get_currency ($amount) {
-    return ':moneybag: '.number_format($amount).' gp';
-  }
-
-  protected function get_duration_as_hours ($duration) {
-    $seconds = $duration;
-    $hours = floor($seconds / (60 * 60));
-    $seconds -= ($hours * 60 * 60);
-    $minutes = floor($seconds / 60);
-    $seconds -= ($minutes * 60);
-    
-    return ($hours > 0 ? $hours.' hours, ' : '').($minutes > 0 ? $minutes.' minutes, ' : '').($seconds > 0 ? $seconds.' seconds' : '');
-  }
-
-  protected function get_fame ($fame) {
-    return ':trophy: '.number_format($fame);
-  }
-
   protected function get_typed ($cmd, $args) {
     return "\n(You typed: `".$cmd." ".implode(' ', $args)."`)";
-  }
-
-  protected function get_stars ($stars, $max = 5) {
-    $text = '';
-    // for ($i = 1; $i <= $max; $i++) $text .= ($i <= $stars ? ':quest-star:' : ':quest-star-empty:');
-    for ($i = 1; $i <= $stars; $i++) $text .= ':star:';
-    return $text;
-  }
-
-  protected function get_difficulty ($rate) {
-    if ($rate <= 0) return ':rpg-quest-diff0:';
-    if ($rate <= 35) return ':rpg-quest-diff1:';
-    if ($rate <= 50) return ':rpg-quest-diff2:';
-    if ($rate <= 75) return ':rpg-quest-diff3:';
-    
-    return ':rpg-quest-diff4:';
-  }
-
-  protected function get_difficulty_legend () {
-    return 'Difficulty Legend:'."\n".':rpg-quest-diff0: Impossible, :rpg-quest-diff1: Risky, :rpg-quest-diff2: Difficult, :rpg-quest-diff3: Challenging, :rpg-quest-diff4: Recommended, :skull: Adventurers can die';
-  }
-
-  protected function addOrdinalNumberSuffix ($num) {
-    if (!in_array(($num % 100), array(11,12,13))) {
-      switch ($num % 10) {
-        // Handle 1st, 2nd, 3rd
-        case 1: return $num.'st';
-        case 2: return $num.'nd';
-        case 3: return $num.'rd';
-      }
-    }
-    return $num.'th';
   }
 
   protected function check_for_valid_adventurers ($guild, $names, $check_is_available = true) {
@@ -1477,6 +1522,19 @@ class RPGSession {
     }
 
     return $compact_items;
+  }
+
+  protected function show_adventurer_status ($adventurer) {
+    $response = array();
+    // Show the status.
+    $response[] = '*Name*: '.$adventurer->get_display_name(false, true, false, false, false);
+    $response[] = '*Gender*: '.$adventurer->get_gender(true);
+    $response[] = '*Class*: '.($adventurer->has_adventurer_class() ? $adventurer->get_adventurer_class()->get_display_name() : '_None_');
+    $response[] = '*Level*: '.$adventurer->level;
+    //$response[] = '*Popularity*: '.$adventurer->popularity;
+    $response[] = '*Experience*: '.$adventurer->exp;
+    $response[] = '*Experience to Next Level*: '.$adventurer->exp_tnl;
+    return implode("\n", $response);
   }
 
 
@@ -1558,7 +1616,8 @@ class RPGSession {
     if (isset($this->data['forced_debug_mode']) && $this->data['forced_debug_mode'] == 'true') {
       echo '<head><link rel="stylesheet" type="text/css" href="debug/css/debug.css"></head>';
       echo '<u>CHANNEL: '. $location .'</u><br><br>';
-      echo '<div class="channel-'.$location.'">'.$this->_convert_to_markup($this->response['text']).'</div><br><br>';
+      if (isset($this->response['text']) && !empty($this->response['text'])) echo '<div class="channel-'.$location.'">'.$this->_convert_to_markup($this->response['text']).'</div><br><br>';
+      if ($location == RPGSession::CHANNEL && isset($this->response['global_text']) && !empty($this->response['global_text'])) echo '<div class="channel-'.$location.'">'.$this->_convert_to_markup($this->response['global_text']).'</div><br><br>';
       return;
     }
   }

@@ -141,6 +141,26 @@ class Quest extends RPGEntitySaveable {
     return ceil($exp * $mod);
   }
 
+  public function get_reward_items ($guild, $adventurers) {
+    $chance_of_item = 5;
+    $mod = $guild->get_bonus()->get_mod(Bonus::QUEST_REWARD_ITEM, $this);
+    foreach ($adventurers as $adventurer) $mod += $adventurer->get_bonus()->get_mod(Bonus::QUEST_REWARD_ITEM, $this, Bonus::MOD_DIFF);
+    // Check if any items were found.
+    $rarity_min = ($this->stars - 1);
+    $rarity_max = $this->stars;
+    if (rand(1, 100) <= $chance_of_item) {
+      // Generate an item to be found, with the rarity relating to the Quest star rating.
+      $templates = ItemTemplate::random(1, $rarity_min, $rarity_max);
+      $items = array();
+      // Create the items and assign them to the Guild.
+      foreach ($templates as $template) {
+        $item = $guild->add_item($template);
+        if ($item != false) $items[] = $item;
+      }
+    }
+    return $items;
+  }
+
   public function queue_process ($queue = null) {
     // If we were give a Queue, destroy it.
     if (!empty($queue)) $queue->delete();
@@ -172,34 +192,59 @@ class Quest extends RPGEntitySaveable {
 
     // If it's successful, give out the rewards.
     $reward_exp = 0;
-    $player_text = 'Your adventuring party *FAILED* '. $this->name .'.';
+    $player_text = array();
     if ($success) {
+      $player_text[] = '*'. $this->name .'* was completed!';
       $reward_gold = $this->get_reward_gold($guild, $adventurers);
       $reward_fame = $this->get_reward_fame($guild, $adventurers);
-      // Give the Guild its reward.
-      if ($reward_gold > 0) $guild->gold += $reward_gold;
-      if ($reward_fame > 0) $guild->fame += $reward_fame;
-      $guild->save();
-
+      $reward_items = $this->get_reward_items($guild, $adventurers);
       // Calculate the exp per adventurer.
       $reward_exp = ceil($this->get_reward_exp($guild, $adventurers) / count($adventurers));
 
-      $player_text = '*'. $this->name .'* was completed!';
+      if ($reward_gold > 0 || $reward_fame > 0 || $reward_exp > 0) {
+        $player_text[] = '';
+        $player_text[] = 'You receive:';
+      }
+
+      // Give the Guild its reward.
+      if ($reward_gold > 0) {
+        $guild->gold += $reward_gold;
+        $player_text[] = Display::get_currency($reward_gold);
+      }
+      if ($reward_fame > 0) {
+        $guild->fame += $reward_fame;
+        $player_text[] = Display::get_fame($reward_fame);
+      }
+      $guild->save();
+
+      if ($reward_exp > 0) {
+        $player_text[] = $reward_exp.' experience points (divided among the participating adventurers)';
+      }
+
+      $player_text[] = '';
+    }
+    else {
+      $player_text[] = 'Your adventuring party *FAILED* '. $this->name .'.';
     }
 
     // Bring all the adventurers home and give them their exp.
     foreach ($adventurers as $adventurer) {
       $adventurer->agid = 0;
-      if (isset($reward_exp) && $reward_exp > 0) $adventurer->give_exp( $reward_exp );
+      if (isset($reward_exp) && $reward_exp > 0) {
+        // Give the exp and if they leveled up, show a message.
+        if ($adventurer->give_exp($reward_exp)) {
+          $player_text[] = $adventurer->get_display_name().' is now level '.$adventurer->get_level(false).'!';
+        }
+      }
       // Calculate if the adventurer died during this adventure ONLY if they failed the quest.
       if (!$success && $death_rate > 0 && rand(1, 100) <= $death_rate) {
         $adventurer->dead = true;
-        $player_text .= "\n:rpg-tomb: RIP ".$adventurer->get_display_name().' died during the quest.';
+        $player_text[] = ':rpg-tomb: RIP '.$adventurer->get_display_name().' died during the quest.';
       }
       $adventurer->save();
     }
 
-    $channel_text = '';
+    $channel_text = array();
 
     // If this is an exploration quest, reveal the location.
     if ($this->type == Quest::TYPE_EXPLORE) {
@@ -212,8 +257,8 @@ class Quest extends RPGEntitySaveable {
       // $quests = Quest::generate_quests($location);
 
       if (!empty($location->name)) {
-        $player_text .= " You discovered ".$location->name.".";
-        $channel_text .= $guild->get_display_name()." discovered ".$location->name.".";
+        $player_text[] = " You discovered ".$location->name.".";
+        $channel_text[] = $guild->get_display_name()." discovered ".$location->name.".";
       }
     }
 
@@ -240,11 +285,11 @@ class Quest extends RPGEntitySaveable {
     );
     if (isset($player_text) && !empty($player_text)) {
       $result['messages']['instant_message'] = array(
-        'text' => $player_text,
+        'text' => implode("\n", $player_text),
         'player' => $guild,
       );
     }
-    if (isset($channel_text) && !empty($channel_text)) $result['messages']['channel'] = array('text' => $channel_text);
+    if (isset($channel_text) && !empty($channel_text)) $result['messages']['channel'] = array('text' => implode("\n", $channel_text));
     return $result;
   }
 
@@ -305,7 +350,7 @@ class Quest extends RPGEntitySaveable {
 
     // Generate the name and icon.
     $data['name'] = 'Test Quest';
-    $data['icon'] = ':test:';
+    $data['icon'] = ':pushpin:';
 
     // Overrides for 1-star quests.
     if ($stars == 1) {
@@ -406,6 +451,7 @@ class Quest extends RPGEntitySaveable {
     $list = array();
     if (!isset($loc_types[$loc_type])) return $list;
 
+    // Populate a list full of the types based on the probability given.
     foreach ($loc_types[$loc_type] as $type => $prob) {
       $count = $prob * 1000;
       for ($i = 0; $i < $count; $i++) {
@@ -413,6 +459,7 @@ class Quest extends RPGEntitySaveable {
       }
     }
 
+    // Choose an entry randomly from the list.
     $index = array_rand($list);
 
     return $list[$index];
