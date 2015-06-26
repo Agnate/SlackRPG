@@ -184,7 +184,7 @@ class Guild extends RPGEntitySaveable {
   }
 
   public function has_required_items ($upgrade) {
-    $requires = $upgrade->get_requires();
+    $requires = $upgrade->get_required_type('item');
     $items = array();
     if (empty($requires)) return $items;
 
@@ -192,8 +192,6 @@ class Guild extends RPGEntitySaveable {
     $compact = $this->compact_items($inventory);
 
     foreach ($requires as $requirement) {
-      if ($requirement->type != 'item') continue;
-
       // Find the item in the inventory.
       if (!isset($compact[$requirement->name_id])) return FALSE;
       if (count($compact[$requirement->name_id]) < $requirement->qty) return FALSE;

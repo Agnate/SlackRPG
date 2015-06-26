@@ -34,7 +34,7 @@ function clean_out_tavern ($output_information = false) {
 /**
  * Generate new adventurers and make them available to players.
  */
-function generate_new_adventurers ($output_information = false, $num_adventurers = 3, $special_class_rate = 5, $special_limit = 1) {
+function generate_new_adventurers ($output_information = false, $num_adventurers = 3, $special_class_rate = 3, $special_limit = 1) {
   // Load up the list of adventurer names.
   $json = Adventurer::load_adventurer_names_list();
 

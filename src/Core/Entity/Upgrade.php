@@ -27,8 +27,8 @@ class Upgrade extends RPGEntitySaveable {
     $this->load_requires();
   }
 
-  public function get_display_name ($include_desc = true) {
-    return $this->name .($include_desc && !empty($this->description) ? ' ('. $this->description .')' : '');
+  public function get_display_name ($include_desc = true, $bold_name = true) {
+    return ($bold_name ? '*' : ''). $this->name .($bold_name ? '*' : '') .($include_desc && !empty($this->description) ? ' ('. $this->description .')' : '');
   }
 
   public function load_requires () {
@@ -96,15 +96,28 @@ class Upgrade extends RPGEntitySaveable {
     return $this->_requires;
   }
 
-  public function get_required_items () {
-    if (empty($this->_requires)) $this->load_requires();
+  /**
+   * $type -> 'item', 'upgrade'
+   */
+  public function get_required_type ($type) {
+    $requires = $this->get_requires();
     $item_requirements = array();
-    foreach ($item_requirements as $requirement) {
-      if ($requirement->type != 'item') continue;
+    foreach ($requires as $requirement) {
+      if ($requirement->type != $type) continue;
       $item_requirements[] = $requirement;
     }
     return $item_requirements;
   }
+
+  // public function get_required_items () {
+  //   if (empty($this->_requires)) $this->load_requires();
+  //   $item_requirements = array();
+  //   foreach ($item_requirements as $requirement) {
+  //     if ($requirement->type != 'item') continue;
+  //     $item_requirements[] = $requirement;
+  //   }
+  //   return $item_requirements;
+  // }
 
   public function queue_process ($queue = null) {
     // Can't process an upgrade without the $queue item.

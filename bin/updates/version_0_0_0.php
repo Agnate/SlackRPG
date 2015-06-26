@@ -166,17 +166,17 @@ function update_version_0_0_0 ($forced = false) {
   add_update_query( "CREATE TABLE IF NOT EXISTS items (". implode(',', $item_table) .")" );
 
   // Add some Adventurers.
-  $adventurers = array();
-  $adventurers[] = array(':gid' => '', ':name' => 'Antoine Delorisci', ':icon' => ':antoine:', ':gender' => 'male', ':created' => $time, ':available' => true, ':level' => '1', ':exp' => 0, ':exp_tnl' => 1, ':class' => 'leywalker', ':champion' => false);
-  $adventurers[] = array(':gid' => '', ':name' => 'Catherine Hemsley', ':icon' => ':catherine:', ':gender' => 'female', ':created' => $time, ':available' => true, ':level' => '1', ':exp' => 0, ':exp_tnl' => 1, ':class' => '', ':champion' => false);
-  $adventurers[] = array(':gid' => '', ':name' => 'Gareth Lockheart', ':icon' => ':gareth:', ':gender' => 'male', ':created' => $time, ':available' => true, ':level' => '1', ':exp' => 0, ':exp_tnl' => 1, ':class' => '', ':champion' => false);
-  $adventurers[] = array(':gid' => '', ':name' => 'Reginald Tigerlily', ':icon' => ':reginald:', ':gender' => 'male', ':created' => $time, ':available' => true, ':level' => '1', ':exp' => 0, ':exp_tnl' => 1, ':class' => 'judge', ':champion' => false);
-  $adventurers[] = array(':gid' => '', ':name' => 'Morgan LeClaire', ':icon' => ':morgan:', ':gender' => 'female', ':created' => $time, ':available' => true, ':level' => '1', ':exp' => 0, ':exp_tnl' => 1, ':class' => '', ':champion' => false);
-  $adventurers[] = array(':gid' => '', ':name' => 'Freya von Alfheimr', ':icon' => ':freya:', ':gender' => 'female', ':created' => $time, ':available' => true, ':level' => '1', ':exp' => 0, ':exp_tnl' => 1, ':class' => 'magus', ':champion' => false);
-  //$adventurers[] = array(':gid' => '', ':name' => '', ':icon' => '', ':gender' => '', ':created' => '', ':available' => '', ':level' => '', ':exp' => 0, ':exp_tnl' => 1, ':class' => '', ':champion' => false);
-  foreach ($adventurers as $adventurer) {
-    add_update_query("INSERT INTO adventurers (gid, name, icon, gender, created, available, level, exp, exp_tnl, class, champion) VALUES (:gid, :name, :icon, :gender, :created, :available, :level, :exp, :exp_tnl, :class, :champion)", $adventurer);
-  }
+  // $adventurers = array();
+  // $adventurers[] = array(':gid' => '', ':name' => 'Antoine Delorisci', ':icon' => ':antoine:', ':gender' => 'male', ':created' => $time, ':available' => true, ':level' => '1', ':exp' => 0, ':exp_tnl' => 1, ':class' => 'leywalker', ':champion' => false);
+  // $adventurers[] = array(':gid' => '', ':name' => 'Catherine Hemsley', ':icon' => ':catherine:', ':gender' => 'female', ':created' => $time, ':available' => true, ':level' => '1', ':exp' => 0, ':exp_tnl' => 1, ':class' => '', ':champion' => false);
+  // $adventurers[] = array(':gid' => '', ':name' => 'Gareth Lockheart', ':icon' => ':gareth:', ':gender' => 'male', ':created' => $time, ':available' => true, ':level' => '1', ':exp' => 0, ':exp_tnl' => 1, ':class' => '', ':champion' => false);
+  // $adventurers[] = array(':gid' => '', ':name' => 'Reginald Tigerlily', ':icon' => ':reginald:', ':gender' => 'male', ':created' => $time, ':available' => true, ':level' => '1', ':exp' => 0, ':exp_tnl' => 1, ':class' => 'judge', ':champion' => false);
+  // $adventurers[] = array(':gid' => '', ':name' => 'Morgan LeClaire', ':icon' => ':morgan:', ':gender' => 'female', ':created' => $time, ':available' => true, ':level' => '1', ':exp' => 0, ':exp_tnl' => 1, ':class' => '', ':champion' => false);
+  // $adventurers[] = array(':gid' => '', ':name' => 'Freya von Alfheimr', ':icon' => ':freya:', ':gender' => 'female', ':created' => $time, ':available' => true, ':level' => '1', ':exp' => 0, ':exp_tnl' => 1, ':class' => 'magus', ':champion' => false);
+  // //$adventurers[] = array(':gid' => '', ':name' => '', ':icon' => '', ':gender' => '', ':created' => '', ':available' => '', ':level' => '', ':exp' => 0, ':exp_tnl' => 1, ':class' => '', ':champion' => false);
+  // foreach ($adventurers as $adventurer) {
+  //   add_update_query("INSERT INTO adventurers (gid, name, icon, gender, created, available, level, exp, exp_tnl, class, champion) VALUES (:gid, :name, :icon, :gender, :created, :available, :level, :exp, :exp_tnl, :class, :champion)", $adventurer);
+  // }
 
   // Add some Quests.
   $quests = array();
@@ -213,9 +213,9 @@ function update_version_0_0_0 ($forced = false) {
   $upgrades[] = array(':name_id' => "dorm1", ':name' => "Dormitory 1", ':description' => "increase max to 5 adventurers", ':cost' => 7500, ':duration' => (24 * $hours), ':requires' => '');
   $upgrades[] = array(':name_id' => "dorm2", ':name' => "Dormitory 2", ':description' => "increase max to 7 adventurers", ':cost' => 10000, ':duration' => (48 * $hours), ':requires' => 'upgrade,dorm1');
   $upgrades[] = array(':name_id' => "dorm3", ':name' => "Dormitory 3", ':description' => "increase max to 10 adventurers", ':cost' => 20000, ':duration' => (72 * $hours), ':requires' => 'upgrade,dorm2');
-  $upgrades[] = array(':name_id' => "speed1", ':name' => "Transportation: Horse", ':description' => "increase speed by 5%", ':cost' => 5000, ':duration' => (24 * $hours), ':requires' => '');
-  $upgrades[] = array(':name_id' => "speed2", ':name' => "Transportation: Pegasus", ':description' => "increase speed by 5%", ':cost' => 15000, ':duration' => (48 * $hours), ':requires' => 'upgrade,speed1');
-  $upgrades[] = array(':name_id' => "speed3", ':name' => "Transportation: Airship", ':description' => "increase speed by 10%", ':cost' => 30000, ':duration' => (72 * $hours), ':requires' => 'upgrade,speed2');
+  $upgrades[] = array(':name_id' => "speed1", ':name' => "Transportation: Horse", ':description' => "increase speed by 5%", ':cost' => 5000, ':duration' => (24 * $hours), ':requires' => 'item,animal_horse,4');
+  $upgrades[] = array(':name_id' => "speed2", ':name' => "Transportation: Pegasus", ':description' => "increase speed by 5%", ':cost' => 15000, ':duration' => (48 * $hours), ':requires' => 'upgrade,speed1|item,animal_pegasus,4');
+  $upgrades[] = array(':name_id' => "speed3", ':name' => "Transportation: Airship", ':description' => "increase speed by 10%", ':cost' => 30000, ':duration' => (72 * $hours), ':requires' => 'upgrade,speed2|item,ore_steel,10|item,ore_iron,10|item,ore_adamantine,3|item,ore_crystal');
   $upgrades[] = array(':name_id' => "equip1", ':name' => "Equipment: Iron", ':description' => "increase quest success rate by 2%", ':cost' => 3000, ':duration' => (24 * $hours), ':requires' => 'item,ore_iron,3');
   $upgrades[] = array(':name_id' => "equip2", ':name' => "Equipment: Steel", ':description' => "increase quest success rate by 2%", ':cost' => 5000, ':duration' => (24 * $hours), ':requires' => 'upgrade,equip1|item,ore_steel,3');
   $upgrades[] = array(':name_id' => "equip3", ':name' => "Equipment: Mithril ", ':description' => "increase quest success rate by 2%", ':cost' => 10000, ':duration' => (36 * $hours), ':requires' => 'upgrade,equip2|item,ore_mithril,3');
@@ -224,8 +224,8 @@ function update_version_0_0_0 ($forced = false) {
   $upgrades[] = array(':name_id' => "equip6", ':name' => "Equipment: Adamantine", ':description' => "increase quest success rate by 2%", ':cost' => 30000, ':duration' => (48 * $hours), ':requires' => 'upgrade,equip5|item,ore_adamantine,3');
   $upgrades[] = array(':name_id' => "equip7", ':name' => "Equipment: Demonsteel", ':description' => "increase quest success rate by 2%", ':cost' => 50000, ':duration' => (72 * $hours), ':requires' => 'upgrade,equip6|item,ore_demonite,3');
   $upgrades[] = array(':name_id' => "equip8", ':name' => "Equipment: Godsteel", ':description' => "increase quest success rate by 2%", ':cost' => 75000, ':duration' => (72 * $hours), ':requires' => 'upgrade,equip7|item,ore_godstone,3');
-  $upgrades[] = array(':name_id' => "heal1", ':name' => "Healer's Garden", ':description' => "reduce death rate by 2%", ':cost' => 25000, ':duration' => (48 * $hours), ':requires' => '');
-  $upgrades[] = array(':name_id' => "heal2", ':name' => "Apothecary", ':description' => "reduce death rate by 2%", ':cost' => 50000, ':duration' => (72 * $hours), ':requires' => 'upgrade,heal1');
+  $upgrades[] = array(':name_id' => "heal1", ':name' => "Healer's Garden", ':description' => "reduce death rate by 2%", ':cost' => 25000, ':duration' => (48 * $hours), ':requires' => 'item,herb_green,5');
+  $upgrades[] = array(':name_id' => "heal2", ':name' => "Apothecary", ':description' => "reduce death rate by 2%", ':cost' => 50000, ':duration' => (72 * $hours), ':requires' => 'upgrade,heal1|item,herb_red,5');
   //$upgrades[] = array(':name_id' => "", ':name' => "", ':description' => "", ':cost' => 0, ':duration' => 0, ':requires' => '');
   foreach ($upgrades as $upgrade) {
     add_update_query("INSERT INTO upgrades (name_id, name, description, cost, duration, requires) VALUES (:name_id, :name, :description, :cost, :duration, :requires)", $upgrade);
@@ -259,6 +259,7 @@ function update_version_0_0_0 ($forced = false) {
   $item_templates[] = array(':name_id' => 'powerstone_strider', ':name' => 'Strider Powerstone', ':icon' => '', ':type' => 'powerstone', ':rarity_lo' => 3, ':rarity_hi' => 5);
   $item_templates[] = array(':name_id' => 'powerstone_oracle', ':name' => 'Oracle Powerstone', ':icon' => '', ':type' => 'powerstone', ':rarity_lo' => 3, ':rarity_hi' => 5);
   $item_templates[] = array(':name_id' => 'powerstone_juggernaut', ':name' => 'Juggernaut Powerstone', ':icon' => '', ':type' => 'powerstone', ':rarity_lo' => 3, ':rarity_hi' => 5);
+  
   $item_templates[] = array(':name_id' => 'ore_iron', ':name' => 'Iron Ore', ':icon' => '', ':type' => 'ore', ':rarity_lo' => 0, ':rarity_hi' => 2);
   $item_templates[] = array(':name_id' => 'ore_steel', ':name' => 'Steel', ':icon' => '', ':type' => 'ore', ':rarity_lo' => 2, ':rarity_hi' => 3);
   $item_templates[] = array(':name_id' => 'ore_mithril', ':name' => 'Mithril Ore', ':icon' => '', ':type' => 'ore', ':rarity_lo' => 3, ':rarity_hi' => 4);
@@ -267,6 +268,12 @@ function update_version_0_0_0 ($forced = false) {
   $item_templates[] = array(':name_id' => 'ore_adamantine', ':name' => 'Adamantine', ':icon' => '', ':type' => 'ore', ':rarity_lo' => 4, ':rarity_hi' => 5);
   $item_templates[] = array(':name_id' => 'ore_demonite', ':name' => 'Demonite', ':icon' => '', ':type' => 'ore', ':rarity_lo' => 5, ':rarity_hi' => 5);
   $item_templates[] = array(':name_id' => 'ore_godstone', ':name' => 'Godstone', ':icon' => '', ':type' => 'ore', ':rarity_lo' => 5, ':rarity_hi' => 5);
+
+  $item_templates[] = array(':name_id' => 'animal_horse', ':name' => 'Horse', ':icon' => '', ':type' => 'animal', ':rarity_lo' => 1, ':rarity_hi' => 3);
+  $item_templates[] = array(':name_id' => 'animal_pegasus', ':name' => 'Pegasus', ':icon' => '', ':type' => 'animal', ':rarity_lo' => 3, ':rarity_hi' => 5);
+
+  $item_templates[] = array(':name_id' => 'herb_green', ':name' => 'Green Herb', ':icon' => '', ':type' => 'herb', ':rarity_lo' => 1, ':rarity_hi' => 2);
+  $item_templates[] = array(':name_id' => 'herb_red', ':name' => 'Red Herb', ':icon' => '', ':type' => 'herb', ':rarity_lo' => 3, ':rarity_hi' => 4);
   //$item_templates[] = array(':name_id' => '', ':name' => '', ':icon' => '', ':type' => '', ':rarity_lo' => 0, ':rarity_hi' => 5);
   foreach ($item_templates as $item_template) {
     add_update_query("INSERT INTO item_templates (name_id, name, icon, type, rarity_lo, rarity_hi) VALUES (:name_id, :name, :icon, :type, :rarity_lo, :rarity_hi)", $item_template);

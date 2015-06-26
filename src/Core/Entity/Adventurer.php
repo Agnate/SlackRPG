@@ -194,7 +194,8 @@ class Adventurer extends RPGEntitySaveable {
     $adventurer_class_id = $allow_class ? $class_ids[rand(0, count($class_ids) - 1)] : '';
 
     // Get the icon.
-    $icon = '';
+    $icon = ':rpg-adv-'.$gender.':';
+    if (!empty($adventurer_class_id)) $icon = ':rpg-adv-'.$gender.'-'.$adventurer_class_id.':';
     // $icon_i = rand(0, count($json['icons']) - 1);
     // $icon = $json['icons'][$icon_i];
     // unset($json['icons'][$icon_i]);

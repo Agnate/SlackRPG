@@ -1032,7 +1032,7 @@ class RPGSession {
 
       $upgrades = $player->get_available_upgrades();
       foreach ($upgrades as $upgrade) {
-        $response[] = '*'.$upgrade->get_display_name() .'* for '. Display::get_currency($upgrade->cost) .' and '. Display::get_duration_as_hours($upgrade->duration).' `upgrade '.$upgrade->name_id.'`';
+        $response[] = $upgrade->get_display_name() .' `upgrade '.$upgrade->name_id.'`'; //' for '. Display::get_currency($upgrade->cost) .' and '. Display::get_duration_as_hours($upgrade->duration).' `upgrade '.$upgrade->name_id.'`';
       }
 
       $this->respond($response);
@@ -1053,33 +1053,40 @@ class RPGSession {
       return FALSE;
     }
 
+    $response = array();
+
     // Check that they meet the requirements.
     if (!$player->meets_requirement($upgrade)) {
-      $this->respond('You do not meet the requirements of *'.$upgrade->get_display_name(false).'*.');
+      $response[] = 'You do not meet the requirements of *'.$upgrade->get_display_name(false).'*.';
+      $response[] = '';
+      $response[] = $this->show_upgrade($upgrade);
+      $this->respond($response);
       return FALSE;
     }
 
     // See if they have the required items.
     $items = $player->has_required_items($upgrade);
     if ($items === FALSE) {
-      $this->respond('You do not have all of the required items to upgrade to *'.$upgrade->get_display_name(false).'*.');
+      $response[] = 'You do not have all of the required items to upgrade to *'.$upgrade->get_display_name(false).'*.';
+      $response[] = '';
+      $response[] = $this->show_upgrade($upgrade);
+      $this->respond($response);
       return FALSE;
     }
 
     // Try to purchase the upgrade.
     if ($player->gold < $upgrade->cost) {
-      $this->respond('You do not have enough gold to purchase the upgrade *'.$upgrade->get_display_name(false).'*.');
+      $response[] = 'You do not have enough gold to purchase the upgrade *'.$upgrade->get_display_name(false).'*.';
+      $response[] = '';
+      $response[] = $this->show_upgrade($upgrade);
+      $this->respond($response);
       return FALSE;
     }
 
     // Check that they confirmed the upgrade.
-    $response = array();
     $confirm = array_pop($args);
     if ($confirm != 'CONFIRM') {
-      $response[] = '*Upgrade*: '.$upgrade->get_display_name(false);
-      if (!empty($upgrade->description)) $response[] = '*Description*: '.$upgrade->description;
-      $response[] = '*Cost*: '.Display::get_currency($upgrade->cost);
-      $response[] = '*Duration*: '.Display::get_duration_as_hours($upgrade->duration);
+      $response[] = $this->show_upgrade($upgrade);
       $response[] = '';
       $response[] = 'To confirm your departure, type:';
       $response[] = '`'.$cmd_word.' '.implode(' ', $orig_args).' CONFIRM`';
@@ -1267,6 +1274,7 @@ class RPGSession {
 
     // Power up the Adventurer.
     $adventurer->set_adventurer_class($adventurer_class);
+    $adventurer->icon = ':rpg-adv-'.$adventurer->gender.'-'.$adventurer_class->name_id.':';
     $success = $adventurer->save();
     if ($success === false) {
       $this->respond('There was an error saving your Adventurer during the power up. Please talk to Paul.');
@@ -1534,6 +1542,32 @@ class RPGSession {
     //$response[] = '*Popularity*: '.$adventurer->popularity;
     $response[] = '*Experience*: '.$adventurer->exp;
     $response[] = '*Experience to Next Level*: '.$adventurer->exp_tnl;
+    return implode("\n", $response);
+  }
+
+  protected function show_upgrade ($upgrade) {
+    $response = array();
+    $response[] = $upgrade->get_display_name(false);
+    if (!empty($upgrade->description)) $response[] = '*Description*: '.$upgrade->description;
+    $response[] = '*Time to complete*: '.Display::get_duration_as_hours($upgrade->duration);
+    $response[] = '*Cost*: '.Display::get_currency($upgrade->cost);
+
+    $required_items = $upgrade->get_required_type('item');
+    if (count($required_items) > 0) $response[] = '*Required Items*:';
+    foreach ($required_items as $requirement) {
+      $item = ItemTemplate::load(array('name_id' => $requirement->name_id));
+      if (empty($item)) continue;
+      $response[] = ($requirement->qty > 1 ? $requirement->qty.'x ' : ''). $item->get_display_name(false);
+    }
+
+    $required_upgrades = $upgrade->get_required_type('upgrade');
+    if (count($required_upgrades) > 0) $response[] = '*Prerequisite Upgrades*:';
+    foreach ($required_upgrades as $requirement) {
+      $req_upgrade = Upgrade::load(array('name_id' => $requirement->name_id));
+      if (empty($req_upgrade)) continue;
+      $response[] = $req_upgrade->get_display_name(false, false);
+    }
+
     return implode("\n", $response);
   }
 

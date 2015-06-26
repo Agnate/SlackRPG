@@ -20,6 +20,12 @@ class ItemDesc {
       case 'ore_adamantine': return $item->name.' is used to upgrade your Guild\'s weapons and armour.';
       case 'ore_demonite': return $item->name.' is used to upgrade your Guild\'s weapons and armour.';
       case 'ore_godstone': return $item->name.' is used to upgrade your Guild\'s weapons and armour.';
+
+      case 'animal_horse': return $item->name.' is used to upgrade your Guild\'s method of travel.';
+      case 'animal_pegasus': return $item->name.' is used to upgrade your Guild\'s method of travel.';
+
+      case 'herb_green': return $item->name.' is used to upgrade your Healer\'s Garden.';
+      case 'herb_red': return $item->name.' is used to upgrade your Apothecary.';
     }
     return '';
   }
