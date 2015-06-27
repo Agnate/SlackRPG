@@ -4,6 +4,7 @@
 define('RPG_GAME_DIR', RPG_SERVER_ROOT.'/src');
 
 // Add in any class requirements. Not using namespaces, so this has to be done manually.
+require_once(RPG_GAME_DIR.'/SlackAttachment.php');
 require_once(RPG_GAME_DIR.'/SlackMessage.php');
 require_once(RPG_GAME_DIR.'/Core/RPGEntity.php');
 require_once(RPG_GAME_DIR.'/Core/RPGEntitySaveable.php');

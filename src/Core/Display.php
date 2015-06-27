@@ -27,6 +27,10 @@ class Display {
     return $text;
   }
 
+  public static function get_exp ($exp) {
+    return $exp;
+  }
+
   public static function get_difficulty ($rate) {
     if ($rate <= 0) return ':rpg-quest-diff0:';
     if ($rate <= 35) return ':rpg-quest-diff1:';

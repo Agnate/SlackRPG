@@ -127,26 +127,26 @@ class Upgrade extends RPGEntitySaveable {
     $guild = Guild::load(array('gid' => $queue->gid));
     if (empty($guild)) return FALSE;
 
-    $result = array(
-      'messages' => array(
-        'instant_message' => array(
-          'text' => '',
-          'player' => $guild,
-        ),
-      ),
-    );
+    // Create message.
+    $attachment = new SlackAttachment ();
+    $message = new SlackMessage (array('player' => $guild));
+    $message->text = 'Your upgrade has been processed.';
+    $message->add_attachment($attachment);
+    $attachment->color = SlackAttachment::COLOR_GREEN;
+    $result = array('messages' => array($message));
 
     // Add the upgrade to the Guild.
     $guild->add_upgrade($this->name_id);
     $success = $guild->save();
     if ($success === false) {
-      $result['messages']['instant_message']['text'] = 'There was an error saving your *'.$this->get_display_name(false).'* upgrade. Please talk to Paul.';
+      $attachment->text = 'There was an error saving your *'.$this->get_display_name(false).'* upgrade. Please talk to Paul.';
+      $attachment->color = SlackAttachment::COLOR_RED;
       return $result;
     }
 
-    $result['messages']['instant_message']['text'] = '*'. $this->get_display_name() .'* upgrade is complete.';
+    $attachment->text = '*'. $this->get_display_name() .'* upgrade is complete.';
 
-    // If we were give a Queue, destroy it.
+    // If we were given a Queue, destroy it.
     if (!empty($queue)) $queue->delete();
 
     return $result;

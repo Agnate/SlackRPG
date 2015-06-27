@@ -148,10 +148,10 @@ class Quest extends RPGEntitySaveable {
     // Check if any items were found.
     $rarity_min = ($this->stars - 1);
     $rarity_max = $this->stars;
+    $items = array();
     if (rand(1, 100) <= $chance_of_item) {
       // Generate an item to be found, with the rarity relating to the Quest star rating.
       $templates = ItemTemplate::random(1, $rarity_min, $rarity_max);
-      $items = array();
       // Create the items and assign them to the Guild.
       foreach ($templates as $template) {
         $item = $guild->add_item($template);
@@ -180,6 +180,7 @@ class Quest extends RPGEntitySaveable {
     $advgroup = AdventuringGroup::load(array('agid' => $this->agid));
     // Get all the adventurers on this quest.
     $adventurers = Adventurer::load_multiple(array('agid' => $this->agid, 'gid' => $this->gid));
+    $adv_count = count($adventurers);
 
     // Disband the adventuring group.
     $advgroup->delete();
@@ -192,59 +193,41 @@ class Quest extends RPGEntitySaveable {
 
     // If it's successful, give out the rewards.
     $reward_exp = 0;
-    $player_text = array();
+    $quest_data = array('text' => array(), 'success' => $success, 'player' => $guild);
+    $channel_data = array('text' => array());
+    
     if ($success) {
-      $player_text[] = '*'. $this->name .'* was completed!';
+      $quest_data['success_msg'] = 'SUCCESS!';
+      $quest_data['text'][] = $this->name .' was completed.';
       $reward_gold = $this->get_reward_gold($guild, $adventurers);
       $reward_fame = $this->get_reward_fame($guild, $adventurers);
       $reward_items = $this->get_reward_items($guild, $adventurers);
       // Calculate the exp per adventurer.
       $reward_exp = ceil($this->get_reward_exp($guild, $adventurers) / count($adventurers));
 
-      if ($reward_gold > 0 || $reward_fame > 0 || $reward_exp > 0) {
-        $player_text[] = '';
-        $player_text[] = 'You receive:';
-      }
-
       // Give the Guild its reward.
       if ($reward_gold > 0) {
         $guild->gold += $reward_gold;
-        $player_text[] = Display::get_currency($reward_gold);
+        $quest_data['reward_gold'] = $reward_gold;
       }
       if ($reward_fame > 0) {
         $guild->fame += $reward_fame;
-        $player_text[] = Display::get_fame($reward_fame);
+        $quest_data['reward_fame'] = $reward_fame;
       }
       $guild->save();
 
       if ($reward_exp > 0) {
-        $player_text[] = $reward_exp.' experience points (divided among the participating adventurers)';
+        $quest_data['reward_exp'] = $reward_exp;
       }
 
-      $player_text[] = '';
+      if (!empty($reward_items)) {
+        $quest_data['reward_items'] = $reward_items;
+      }
     }
     else {
-      $player_text[] = 'Your adventuring party *FAILED* '. $this->name .'.';
+      $quest_data['success_msg'] = 'FAIL...';
+      $quest_data['text'][] = 'Your adventuring party failed to complete '. $this->name .'.';
     }
-
-    // Bring all the adventurers home and give them their exp.
-    foreach ($adventurers as $adventurer) {
-      $adventurer->agid = 0;
-      if (isset($reward_exp) && $reward_exp > 0) {
-        // Give the exp and if they leveled up, show a message.
-        if ($adventurer->give_exp($reward_exp)) {
-          $player_text[] = $adventurer->get_display_name().' is now level '.$adventurer->get_level(false).'!';
-        }
-      }
-      // Calculate if the adventurer died during this adventure ONLY if they failed the quest.
-      if (!$success && $death_rate > 0 && rand(1, 100) <= $death_rate) {
-        $adventurer->dead = true;
-        $player_text[] = ':rpg-tomb: RIP '.$adventurer->get_display_name().' died during the quest.';
-      }
-      $adventurer->save();
-    }
-
-    $channel_text = array();
 
     // If this is an exploration quest, reveal the location.
     if ($this->type == Quest::TYPE_EXPLORE) {
@@ -257,9 +240,28 @@ class Quest extends RPGEntitySaveable {
       // $quests = Quest::generate_quests($location);
 
       if (!empty($location->name)) {
-        $player_text[] = " You discovered ".$location->name.".";
-        $channel_text[] = $guild->get_display_name()." discovered ".$location->name.".";
+        $quest_data['text'][] = "You discovered ".$location->get_display_name().".";
+        $quest_data['text'][] = '';
+        $channel_data['text'][] = $guild->get_display_name()." discovered ".$location->get_display_name().".";
+        $channel_data['color'] = SlackAttachment::COLOR_GREEN;
       }
+    }
+
+    // Bring all the adventurers home and give them their exp.
+    foreach ($adventurers as $adventurer) {
+      $adventurer->agid = 0;
+      if (isset($reward_exp) && $reward_exp > 0) {
+        // Give the exp and if they leveled up, show a message.
+        if ($adventurer->give_exp($reward_exp)) {
+          $quest_data['text'][] = $adventurer->get_display_name().' is now level '.$adventurer->get_level(false).'!';
+        }
+      }
+      // Calculate if the adventurer died during this adventure ONLY if they failed the quest.
+      if (!$success && $death_rate > 0 && rand(1, 100) <= $death_rate) {
+        $adventurer->dead = true;
+        $quest_data['text'][] = ':rpg-tomb: RIP '.$adventurer->get_display_name().' died during the quest.';
+      }
+      $adventurer->save();
     }
 
     // Check if we need to reactivate this quest.
@@ -280,17 +282,87 @@ class Quest extends RPGEntitySaveable {
     // If a cooldown was set, we need to queue up the activation.
     if (!empty($cooldown)) $this->queue( $cooldown );
 
-    $result = array(
-      'messages' => array(),
-    );
-    if (isset($player_text) && !empty($player_text)) {
-      $result['messages']['instant_message'] = array(
-        'text' => implode("\n", $player_text),
-        'player' => $guild,
-      );
+
+    // Get attachment to display for Quest.
+    $quest_message = $this->get_quest_result_as_message($quest_data);
+    $quest_message->text = 'Your adventurer'.($adv_count != 1 ? 's' : '').' '.($adv_count != 1 ? 'have' : 'has').' returned home.';
+
+    if (!empty($channel_data['text'])) {
+      $channel_message = $this->get_quest_channel_result_as_message($channel_data);
     }
-    if (isset($channel_text) && !empty($channel_text)) $result['messages']['channel'] = array('text' => implode("\n", $channel_text));
+
+    // Send out the messages.
+    $result = array('messages' => array($quest_message));
+    if (isset($channel_message)) $result['messages'][] = $channel_message;
     return $result;
+  }
+
+  protected function get_quest_channel_result_as_message ($channel_data) {
+    if (is_array($channel_data['text'])) $channel_data['text'] = implode("\n", $channel_data['text']);
+    
+    $attachment = new SlackAttachment ($channel_data);
+    $message = new SlackMessage ();
+    $message->add_attachment($attachment);
+
+    return $message;
+  }
+
+  protected function get_quest_result_as_message ($quest_data) {
+    if (is_array($quest_data['text'])) $quest_data['text'] = implode("\n", $quest_data['text']);
+
+    $attachment = new SlackAttachment ();
+
+    if (isset($quest_data['text'])) $attachment->text = $quest_data['text'];
+    
+    if (isset($quest_data['color'])) $attachment->color = $quest_data['color'];
+    else $attachment->color = $quest_data['success'] ? SlackAttachment::COLOR_GREEN : SlackAttachment::COLOR_RED;
+
+    if (isset($quest_data['success_msg'])) {
+      $attachment->fallback = $quest_data['success_msg'];
+      $attachment->title = $quest_data['success_msg'];
+    }
+
+    if (isset($quest_data['reward_gold'])) {
+      $field = new SlackAttachmentField ();
+      $field->title = 'Gold';
+      $field->value = Display::get_currency($quest_data['reward_gold']);
+
+      $attachment->add_field($field);
+    }
+
+    if (isset($quest_data['reward_fame'])) {
+      $field = new SlackAttachmentField ();
+      $field->title = 'Fame';
+      $field->value = Display::get_fame($quest_data['reward_fame']);
+
+      $attachment->add_field($field);
+    }
+
+    if (isset($quest_data['reward_exp'])) {
+      $field = new SlackAttachmentField ();
+      $field->title = 'Experience';
+      $field->value = Display::get_exp($quest_data['reward_exp']);
+
+      $attachment->add_field($field);
+    }
+
+    if (isset($quest_data['reward_items'])) {
+      $field = new SlackAttachmentField ();
+      $field->title = 'Experience';
+      $items = array();
+      foreach ($quest_data['reward_items'] as $item) {
+        $items[] = $item->get_display_name();
+      }
+      $field->value = implode("\n", $items);
+
+      $attachment->add_field($field);
+    }
+
+    $message = new SlackMessage ();
+    $message->player = $quest_data['player'];
+    $message->add_attachment($attachment);
+
+    return $message;
   }
 
   protected function queue_process_reactivate ($queue = null) {

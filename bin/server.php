@@ -72,50 +72,42 @@ function timer_process_queue () {
     // Process the queue item.
     $result = $item->queue_process($qitem);
 
-    // Expected result:
-    // $result = array(
-    //   'messages' => array(
-    //     'instant_message' => array(
-    //       'text' => $player_text,
-    //       'player' => $guild,
-    //     ),
-    //     'channel' => array(
-    //       'text' => $channel_text
-    //     ),
-    //   ),
-    // );
-
-    // Figure out a way to send this notice to the player when their party has returned.
+    // Send out any SlackMessages returned in the result.
     if (is_array($result)) {
       //$logger->notice($result);
 
       // If there are messages to send, do it.
       if (isset($result['messages'])) {
-        foreach ($result['messages'] as $method => $info) {
-          // Get the message.
-          $msg = is_string($info) ? trim($info) : '';
-          if (is_array($info) && isset($info['text'])) $msg = trim($info['text']);
-          // Skip if the message is blank.
-          if (empty($msg)) continue;
-          // Determine the channel to send it.
-          $channel = null;
-          if ($method == 'instant_message' && isset($info['player'])) $channel = get_user_channel($info['player']->slack_user_id);
-          if (!empty($channel) || $method == 'channel') send_message($msg, $channel);
-          //$logger->notice("Msg to ".(empty($channel) ? '#channel' : $channel).": ".$msg);
+        //$logger->notice($result['messages']);
+
+        foreach ($result['messages'] as $message) {
+          // Send off the message.
+          send_message($message);
         }
       }
     }
   }
 }
 
-function send_message ($text, $channel = null) {
+function send_message ($message) {
   global $commander, $logger;
 
-  $payload = compact('text');
-  $payload['as_user'] = 'true';
-  $payload['username'] = SLACK_BOT_USERNAME;
-  $payload['channel'] = SLACK_BOT_PUBLIC_CHANNEL;
-  if (!empty($channel)) $payload['channel'] = $channel;
+  // Check if we need to alter the channel for personal messages.
+  if ($message->is_instant_message()) {
+    $message->channel = get_user_channel($message->player->slack_user_id);
+  }
+
+  $message->as_user = 'true';
+  $message->username = SLACK_BOT_USERNAME;
+  if (empty($message->channel)) $message->channel = SLACK_BOT_PUBLIC_CHANNEL;
+
+  // Get message as associative array.
+  $payload = $message->encode();
+
+  // Manually encode attachments.
+  if (isset($payload['attachments']) && is_array($payload['attachments'])) {
+    $payload['attachments'] = json_encode($payload['attachments']);
+  }
 
   $response = $commander->execute('chat.postMessage', $payload);
   $body = $response->getBody();
@@ -255,16 +247,16 @@ $client->on("message", function($message) use ($client, $logger) {
     $response = $session->handle($text, $session_data);
     //$logger->notice($response);
 
-    // Send the message to the user.
-    if (isset($response['text']) && !empty($response['text'])) {
-      $response_msg = $response['text'];
-      $response_channel = (isset($response['channel']) && !empty($response['channel'])) ? get_user_channel($response['channel']) : null;
-      send_message($response_msg, $response_channel);
+    // Send the messages to the users.
+    if (isset($response['personal']) && !empty($response['personal'])) {
+      foreach ($response['personal'] as $personal_message) {
+        send_message($personal_message);
+      }
     }
 
     // If there's a global message, send that.
-    if (isset($response['global_text']) && !empty($response['global_text'])) {
-      send_message($response['global_text']);
+    if (isset($response['channel']) && !empty($response['channel'])) {
+      send_message($response['channel']);
     }
   }
 });

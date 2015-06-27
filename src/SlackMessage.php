@@ -1,39 +1,77 @@
 <?php
 
 class SlackMessage {
+  
+  public $player;
 
-  public $url;
-  public $username;
-  public $icon;
+  public $channel;
+  public $text;
+  public $parse;
+  public $link_names;
+  public $attachments;
+  public $unfurl_links;
+  public $unfurl_media;
 
-  function __construct ($url, $username, $icon) {
-    $this->url = $url;
-    $this->username = $username;
-    $this->icon = $icon;
+  static $_mandatory = array('channel', 'text');
+  static $_lists = array('attachments');
+  static $_do_not_encode = array('player');
+
+  function __construct ($data = array()) {
+    // Save values to object.
+    if (count($data)) {
+      foreach ($data as $key => $value) {
+        if (property_exists($this, $key)) {
+          $this->{$key} = $value;
+        }
+      }
+    }
+
+    // Set defaults.
+    if ($this->channel === null) $this->channel = '';
+    if ($this->text === null) $this->text = '';
+    if (!is_array($this->attachments)) $this->attachments = array();
   }
 
-  /**
-   * $fields:
-   *    'payload' -> Contains the text to show the user.
-   *    'channel' -> The channel to send it to. Defaults to slack-hook channel. Use @username to send privately.
-   */
-  public function send ($text, $channel = NULL) {
-    $payload = compact('text');
-    $payload['username'] = $this->username;
-    $payload['icon_emoji'] = $this->icon;
-    $payload['as_user'] = true;
-    if (!empty($channel)) $payload['channel'] = $channel;
+  public function encode () {
+    // Get all the fields to save out.
+    $data = call_user_func('get_object_vars', $this);
 
-    $fields = array(
-      'payload' => json_encode($payload),
-    );
+    foreach ($data as $key => $value) {
+      // If we shouldn't encode this, don't.
+      if (in_array($key, static::$_do_not_encode)) {
+        unset($data[$key]);
+        continue;
+      }
 
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, $this->url);
-    curl_setopt($ch, CURLOPT_POST, 1);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, $fields);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-    $server_output = curl_exec ($ch);
-    curl_close ($ch);
+      // If any of the values are null, remove them.
+      if ($value === null && !in_array($key, static::$_mandatory)) {
+        unset($data[$key]);
+        continue;
+      }
+
+      // If these are lists, handle differently.
+      if (!in_array($key, static::$_lists)) continue;
+
+      // If the list is empty and not mandatory, remove it.
+      if (empty($value) && !in_array($key, static::$_mandatory)) {
+        unset($data[$key]);
+        continue;
+      }
+
+      // Convert any special objects into associative arrays.
+      foreach ($value as $field_key => $field) {
+        $data[$key][$field_key] = method_exists($field, 'encode') ? $field->encode() : $field;
+      }
+    }
+
+    return $data;
+  }
+
+  public function is_instant_message () {
+    return !empty($this->player);
+  }
+
+  public function add_attachment ($attachment) {
+    $this->attachments[] = $attachment;
   }
 }

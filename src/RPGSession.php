@@ -14,9 +14,6 @@ class RPGSession {
   const PERSONAL = 'personal';
   
   function __construct() {
-    $this->response['username'] = 'RPG';
-    $this->response['icon_emoji'] = ':rpg:';
-
     // NOTE: For command keys (the actual text the user will type), short-forms should come AFTER the long forms.
     //     Example:
     //     $this->register_callback(array('updates', 'update'), 'cmd_updates');
@@ -1301,6 +1298,110 @@ class RPGSession {
     // Load the player and fail out if they have not created a Guild.
     if (!($player = $this->load_current_player())) return;
 
+    // Get a quest and fake-test finishing it.
+    $quest = Quest::load(array('locid' => 3));
+    
+    $adventurers = $player->get_best_adventurers($quest->party_size_max);
+
+    // Put together the adventuring party.
+    $data = array(
+      'gid' => $player->gid,
+      'created' => time(),
+      'task_id' => $quest->qid,
+      'task_type' => 'Quest',
+      'task_eta' => $quest->get_duration($player, $adventurers),
+      'completed' => false,
+    );
+    $advgroup = new AdventuringGroup ($data);
+    $success = $advgroup->save();
+    if ($success === false) {
+      $this->respond('There was a problem saving the adventuring group. Please talk to Paul.');
+      return FALSE;
+    }
+
+    // Assign all the adventurers to the new group.
+    foreach ($adventurers as $adventurer) {
+      $adventurer->agid = $advgroup->agid;
+      $success = $adventurer->save();
+      if ($success === false) {
+        $this->respond('There was a problem saving an adventurer to the adventuring group. Please talk to Paul.');
+        return FALSE;
+      }
+    }
+
+    // Assign adventuring group to the quest.
+    $quest->gid = $player->gid;
+    $quest->agid = $advgroup->agid;
+    $quest->active = false;
+    $success = $quest->save();
+    if ($success === false) {
+      $this->respond('There was a problem saving the quest. Please talk to Paul.');
+      return FALSE;
+    }
+
+    // Process the "completed" quest.
+    $response = $quest->queue_process();
+
+    d($response);
+
+
+
+    // Test new slack attachments.
+    // $attachment = new SlackAttachment ();
+    // $attachment->fallback = 'fallback text';
+    // $attachment->color = '#000000';
+    // $attachment->pretext = 'pretext';
+    // $attachment->author_name = 'author name';
+    // $attachment->author_link = 'author link';
+    // $attachment->author_icon = 'author icon';
+    // $attachment->title = 'title';
+    // $attachment->title_link = 'title link';
+    // $attachment->text = 'text';
+    // $attachment->image_url = 'image url';
+    // $attachment->thumb_url = 'thumb url';
+
+    // $field1 = new SlackAttachmentField ();
+    // $field1->title = 'Field1';
+    // $field1->value = 'value1';
+    // $field1->short = true;
+
+    // d($field1->encode());
+
+    // $field2 = new SlackAttachmentField ();
+    // $field2->title = 'Field2';
+    // $field2->value = 'value2';
+
+    // d($field2->encode());
+
+    // $attachment->add_field($field1);
+    // $attachment->add_field($field2);
+
+    // d($attachment->encode());
+
+    // $attachment2 = new SlackAttachment ();
+    // $attachment2->fallback = 'fallback text';
+    // $attachment2->text = 'text';
+    
+    // d($attachment2->encode());
+
+
+    // $message = new SlackMessage ();
+    // $message->channel = 'channel';
+    // $message->text = 'text';
+    // $message->parse = 'parse';
+    // $message->link_names = 'link names';
+    // $message->unfurl_links = 'unfurl links';
+    // $message->unfurl_media = 'unfurl media';
+
+    // d($message->encode());
+
+    // $message->add_attachment($attachment);
+    // $message->add_attachment($attachment2);
+
+    // d($message->encode());
+
+
+
     // Test encoding and decoding upgrade requirements.
     // $list = array(
     //   new Requirement (array('type' => 'item', 'name_id' => 'ore_steel', 'qty' => 3)),
@@ -1457,9 +1558,7 @@ class RPGSession {
 
   protected function get_current_player () {
     // If we've already loaded this one, we're done.
-    if (!empty($this->curplayer)) {
-      return $this->curplayer;
-    }
+    if (!empty($this->curplayer)) return $this->curplayer;
 
     // First time loading the player, so we need the data.
     $data = array(
@@ -1470,6 +1569,15 @@ class RPGSession {
     $this->curplayer = Guild::load($data);
 
     return $this->curplayer;
+  }
+
+  protected function create_temp_player () {
+    $data = array(
+      'slack_user_id' => $this->data['user_id'],
+      'username' => $this->data['user_name'],
+    );
+    $player = new Guild ($data);
+    return $player;
   }
 
   protected function get_typed ($cmd, $args) {
@@ -1635,23 +1743,54 @@ class RPGSession {
     return preg_replace(array_keys($info), array_values($info), $string);
   }
 
-  public function respond ($text = null, $location = RPGSession::PERSONAL) {
+  public function respond ($text = null, $location = RPGSession::PERSONAL, $player = null, $color = null) {
     if (is_array($text)) $text = implode("\n", $text);
     else if (!is_string($text)) $text = '';
 
-    // Set the channel.
-    $this->response['channel'] = ($location == RPGSession::PERSONAL) ? $this->data['user_id'] : null;
+    // Create the attachment and message.
+    $data = compact('text');
+    if (!empty($color)) $data['color'] = $color;
+    $attachment = new SlackAttachment ($data);
 
-    // Set the global and/or private text.
-    if ($location == RPGSession::CHANNEL) $this->response['global_text'] = $text;
-    else $this->response['text'] = $text;
+    // Operate on the channel message.
+    if ($location == RPGSession::CHANNEL) {
+      // Create a message if we don't have one.
+      if (!isset($this->response['channel'])) $this->response['channel'] = new SlackMessage ();
+      // Add the attachment to the message.
+      $this->response['channel']->add_attachment($attachment);
+    }
+    // Operate on the personal message.
+    else if ($location == RPGSession::PERSONAL) {
+      // Create a list of messages if it hasn't happened already.
+      if (!isset($this->response['personal'])) $this->response['personal'] = array();
+
+      // If no player is set, it means we need to send to the current player.
+      if (empty($player)) {
+        // Get the current player.
+        $player = $this->get_current_player();
+
+        // If the current player isn't registered yet, create a fake one so we can send the message.
+        if (empty($player)) $player = $this->create_temp_player();
+      }
+
+      // Set up the message for this player if we haven't already.
+      if (!isset($this->response['personal'][$player->slack_user_id])) $this->response['personal'][$player->slack_user_id] = new SlackMessage (array('player' => $player));
+
+      // If we added a colour, create an attachment.
+      if (!empty($color)) $this->response['personal'][$player->slack_user_id]->add_attachment($attachment);
+      // Otherwise add the text to the message.
+      else $this->response['personal'][$player->slack_user_id]->text .= $text;
+
+    }
 
     // If this is debug mode through the browser, just spit it out.
     if (isset($this->data['forced_debug_mode']) && $this->data['forced_debug_mode'] == 'true') {
-      echo '<head><link rel="stylesheet" type="text/css" href="debug/css/debug.css"></head>';
+      if (!isset($this->response['added_debug_head'])) {
+        $this->response['added_debug_head'] = true;
+        echo '<head><link rel="stylesheet" type="text/css" href="debug/css/debug.css"></head>';
+      }
       echo '<u>CHANNEL: '. $location .'</u><br><br>';
-      if (isset($this->response['text']) && !empty($this->response['text'])) echo '<div class="channel-'.$location.'">'.$this->_convert_to_markup($this->response['text']).'</div><br><br>';
-      if ($location == RPGSession::CHANNEL && isset($this->response['global_text']) && !empty($this->response['global_text'])) echo '<div class="channel-'.$location.'">'.$this->_convert_to_markup($this->response['global_text']).'</div><br><br>';
+      if (!empty($text)) echo '<div class="channel-'.$location.'">'.$this->_convert_to_markup($text).'</div><br><br>';
       return;
     }
   }
