@@ -105,9 +105,9 @@ function send_message ($message) {
   $payload = $message->encode();
 
   // Manually encode attachments.
-  if (isset($payload['attachments']) && is_array($payload['attachments'])) {
-    $payload['attachments'] = json_encode($payload['attachments']);
-  }
+  // if (isset($payload['attachments']) && is_array($payload['attachments'])) {
+  //   $payload['attachments'] = json_encode($payload['attachments']);
+  // }
 
   $response = $commander->execute('chat.postMessage', $payload);
   $body = $response->getBody();
@@ -206,14 +206,14 @@ $client->on("handshake", function() use ($logger) {
   $logger->notice("Handshake received.");
 });
 
-$client->on("connect", function($headers) use ($logger, $client) {
+$client->on("connect", function() use ($logger, $client) {
   $logger->notice("Connected.");
 });
 
 $client->on("message", function($message) use ($client, $logger) {
   // Only keep track of messages.
   $data = json_decode($message->getData(), true);
-  if (isset($data['type']) && $data['type'] == 'message') {
+  if (isset($data['type']) && $data['type'] == 'message' && !isset($data['subtype'])) {
     // Skip if we don't have the appropriate data.
     if (!isset($data['user'])) return;
     if (!isset($data['channel'])) return;

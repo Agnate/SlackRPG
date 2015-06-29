@@ -62,6 +62,9 @@ class SlackMessage {
       foreach ($value as $field_key => $field) {
         $data[$key][$field_key] = method_exists($field, 'encode') ? $field->encode() : $field;
       }
+
+      // Encode the list.
+      $data[$key] = json_encode($value);
     }
 
     return $data;

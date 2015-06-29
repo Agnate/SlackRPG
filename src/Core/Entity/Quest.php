@@ -285,7 +285,7 @@ class Quest extends RPGEntitySaveable {
 
     // Get attachment to display for Quest.
     $quest_message = $this->get_quest_result_as_message($quest_data);
-    $quest_message->text = 'Your adventurer'.($adv_count != 1 ? 's' : '').' '.($adv_count != 1 ? 'have' : 'has').' returned home.';
+    $quest_message->text = 'Your adventurer'.($adv_count != 1 ? 's' : '').' '.($adv_count != 1 ? 'have' : 'has').' returned home from '.($this->type == Quest::TYPE_EXPLORE ? 'exploring' : 'questing').'.';
 
     if (!empty($channel_data['text'])) {
       $channel_message = $this->get_quest_channel_result_as_message($channel_data);
@@ -301,6 +301,7 @@ class Quest extends RPGEntitySaveable {
     if (is_array($channel_data['text'])) $channel_data['text'] = implode("\n", $channel_data['text']);
     
     $attachment = new SlackAttachment ($channel_data);
+    $attachment->fallback = $channel_data['text'];
     $message = new SlackMessage ();
     $message->add_attachment($attachment);
 
@@ -322,11 +323,15 @@ class Quest extends RPGEntitySaveable {
       $attachment->title = $quest_data['success_msg'];
     }
 
+    $attachment->fallback .= ' '.$quest_data['text'];
+    $rewards = array();
+
     if (isset($quest_data['reward_gold'])) {
       $field = new SlackAttachmentField ();
       $field->title = 'Gold';
       $field->value = Display::get_currency($quest_data['reward_gold']);
-
+      $field->short = 'true';
+      $rewards[] = $field->value;
       $attachment->add_field($field);
     }
 
@@ -334,7 +339,8 @@ class Quest extends RPGEntitySaveable {
       $field = new SlackAttachmentField ();
       $field->title = 'Fame';
       $field->value = Display::get_fame($quest_data['reward_fame']);
-
+      $field->short = 'true';
+      $rewards[] = $field->value;
       $attachment->add_field($field);
     }
 
@@ -342,7 +348,8 @@ class Quest extends RPGEntitySaveable {
       $field = new SlackAttachmentField ();
       $field->title = 'Experience';
       $field->value = Display::get_exp($quest_data['reward_exp']);
-
+      $field->short = 'true';
+      $rewards[] = $field->value.' experience points (divided among the participating adventurers)';
       $attachment->add_field($field);
     }
 
@@ -354,9 +361,12 @@ class Quest extends RPGEntitySaveable {
         $items[] = $item->get_display_name();
       }
       $field->value = implode("\n", $items);
-
+      $field->short = 'true';
+      $rewards[] = implode(', ', $items);
       $attachment->add_field($field);
     }
+
+    if (!empty($rewards)) $attachment->fallback .= ' You receive: '. implode(', ', $rewards);
 
     $message = new SlackMessage ();
     $message->player = $quest_data['player'];

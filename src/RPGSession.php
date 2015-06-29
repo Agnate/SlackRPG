@@ -228,7 +228,7 @@ class RPGSession {
       $response[] = '';
       $response[] = '*Upgrades*:';
       foreach ($upgrades as $upgrade) {
-        $response[] = $upgrade->get_display_name();
+        $response[] = $upgrade->get_display_name(true, false);
       }
       $response[] = '';
     }
@@ -242,9 +242,14 @@ class RPGSession {
    * Recruit new Adventurers.
    */
   protected function cmd_recruit ($args = array()) {
+    $orig_args = $args;
+    $cmd_word = 'recruit';
+
     // Load the player and fail out if they have not created a Guild.
     if (!($player = $this->load_current_player())) return;
     
+    $response = array();
+
     // If no Adventurer is selected, list the available ones.
     if (empty($args) || empty($args[0])) {
       // Load up any adventurers in the tavern.
@@ -255,7 +260,6 @@ class RPGSession {
         return FALSE;
       }
 
-      $response = array();
       $response[] = 'Adventurers in the Tavern:';
       foreach ($adventurers as $adventurer) {
         $adventurer_cost = $adventurer->level * 250;
@@ -264,6 +268,12 @@ class RPGSession {
 
       $this->respond($response);
       return FALSE;
+    }
+
+    // Check the last argument for the confirmation code.
+    $confirmation = false;
+    if (!empty($args) && strpos($args[count($args)-1], 'CONFIRM') === 0) {
+      $confirmation = array_pop($args);
     }
 
     // Check if the player is at their max.
@@ -287,6 +297,24 @@ class RPGSession {
       return FALSE;
     }
 
+    // Check for a valid confirmation code.
+    if (!empty($confirmation) && $confirmation != 'CONFIRM') {
+      $response[] = 'The confirmation code "'.$confirmation.'" is invalid. The code should be: `CONFIRM`.';
+      $response[] = '';
+      // Re-display the confirmation text.
+      $confirmation = false;
+    }
+
+    // Display the confirmation message and code.
+    if (empty($confirmation)) {
+      $response[] = $this->show_adventurer_status($adventurer);
+      $response[] = '';
+      $response[] = 'To confirm the recruiting, type:';
+      $response[] = '`'.$cmd_word.' '.implode(' ', $orig_args).' CONFIRM`';
+      $this->respond($response);
+      return FALSE;
+    }
+
     // Remove the gold.
     $player->gold -= $adventurer_cost;
     $success = $player->save();
@@ -304,7 +332,7 @@ class RPGSession {
       return FALSE;
     }
 
-    $this->respond($player->get_display_name().' has recruited a new adventurer, '.$adventurer->get_display_name().'.', RPGSession::CHANNEL);
+    $this->respond($player->get_display_name().' just recruited a new adventurer, '.$adventurer->get_display_name().'.', RPGSession::CHANNEL);
     $this->respond('You recruited '.$adventurer->get_display_name().' for '.Display::get_currency($adventurer_cost).'.');
   }
 
@@ -610,7 +638,7 @@ class RPGSession {
     $last_name = ($name_count > 1) ? ', and '.array_pop($names) : '';
     $names = implode(', ', $names).$last_name;
 
-    $this->respond($names.' embark'.($name_count == 1 ? 's' : '').' on the quest to '.$quest->name.' returning in '.Display::get_duration_as_hours($duration).'.');
+    $this->respond($names.' embark'.($name_count == 1 ? 's' : '').' on the quest of '.$quest->name.' returning in '.Display::get_duration_as_hours($duration).'.');
   }
 
 
@@ -1054,7 +1082,7 @@ class RPGSession {
 
     // Check that they meet the requirements.
     if (!$player->meets_requirement($upgrade)) {
-      $response[] = 'You do not meet the requirements of *'.$upgrade->get_display_name(false).'*.';
+      $response[] = 'You do not meet the requirements of '.$upgrade->get_display_name(false).'.';
       $response[] = '';
       $response[] = $this->show_upgrade($upgrade);
       $this->respond($response);
@@ -1064,7 +1092,7 @@ class RPGSession {
     // See if they have the required items.
     $items = $player->has_required_items($upgrade);
     if ($items === FALSE) {
-      $response[] = 'You do not have all of the required items to upgrade to *'.$upgrade->get_display_name(false).'*.';
+      $response[] = 'You do not have all of the required items to upgrade to '.$upgrade->get_display_name(false).'.';
       $response[] = '';
       $response[] = $this->show_upgrade($upgrade);
       $this->respond($response);
@@ -1073,7 +1101,7 @@ class RPGSession {
 
     // Try to purchase the upgrade.
     if ($player->gold < $upgrade->cost) {
-      $response[] = 'You do not have enough gold to purchase the upgrade *'.$upgrade->get_display_name(false).'*.';
+      $response[] = 'You do not have enough gold to purchase the upgrade '.$upgrade->get_display_name(false).'.';
       $response[] = '';
       $response[] = $this->show_upgrade($upgrade);
       $this->respond($response);
@@ -1113,7 +1141,7 @@ class RPGSession {
       return FALSE;
     }
 
-    $this->respond('*'. $upgrade->get_display_name(false) .'* was purchased for '.Display::get_currency($upgrade->cost).' and will be upgraded in '.Display::get_duration_as_hours($duration).'.');
+    $this->respond($upgrade->get_display_name(false) .' was purchased and will be upgraded in '.Display::get_duration_as_hours($duration).'.');
   }
 
 
@@ -1643,7 +1671,7 @@ class RPGSession {
   protected function show_adventurer_status ($adventurer) {
     $response = array();
     // Show the status.
-    $response[] = '*Name*: '.$adventurer->get_display_name(false, true, false, false, false);
+    $response[] = $adventurer->get_display_name(true, true, false, false, true);
     $response[] = '*Gender*: '.$adventurer->get_gender(true);
     $response[] = '*Class*: '.($adventurer->has_adventurer_class() ? $adventurer->get_adventurer_class()->get_display_name() : '_None_');
     $response[] = '*Level*: '.$adventurer->level;

@@ -139,12 +139,12 @@ class Upgrade extends RPGEntitySaveable {
     $guild->add_upgrade($this->name_id);
     $success = $guild->save();
     if ($success === false) {
-      $attachment->text = 'There was an error saving your *'.$this->get_display_name(false).'* upgrade. Please talk to Paul.';
+      $attachment->text = 'There was an error saving your '.$this->get_display_name(false).' upgrade. Please talk to Paul.';
       $attachment->color = SlackAttachment::COLOR_RED;
       return $result;
     }
 
-    $attachment->text = '*'. $this->get_display_name() .'* upgrade is complete.';
+    $attachment->text = $this->get_display_name() .' upgrade is complete.';
 
     // If we were given a Queue, destroy it.
     if (!empty($queue)) $queue->delete();

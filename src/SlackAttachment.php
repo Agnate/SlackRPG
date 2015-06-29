@@ -15,9 +15,10 @@ class SlackAttachment {
   public $fields; // List of SlackAttachmentField objects (see bottom of file for other class).
   public $image_url;
   public $thumb_url;
+  public $mrkdwn_in;
 
-  static $_mandatory = array('fallback', 'text');
-  static $_lists = array('fields');
+  static $_mandatory = array('fallback', 'text', 'mrkdwn_in');
+  static $_lists = array('fields', 'mrkdwn_in');
 
   const COLOR_RED = '#D50200';
   const COLOR_GREEN = '#2FA44F';
@@ -36,6 +37,7 @@ class SlackAttachment {
     if ($this->fallback === null) $this->fallback = '';
     if ($this->text === null) $this->text = '';
     if (!is_array($this->fields)) $this->fields = array();
+    if ($this->mrkdwn_in === null) $this->mrkdwn_in = array('pretext', 'text', 'fields');
   }
 
   public function encode () {
@@ -62,6 +64,9 @@ class SlackAttachment {
       foreach ($value as $field_key => $field) {
         $data[$key][$field_key] = method_exists($field, 'encode') ? $field->encode() : $field;
       }
+
+      // Encode the list.
+      $data[$key] = json_encode($value);
     }
 
     return $data;
@@ -95,7 +100,7 @@ class SlackAttachmentField {
     // Defaults
     if ($this->title === null) $this->title = '';
     if ($this->value === null) $this->value = '';
-    if ($this->short === null) $this->short = false;
+    if ($this->short === null) $this->short = 'false';
   }
 
   public function encode () {
