@@ -9,25 +9,25 @@ require_once(RPG_SERVER_ROOT.'/src/autoload.php');
  * Remove all available quests.
  */
 function remove_available_quests ($output_information = false) {
-  // Load up the list of adventurer names.
-  /*$json = Adventurer::load_adventurer_names_list();
+  // Load up the list of quest names.
+  //$json = Quest::load_quest_names_list();
 
-  // Get all of the available adventurers.
-  $adventurers = Adventurer::load_multiple(array('available' => true, 'gid' => 0, 'agid' => 0));
+  // Get all of the available quests.
+  $quests = Quest::load_multiple(array('active' => true, 'permanent' => false, 'gid' => 0, 'agid' => 0));
 
-  // Get the names from the adventurers and re-insert them into the JSON file of names.
-  foreach ($adventurers as $adventurer) {
-    // Recycle the Adventurer's name and icon by adding it back to the JSON file.
-    Adventurer::recycle_adventurer($adventurer, $json);
+  // Get the names from the quests and re-insert them into the JSON file of names.
+  foreach ($quests as $quest) {
+    // Recycle the Quest's name and icon by adding it back to the JSON file.
+    Quest::recycle_quest($quest, $json);
 
-    // Delete the adventurer.
-    $adventurer->delete();
+    // Delete the quest.
+    $quest->delete();
 
-    if ($output_information) print 'Deleted adventurer: '.$adventurer->name."\n";
+    if ($output_information) print 'Deleted quest: '.$quest->name."\n";
   }
 
   // Add the names back to the JSON file.
-  Adventurer::save_adventurer_names_list($json);*/
+  //Quest::save_quest_names_list($json);
 }
 
 
@@ -49,27 +49,35 @@ function generate_new_quests ($output_information = false, $num_quests = 0) {
   $map = Map::load(array('season' => $season->sid));
 
   // Get list of all revealed locations.
+  $types = Location::types();
   $locations = Location::load_multiple(array('mapid' => $map->mapid, 'type' => $types, 'revealed' => true));
+  $original_locations = $locations;
 
   // If no number of quests are set, do it based on the number of active Guilds.
   if ($num_quests <= 0) {
     $guilds = Guild::load_multiple(array('season' => $season->sid));
-    $num_quests = !empty($guilds) ? min(count($guilds), count($locations)) : count($locations);
+    $num_guilds = count($guilds);
+    $num_guilds += rand(0, ceil($num_guilds / 3));
+    $num_locations = count($locations) + rand(0, 2);
+    $num_quests = !empty($guilds) ? min($num_guilds, $num_locations) : $num_locations;
   }
+
+  print 'Generating '.$num_quests." quest".($num_quests == 1 ? '' : 's')."...\n";
   
   // Generate some quests.
   $time = time();
   $quests = array();
   for ($i = 0; $i < $num_quests; $i++) {
     // Generate the quest.
+    if (empty($locations)) $locations = $original_locations;
     $location = array_splice($locations, array_rand($locations), 1);
     $location = array_pop($location);
-    $quest = Quest::generate_quests($location, 1, true);
-    $quests[] = $quest;
+    $gen_quests = Quest::generate_quests($location, 1, true);
+    if (!empty($gen_quests)) $quests = array_merge($quests, $gen_quests);
   }
 
   // Write out the JSON file to prevent names from being reused.
-  //Adventurer::save_adventurer_names_list($json);
+  //Quest::save_quest_names_list($json);
 
   // Output the adventurers that were created.
   if ($output_information) {

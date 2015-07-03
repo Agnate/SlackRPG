@@ -11,6 +11,7 @@ require_once(RPG_SERVER_ROOT.'/src/RPGSession.php');
 
 // Load in any extra resources we need.
 require_once(RPG_SERVER_ROOT.'/bin/server/timer_refresh_tavern.php');
+require_once(RPG_SERVER_ROOT.'/bin/server/timer_refresh_quests.php');
 
 // Create API call to start websocket connection.
 use Frlnc\Slack\Http\SlackResponseFactory;
@@ -28,6 +29,9 @@ use Frlnc\Slack\Core\Commander;
 
 $tavern_refresh_time = '23:59:59';
 $next_tavern_refresh = strtotime(date('Y-m-d').' '.$tavern_refresh_time);
+
+$quest_refresh_time = '23:59:59';
+$next_quest_refresh = strtotime(date('Y-m-d').' '.$quest_refresh_time);
 
 /**
  * Remove available Adventurers from tavern and create new ones.
@@ -48,9 +52,31 @@ function timer_refresh_tavern () {
     // Generate new adventurers from the tavern.
     generate_new_adventurers();
 
-    $logger->notice("Tavern cleared! Next Tavern Refresh: ".$next_tavern_refresh);
+    $logger->notice("Tavern refreshed! Next Tavern Refresh: ".$next_tavern_refresh);
   }
-  
+}
+
+/**
+ * Remove available Quests and create new ones.
+ */
+function timer_refresh_quests () {
+  global $logger, $next_quest_refresh;
+
+  //$logger->notice("Next Quest Refresh: ".$next_quest_refresh." -- Time: ".time());
+
+  // If we need to refresh the quests, do so now.
+  if (time() >= $next_quest_refresh) {
+    // Set the next quest refresh time.
+    $next_quest_refresh = strtotime('+1 day', $next_quest_refresh);
+    
+    // Remove the available quests.
+    remove_available_quests();
+
+    // Generate new quests.
+    generate_new_quests();
+
+    $logger->notice("Quests refreshed! Next Quest Refresh: ".$next_quest_refresh);
+  }
 }
 
 /**
@@ -188,6 +214,7 @@ $loop = \React\EventLoop\Factory::create();
 // Add any timers necessary.
 $loop->addPeriodicTimer(5, 'timer_process_queue');
 $loop->addPeriodicTimer(5, 'timer_refresh_tavern');
+$loop->addPeriodicTimer(5, 'timer_refresh_quests');
 
 
 

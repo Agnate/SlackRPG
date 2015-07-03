@@ -35,6 +35,9 @@ class Quest extends RPGEntitySaveable {
   static $primary_key = 'qid';
 
   // Constants
+  const FILENAME_QUEST_NAMES_ORIGINAL = '/bin/json/original/quest_names.json';
+  const FILENAME_QUEST_NAMES = '/bin/json/quest_names.json';
+
   const TYPE_EXPLORE = 'explore';
   const TYPE_TRAIN = 'train';
   const TYPE_INVESTIGATE = 'investigate';
@@ -394,7 +397,7 @@ class Quest extends RPGEntitySaveable {
   /**
    * Generate quests for a location.
    */
-  static function generate_quests ($location, $num_quests = 0, $save = true) {
+  public static function generate_quests ($location, $num_quests = 0, $save = true) {
     if (empty($location) || !is_a($location, 'Location')) return false;
 
     $quests = array();
@@ -411,7 +414,7 @@ class Quest extends RPGEntitySaveable {
     return $quests;
   }
 
-  static function generate_quest_type ($location, $type, $save = true) {
+  public static function generate_quest_type ($location, $type, $save = true) {
     if (empty($location) || !is_a($location, 'Location')) return false;
 
     $hours = 60 * 60;
@@ -506,13 +509,13 @@ class Quest extends RPGEntitySaveable {
     if ($save) {
       $quest->save();
       // Queue up the cooldown if we need to.
-      if ($cooldown > 0 && !$quest->active) $quest->queue($cooldown);
+      if ($quest->cooldown > 0 && !$quest->active) $quest->queue($quest->cooldown);
     }
 
     return $quest;
   }
 
-  static function types () {
+  public static function types () {
     // Not included: Quest::TYPE_EXPLORE, Quest::TYPE_TRAIN
     return Quest::$_types;
   }
@@ -520,13 +523,13 @@ class Quest extends RPGEntitySaveable {
   /**
    * Calculate multiple randomized numbers and add them together.
    */
-  static function sum_multiple_randoms ($num, $min, $max) {
+  public static function sum_multiple_randoms ($num, $min, $max) {
     $value = 0;
     for ($i = 1; $i <= $num; $i++) $value += rand($min, $max);
     return $value;
   }
 
-  static function randomize_quest_types ($loc_type) {
+  public static function randomize_quest_types ($loc_type) {
     // Set probabilities based on location type.
     $loc_types = Quest::quest_probabilities();
 
@@ -547,7 +550,7 @@ class Quest extends RPGEntitySaveable {
     return $list[$index];
   }
 
-  static function quest_probabilities () {
+  public static function quest_probabilities () {
     // Set probabilities based on location type.
     $types = array();
     $types[Location::TYPE_CREATURE] = array(
@@ -575,6 +578,62 @@ class Quest extends RPGEntitySaveable {
     );
 
     return $types;
+  }
+
+  /**
+   * $json -> The JSON-decoded list of quest names. Pass this in if you're doing bulk operations and only want to load and save once.
+   */
+  public static function recycle_quest ($quest, &$json = null) {
+    // If there's no name, we can't categorize it, so we're done.
+    if (empty($quest->name)) return false;
+
+    // Load up the list of quest names.
+    /*$save_json = empty($json);
+    if (empty($json)) $json = Quest::load_quest_names_list();
+
+    // Determine the name and add it back.
+    $name = $quest->name;
+    $json['names'][] = $name;
+
+    // Add icon back to the icons list.
+    //if (!empty($quest->icon)) $json['icons'][] = $quest->icon;
+
+    // Add the names back to the JSON file.
+    if ($save_json) Quest::save_quest_names_list($json);*/
+
+    return true;
+  }
+
+  /**
+   * Load up the list of Quest names that are still available.
+   */
+  public static function load_quest_names_list ($original = false) {
+    $file_name = RPG_SERVER_ROOT .($original ? Quest::FILENAME_QUEST_NAMES_ORIGINAL : Quest::FILENAME_QUEST_NAMES);
+    $names_json_string = file_get_contents($file_name);
+    return json_decode($names_json_string, true);
+  }
+
+  /**
+   * $data -> An array that can be properly encoded using PHP's json_encode function.
+   */
+  public static function save_quest_names_list ($data) {
+    // Write out the JSON file to prevent names from being reused.
+    $fp = fopen(RPG_SERVER_ROOT . Quest::FILENAME_QUEST_NAMES, 'w');
+    fwrite($fp, json_encode($data));
+    fclose($fp);
+  }
+
+  /**
+   * Replace the working Quest names list with a copy of the original.
+   */
+  public static function refresh_original_quest_names_list () {
+    // Load the original JSON list.
+    $json = Quest::load_quest_names_list(true);
+
+    // Overwrite the working copy with the new list.
+    Quest::save_quest_names_list($json);
+
+    return $json;
   }
 
 }
