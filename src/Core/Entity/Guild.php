@@ -3,6 +3,7 @@
 class Guild extends RPGEntitySaveable {
   // Fields
   public $gid;
+  public $season;
   public $username;
   public $slack_user_id;
   public $name;
@@ -23,7 +24,7 @@ class Guild extends RPGEntitySaveable {
   protected $_items;
 
   // Private vars
-  static $fields_int = array('created', 'updated', 'gold', 'fame', 'adventurer_limit');
+  static $fields_int = array('season', 'created', 'updated', 'gold', 'fame', 'adventurer_limit');
   static $db_table = 'guilds';
   static $default_class = 'Guild';
   static $primary_key = 'gid';

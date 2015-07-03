@@ -98,7 +98,7 @@ class Location extends RPGEntitySaveable {
                                      
   ==================================== */
 
-  static function types () {
-    return Location::$_types;
+  static function types ($include_empty = false) {
+    return $include_empty ? array_merge(Location::$_types, array(Location::TYPE_EMPTY)) : Location::$_types;
   }
 }

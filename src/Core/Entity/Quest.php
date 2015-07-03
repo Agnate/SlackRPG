@@ -394,11 +394,11 @@ class Quest extends RPGEntitySaveable {
   /**
    * Generate quests for a location.
    */
-  static function generate_quests ($location, $save = true) {
+  static function generate_quests ($location, $num_quests = 0, $save = true) {
     if (empty($location) || !is_a($location, 'Location')) return false;
 
     $quests = array();
-    $num_quests = rand(1, 3) + 1;
+    if ($num_quests <= 0) $num_quests = rand(1, 3) + 1;
     // For now, generate a number of quests = star rating.
     for ($i = 0; $i < $num_quests; $i++) {
       // Determine the type.
@@ -431,7 +431,7 @@ class Quest extends RPGEntitySaveable {
     );
 
     // Generate the name and icon.
-    $data['name'] = 'Test Quest';
+    $data['name'] = 'Test Quest '.uniqid();
     $data['icon'] = ':pushpin:';
 
     // Overrides for 1-star quests.

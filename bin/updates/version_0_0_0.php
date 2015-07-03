@@ -5,7 +5,7 @@
  */
 function update_version_0_0_0 ($forced = false) {
   $time = time();
-  $hours = 60 * 60 * 24;
+  $hours = 60 * 60;
 
   // Create the events Queue table.
   $queue_table = array();
@@ -23,6 +23,7 @@ function update_version_0_0_0 ($forced = false) {
   $guilds_table[] = "gid INT(11) UNSIGNED AUTO_INCREMENT";
   $guilds_table[] = "username VARCHAR(255) NOT NULL";
   $guilds_table[] = "slack_user_id VARCHAR(255) NOT NULL";
+  $guilds_table[] = "season INT(10) UNSIGNED NOT NULL";
   $guilds_table[] = "name VARCHAR(255) NOT NULL";
   $guilds_table[] = "icon VARCHAR(100) NOT NULL";
   $guilds_table[] = "created INT(10) UNSIGNED NOT NULL";
@@ -92,6 +93,15 @@ function update_version_0_0_0 ($forced = false) {
   $ad_group_table[] = "completed TINYINT(1) NOT NULL";
   $ad_group_table[] = "PRIMARY KEY ( agid )";
   add_update_query( "CREATE TABLE IF NOT EXISTS adventuring_groups (". implode(',', $ad_group_table) .")" );
+
+  // Create Season table.
+  $season_table = array();
+  $season_table[] = "sid INT(11) UNSIGNED AUTO_INCREMENT";
+  $season_table[] = "created INT(10) UNSIGNED NOT NULL";
+  $season_table[] = "duration INT(10) UNSIGNED NOT NULL";
+  $season_table[] = "active TINYINT(1) NOT NULL";
+  $season_table[] = "PRIMARY KEY ( sid )";
+  add_update_query( "CREATE TABLE IF NOT EXISTS seasons (". implode(',', $season_table) .")" );
 
   // Create Map table.
   $map_table = array();
@@ -187,23 +197,31 @@ function update_version_0_0_0 ($forced = false) {
     add_update_query("INSERT INTO quests (name, icon, type, locid, stars, created, active, permanent, reward_gold, reward_exp, reward_fame, duration, cooldown, party_size_min, party_size_max, level, success_rate, death_rate) VALUES (:name, :icon, :type, :locid, :stars, :created, :active, :permanent, :reward_gold, :reward_exp, :reward_fame, :duration, :cooldown, :party_size_min, :party_size_max, :level, :success_rate, :death_rate)", $quest);
   }
 
+  // Add a Season.
+  /*$seasons = array();
+  $seasons[] = array(':created' => $time, ':duration' => $hours * 24 * 30, ':active' => true);
+  //$seasons[] = array(':created' => $time, ':duration' => 0, ':active' => true);
+  foreach ($seasons as $season) {
+    add_update_query("INSERT INTO seasons (created, duration, active) VALUES (:created, :duration, :active)", $season);
+  }*/
+
   // Add a Map.
-  $maps = array();
+  /*$maps = array();
   $maps[] = array(':season' => 1, ':created' => $time);
   //$maps[] = array(':season' => 0, ':created' => $time);
   foreach ($maps as $map) {
     add_update_query("INSERT INTO maps (season, created) VALUES (:season, :created)", $map);
-  }
+  }*/
 
   // Add some Locations.
-  $locations = array();
+  /*$locations = array();
   $locations[] = array(':mapid' => 1, ':gid' => 0, ':name' => "The Capital", ':row' => 13, ':col' => 13, ':type' => 'capital', ':created' => $time, ':revealed' => true);
   $locations[] = array(':mapid' => 1, ':gid' => 0, ':name' => "The Dragon's Cave", ':row' => 1, ':col' => 4, ':type' => 'empty', ':created' => $time, ':revealed' => false);
   $locations[] = array(':mapid' => 1, ':gid' => 0, ':name' => "", ':row' => 14, ':col' => 13, ':type' => 'empty', ':created' => $time, ':revealed' => false);
   //$locations[] = array(':mapid' => 0, ':gid' => 0, ':name' => "", ':row' => 0, ':col' => 0, ':type' => '', ':created' => $time, ':revealed' => false);
   foreach ($locations as $location) {
     add_update_query("INSERT INTO locations (mapid, gid, name, row, col, type, created, revealed) VALUES (:mapid, :gid, :name, :row, :col, :type, :created, :revealed)", $location);
-  }
+  }*/
 
   // TEMP: change hours to seconds so it can be easily tested.
   $hours = 0.5;

@@ -42,23 +42,32 @@ abstract class RPGEntity {
     $tokens = array();
     $new_data = array();
     foreach ($data as $key => &$value) {
-      $tokens[$key] = ':'.$key;
-      $new_data[':'.$key] = ($find_partials && in_array($key, static::$partials)) ? '%'.$value.'%' : $value;
+      if (is_array($value)) {
+        $tokens[$key] = array();
+        $count = 0;
+        foreach ($value as $subvalue) {
+          $count++;
+          $tokens[$key][] = ':'.$key.'_i'.$count;
+          $new_data[':'.$key.'_i'.$count] = $subvalue;
+        }
+      }
+      else {
+        $tokens[$key] = ':'.$key;
+        $new_data[':'.$key] = ($find_partials && in_array($key, static::$partials)) ? '%'.$value.'%' : $value;  
+      } 
     }
 
     $where = array();
     foreach ($tokens as $key => $token) {
-      if ($find_partials  &&  in_array($key, static::$partials)) {
-        $where[] = $key .' LIKE '. $token;
-        continue;
-      }
-
-      $where[] = $key .'='. $token;
+      // If this is an array of tokens, put it into an IN statement.
+      if (is_array($token)) $where[] = $key .' IN ('. implode(',', $token) .')';
+      // Else if need to look up partials, do that.
+      else if ($find_partials && in_array($key, static::$partials)) $where[] = $key .' LIKE '. $token;
+      // Otherwise just find the value given.
+      else $where[] = $key .'='. $token;
     }
 
-    if (count($where) <= 0) {
-      return FALSE;
-    }
+    if (count($where) <= 0) return FALSE;
 
     $query = "SELECT * FROM ". static::$db_table ." WHERE ". implode(' AND ', $where) ." LIMIT 1";
     $query = pdo_prepare($query);
@@ -114,12 +123,26 @@ abstract class RPGEntity {
     $tokens = array();
     $new_data = array();
     foreach ($data as $key => &$value) {
-      $tokens[$key] = ':'.$key;
-      $new_data[':'.$key] = $value;
+      if (is_array($value)) {
+        $tokens[$key] = array();
+        $count = 0;
+        foreach ($value as $subvalue) {
+          $count++;
+          $tokens[$key][] = ':'.$key.'_i'.$count;
+          $new_data[':'.$key.'_i'.$count] = $subvalue;
+        }
+      }
+      else {
+        $tokens[$key] = ':'.$key;
+        $new_data[':'.$key] = $value;  
+      } 
     }
 
     $where = array();
-    foreach ($tokens as $key => $token) $where[] = $key .'='. $token;
+    foreach ($tokens as $key => $token) {
+      if (is_array($token)) $where[] = $key .' IN ('. implode(',', $token) .')';
+      else $where[] = $key .'='. $token;
+    }
 
     $query = "SELECT * FROM ". static::$db_table .(count($where) > 0 ? " WHERE ". implode(' AND ', $where) : "") .(!empty($special) ? " ".$special : "");
     $query = pdo_prepare($query);

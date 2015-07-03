@@ -49,7 +49,7 @@ function generate_new_adventurers ($output_information = false, $num_adventurers
   }
   $avg_level = ($levels > 0 && count($highest_levels) > 0) ? max(1, floor(($levels / count($highest_levels)) * 0.90)) : 1;
 
-  // Generate some names.
+  // Generate some adventurers.
   $time = time();
   $adventurers = array();
   for ($i = 0; $i < $num_adventurers; $i++) {

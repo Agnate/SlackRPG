@@ -61,7 +61,7 @@ class RPGSession {
     $response[] = 'Edit your Guild\'s information: `edit`';
     $response[] = '';
 
-    $response[] = 'View the Map: `map`';
+    //$response[] = 'View the Map: `map`';
     $response[] = 'Explore the Map: `explore`';
     $response[] = 'Quests: `quest`';
     $response[] = '';
@@ -126,6 +126,13 @@ class RPGSession {
       return FALSE;
     }
 
+    // Get current season.
+    $season = Season::current();
+    if (empty($season)) {
+      $this->respond('You must wait for a new Season to begin.');
+      return FALSE;
+    }
+
     // Check if they gave a Guild name.
     if (empty($args) || count($args) < 2 || empty($args[0]) || empty($args[1])) {
       $this->respond('Please select a Guild name. Type: `register [GUILD EMOJI] [GUILD NAME]` (example: `register :skull: Death\'s Rattle`).');
@@ -151,6 +158,7 @@ class RPGSession {
       'username' => $this->data['user_name'],
       'name' => $name,
       'icon' => $icon,
+      'season' => $season->sid,
       'gold' => 1000, // Starting gold.
     );
     $player = new Guild ($data);
@@ -857,8 +865,7 @@ class RPGSession {
     // Load the player and fail out if they have not created a Guild.
     if (!($player = $this->load_current_player())) return;
 
-    $season = $this->load_current_season();
-    $map = Map::load(array('season' => $season));
+    $map = Map::load(array('season' => $player->season));
     $locations = Location::load_multiple(array('mapid' => $map->mapid));
 
     $response = array();
@@ -1326,51 +1333,59 @@ class RPGSession {
     // Load the player and fail out if they have not created a Guild.
     if (!($player = $this->load_current_player())) return;
 
+
+    // Test loading multiples with arrays.
+    $types = Location::types();
+    $locations = Location::load_multiple(array('type' => $types, 'revealed' => true));
+
+    d($locations);
+
+
     // Get a quest and fake-test finishing it.
-    $quest = Quest::load(array('locid' => 3));
+    // $quest = Quest::load(array('locid' => 3));
     
-    $adventurers = $player->get_best_adventurers($quest->party_size_max);
+    // $adventurers = $player->get_best_adventurers($quest->party_size_max);
 
-    // Put together the adventuring party.
-    $data = array(
-      'gid' => $player->gid,
-      'created' => time(),
-      'task_id' => $quest->qid,
-      'task_type' => 'Quest',
-      'task_eta' => $quest->get_duration($player, $adventurers),
-      'completed' => false,
-    );
-    $advgroup = new AdventuringGroup ($data);
-    $success = $advgroup->save();
-    if ($success === false) {
-      $this->respond('There was a problem saving the adventuring group. Please talk to Paul.');
-      return FALSE;
-    }
+    // // Put together the adventuring party.
+    // $data = array(
+    //   'gid' => $player->gid,
+    //   'created' => time(),
+    //   'task_id' => $quest->qid,
+    //   'task_type' => 'Quest',
+    //   'task_eta' => $quest->get_duration($player, $adventurers),
+    //   'completed' => false,
+    // );
+    // $advgroup = new AdventuringGroup ($data);
+    // $success = $advgroup->save();
+    // if ($success === false) {
+    //   $this->respond('There was a problem saving the adventuring group. Please talk to Paul.');
+    //   return FALSE;
+    // }
 
-    // Assign all the adventurers to the new group.
-    foreach ($adventurers as $adventurer) {
-      $adventurer->agid = $advgroup->agid;
-      $success = $adventurer->save();
-      if ($success === false) {
-        $this->respond('There was a problem saving an adventurer to the adventuring group. Please talk to Paul.');
-        return FALSE;
-      }
-    }
+    // // Assign all the adventurers to the new group.
+    // foreach ($adventurers as $adventurer) {
+    //   $adventurer->agid = $advgroup->agid;
+    //   $success = $adventurer->save();
+    //   if ($success === false) {
+    //     $this->respond('There was a problem saving an adventurer to the adventuring group. Please talk to Paul.');
+    //     return FALSE;
+    //   }
+    // }
 
-    // Assign adventuring group to the quest.
-    $quest->gid = $player->gid;
-    $quest->agid = $advgroup->agid;
-    $quest->active = false;
-    $success = $quest->save();
-    if ($success === false) {
-      $this->respond('There was a problem saving the quest. Please talk to Paul.');
-      return FALSE;
-    }
+    // // Assign adventuring group to the quest.
+    // $quest->gid = $player->gid;
+    // $quest->agid = $advgroup->agid;
+    // $quest->active = false;
+    // $success = $quest->save();
+    // if ($success === false) {
+    //   $this->respond('There was a problem saving the quest. Please talk to Paul.');
+    //   return FALSE;
+    // }
 
-    // Process the "completed" quest.
-    $response = $quest->queue_process();
+    // // Process the "completed" quest.
+    // $response = $quest->queue_process();
 
-    d($response);
+    // d($response);
 
 
 
@@ -1569,15 +1584,14 @@ class RPGSession {
                                                                                                      
   ==================================================================================================== */
 
-  protected function load_current_season () {
-    return 1;
-  }
-
   protected function load_current_player ($allow_error = true) {
     $player = $this->get_current_player();
 
     if (empty($player)) {
-      $this->respond('You must register your Guild before you can begin playing. Type: `register [GUILD EMOJI] [GUILD NAME]`');
+      // Check if the season is empty to show a different message.
+      $season = Season::current();
+      if (empty($season)) $this->respond('Please wait for a new Season to begin.');
+      else $this->respond('You must register your Guild before you can begin playing. Type: `register [GUILD EMOJI] [GUILD NAME]`');
       return FALSE;
     }
 
@@ -1588,10 +1602,14 @@ class RPGSession {
     // If we've already loaded this one, we're done.
     if (!empty($this->curplayer)) return $this->curplayer;
 
+    // Get the currently-active season so that we pick the right Guild.
+    $season = Season::current();
+
     // First time loading the player, so we need the data.
     $data = array(
       'slack_user_id' => $this->data['user_id'],
       'username' => $this->data['user_name'],
+      'season' => $season->sid,
     );
 
     $this->curplayer = Guild::load($data);
