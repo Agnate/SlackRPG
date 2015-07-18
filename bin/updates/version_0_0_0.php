@@ -175,6 +175,23 @@ function update_version_0_0_0 ($forced = false) {
   $item_table[] = "PRIMARY KEY ( iid )";
   add_update_query( "CREATE TABLE IF NOT EXISTS items (". implode(',', $item_table) .")" );
 
+  // Create Challenge table.
+  $challenge_table = array();
+  $challenge_table[] = "chid INT(11) UNSIGNED AUTO_INCREMENT";
+  $challenge_table[] = "challenger_id INT(11) UNSIGNED NOT NULL";
+  $challenge_table[] = "challenger_champ INT(11) UNSIGNED NOT NULL";
+  $challenge_table[] = "challenger_moves VARCHAR(255) NOT NULL";
+  $challenge_table[] = "opponent_id INT(11) UNSIGNED NOT NULL";
+  $challenge_table[] = "opponent_champ INT(11) UNSIGNED NOT NULL";
+  $challenge_table[] = "opponent_moves VARCHAR(255) NOT NULL";
+  $challenge_table[] = "created INT(10) UNSIGNED NOT NULL";
+  $challenge_table[] = "wager INT(10) UNSIGNED NOT NULL";
+  $challenge_table[] = "confirmed TINYINT(1) NOT NULL";
+  $challenge_table[] = "winner INT(11) UNSIGNED NOT NULL";
+  $challenge_table[] = "reward INT(10) UNSIGNED NOT NULL";
+  $challenge_table[] = "PRIMARY KEY ( chid )";
+  add_update_query( "CREATE TABLE IF NOT EXISTS challenges (". implode(',', $challenge_table) .")" );
+
   // Add some Adventurers.
   // $adventurers = array();
   // $adventurers[] = array(':gid' => '', ':name' => 'Antoine Delorisci', ':icon' => ':antoine:', ':gender' => 'male', ':created' => $time, ':available' => true, ':level' => '1', ':exp' => 0, ':exp_tnl' => 1, ':class' => 'leywalker', ':champion' => false);

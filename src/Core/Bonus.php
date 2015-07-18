@@ -9,7 +9,7 @@ class Bonus {
    *   4. Add a default value in the __construct function.
    */
 
-  // Fields
+  // 1. Fields
   protected $_travel_speed_modifiers;
   protected $_quest_speed_modifiers;
   protected $_quest_success_modifiers;
@@ -18,8 +18,18 @@ class Bonus {
   protected $_quest_reward_fame_modifiers;
   protected $_quest_reward_exp_modifiers;
   protected $_quest_reward_item_modifiers;
+  protected $_miss_rate_modifiers;
+  protected $_crit_rate_modifiers;
+  protected $_opponent_miss_rate_modifiers;
+  protected $_opponent_crit_rate_modifiers;
+  protected $_attack_as_success_modifiers;
+  protected $_defend_as_success_modifiers;
+  protected $_break_as_success_modifiers;
+  protected $_loss_by_one_as_tie_modifiers;
+  protected $_loss_on_success_modifiers;
+  protected $_tie_breaker_on_fail_modifiers;
 
-  // Modifiers available for retrieval.
+  // 2. Modifiers available for retrieval.
   const TRAVEL_SPEED = '_travel_speed_modifiers';
   const QUEST_SPEED = '_quest_speed_modifiers';
   const QUEST_SUCCESS = '_quest_success_modifiers';
@@ -28,13 +38,30 @@ class Bonus {
   const QUEST_REWARD_FAME = '_quest_reward_fame_modifiers';
   const QUEST_REWARD_EXP = '_quest_reward_exp_modifiers';
   const QUEST_REWARD_ITEM = '_quest_reward_item_modifiers';
-  // List of all available modifiers.
-  static $all_modifiers = array(Bonus::TRAVEL_SPEED, Bonus::QUEST_SPEED, Bonus::QUEST_SUCCESS, Bonus::DEATH_RATE, Bonus::QUEST_REWARD_GOLD, Bonus::QUEST_REWARD_FAME, Bonus::QUEST_REWARD_EXP, Bonus::QUEST_REWARD_ITEM);
+  const MISS_RATE = '_miss_rate_modifiers';
+  const CRIT_RATE = '_crit_rate_modifiers';
+  const OPPONENT_MISS_RATE = '_opponent_miss_rate_modifiers';
+  const OPPONENT_CRIT_RATE = '_opponent_crit_rate_modifiers';
+  const ATTACK_AS_SUCCESS = '_attack_as_success_modifiers';
+  const DEFEND_AS_SUCCESS = '_defend_as_success_modifiers';
+  const BREAK_AS_SUCCESS = '_break_as_success_modifiers';
+  const LOSS_BY_ONE_AS_TIE = '_loss_by_one_as_tie_modifiers';
+  const LOSS_ON_SUCCESS = '_loss_on_success_modifiers';
+  const TIE_BREAKER_ON_FAIL = '_tie_breaker_on_fail_modifiers';
+
+  // 3. List of all available modifiers.
+  static $all_modifiers = array(Bonus::TRAVEL_SPEED, Bonus::QUEST_SPEED, Bonus::QUEST_SUCCESS, Bonus::DEATH_RATE,
+    Bonus::QUEST_REWARD_GOLD, Bonus::QUEST_REWARD_FAME, Bonus::QUEST_REWARD_EXP, Bonus::QUEST_REWARD_ITEM,
+    Bonus::MISS_RATE, Bonus::CRIT_RATE, Bonus::OPPONENT_MISS_RATE, Bonus::OPPONENT_CRIT_RATE, Bonus::ATTACK_AS_SUCCESS,
+    Bonus::DEFEND_AS_SUCCESS, Bonus::BREAK_AS_SUCCESS, Bonus::LOSS_BY_ONE_AS_TIE, Bonus::LOSS_ON_SUCCESS,
+    Bonus::TIE_BREAKER_ON_FAIL);
 
   // Change how the modifier is returned.
-  const MOD_ORIGINAL = 'original';
-  const MOD_HUNDREDS = 'hundreds';
-  const MOD_DIFF = 'diff';
+  const MOD_ORIGINAL = 'original'; // Get as decimal version (1.05) for +5%
+  const MOD_HUNDREDS = 'hundreds'; // Get in hundreds (5) for +5%.
+  const MOD_DIFF = 'diff'; // Get diff as decimal version (0.05) for +5%.
+
+  const FOR_DEFAULT = 'default';
 
   function __construct($data = array()) {
     // Save values to object.
@@ -46,25 +73,27 @@ class Bonus {
       }
     }
 
-    // Set any defaults.
-    if (empty($this->_travel_speed_modifiers)) $this->_travel_speed_modifiers = $this->__create_modifier_list();
-    if (empty($this->_quest_speed_modifiers)) $this->_quest_speed_modifiers = $this->__create_modifier_list();
-    if (empty($this->_quest_success_modifiers)) $this->_quest_success_modifiers = $this->__create_modifier_list();
-    if (empty($this->_death_rate_modifiers)) $this->_death_rate_modifiers = $this->__create_modifier_list();
-    if (empty($this->_quest_reward_gold_modifiers)) $this->_quest_reward_gold_modifiers = $this->__create_modifier_list();
-    if (empty($this->_quest_reward_fame_modifiers)) $this->_quest_reward_fame_modifiers = $this->__create_modifier_list();
-    if (empty($this->_quest_reward_exp_modifiers)) $this->_quest_reward_exp_modifiers = $this->__create_modifier_list();
-    if (empty($this->_quest_reward_item_modifiers)) $this->_quest_reward_item_modifiers = $this->__create_modifier_list();
+    // 4. Set any defaults.
+    $all_mods = static::$all_modifiers;
+    foreach ($all_mods as $mod) {
+      switch ($mod) {
+        default:
+          if (empty($this->{$mod}))
+            $this->{$mod} = $this->__create_modifier_list();
+          break;
+      }
+    }
   }
 
-  protected function __create_modifier_list () {
-    $quest_types = Quest::types();
-    $location_types = Location::types();
+  protected function __create_modifier_list ($default = 1) {
+    // $quest_types = Quest::types();
+    // $location_types = Location::types();
 
     $mods = array(
-      'default' => 1,
+      Bonus::FOR_DEFAULT => $default,
       'Quest' => array(),
       'Location' => array(),
+      'Challenge' => array(),
     );
 
     return $mods;
@@ -96,7 +125,7 @@ class Bonus {
    * $mod_name - Use the constants defined here in Bonus to retrieve the desired modifier (ex. Bonus::TRAVEL_SPEED).
    * $for - This should be either an Object (Quest or Location) or a String (ex. "Quest->".Quest::TYPE_BOSS).
    */
-  public function get_mod ($mod_name, $for = 'default', $value_as = Bonus::MOD_ORIGINAL) {
+  public function get_mod ($mod_name, $for = Bonus::FOR_DEFAULT, $value_as = Bonus::MOD_ORIGINAL) {
     // Get the modifier list.
     $mods = &$this->__get_modifier($mod_name);
     if ($mods === FALSE) return FALSE;
@@ -109,8 +138,9 @@ class Bonus {
     switch ($for) {
       case 'Quest':
       case 'Location':
+      case 'Challenge':
         $type = is_array($info) ? $info['type'] : $info->type;
-        $mod = isset($mods[$for][$type]) ? $mods[$for][$type] : $mods['default'];
+        $mod = isset($mods[$for][$type]) ? $mods[$for][$type] : $mods[Bonus::FOR_DEFAULT];
         break;
 
       default:
@@ -121,7 +151,7 @@ class Bonus {
     return $this->__adjust_modifier($mod, $value_as);
   }
 
-  public function set_mod ($mod_name, $value, $for = 'default') {
+  public function set_mod ($mod_name, $value, $for = Bonus::FOR_DEFAULT) {
     // Get the modifier list.
     $mods = &$this->__get_modifier($mod_name);
     if ($mods === FALSE) return FALSE;
@@ -132,6 +162,7 @@ class Bonus {
     switch ($for) {
       case 'Quest':
       case 'Location':
+      case 'Challenge':
         $type = is_array($info) ? $info['type'] : $info->type;
         $mods[$for][$type] = $value;
         break;
@@ -143,7 +174,7 @@ class Bonus {
     return TRUE;
   }
 
-  public function add_mod ($mod_name, $value, $for = 'default') {
+  public function add_mod ($mod_name, $value, $for = Bonus::FOR_DEFAULT) {
     // Get the modifier list.
     $mods = &$this->__get_modifier($mod_name);
     if ($mods === FALSE) return FALSE;
@@ -154,13 +185,14 @@ class Bonus {
     switch ($for) {
       case 'Quest':
       case 'Location':
+      case 'Challenge':
         $type = is_array($info) ? $info['type'] : $info->type;
-        if (!isset($mods[$for][$type])) $mods[$for][$type] = $mods['default'];
+        if (!isset($mods[$for][$type])) $mods[$for][$type] = $mods[Bonus::FOR_DEFAULT];
         $mods[$for][$type] += $value;
         break;
 
       default:
-        if (!isset($mods[$for])) $mods[$for] = $mods['default'];
+        if (!isset($mods[$for])) $mods[$for] = $mods[Bonus::FOR_DEFAULT];
         $mods[$for] += $value;
         break;
     }

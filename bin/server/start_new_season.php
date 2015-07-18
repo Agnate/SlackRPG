@@ -3,6 +3,7 @@ require_once('/rpg_slack/test/config.php');
 require_once(RPG_SERVER_ROOT.'/includes/db.inc');
 require_once(RPG_SERVER_ROOT.'/vendor/autoload.php');
 require_once(RPG_SERVER_ROOT.'/src/autoload.php');
+require_once(RPG_SERVER_ROOT.'/bin/server/timer_refresh_tavern.php');
 
 
 /**
@@ -12,6 +13,11 @@ function reset_json_lists ($output_information = false) {
   // Reset adventurer names and icons.
   if ($output_information) print "Resetting adventurer names list...";
   Adventurer::refresh_original_adventurer_names_list();
+  if ($output_information) print " Done.\n";
+
+  // Reset challenge texts.
+  if ($output_information) print "Resetting challenge texts list...";
+  Challenge::refresh_original_texts_list();
   if ($output_information) print " Done.\n";
 
   if ($output_information) print "All JSON lists have be reset.\n";
@@ -91,6 +97,11 @@ function start_new_season ($output_information = false) {
   if ($output_information) print "Setting season to active...";
   $season->active = true;
   $season->save();
+  if ($output_information) print " Done.\n";
+
+  // Refresh the Tavern to add new adventurers for hire.
+  if ($output_information) print "Refreshing the Tavern...";
+  generate_new_adventurers($output_information);
   if ($output_information) print " Done.\n";
 
   // Done!

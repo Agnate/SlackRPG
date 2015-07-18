@@ -107,6 +107,15 @@ class Guild extends RPGEntitySaveable {
     return $total;
   }
 
+  public function get_champion () {
+    if (empty($this->_adventurers)) $this->load_adventurers();
+    $adventurers = $this->get_adventurers();
+    foreach ($adventurers as $adventurer) {
+      if ($adventurer->champion) return $adventurer;
+    }
+    return FALSE;
+  }
+
   public function get_total_points ($force_calculation = false) {
     if (!$force_calculation && $this->_renown !== -9999) return $this->_renown;
 

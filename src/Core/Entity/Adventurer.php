@@ -60,6 +60,20 @@ class Adventurer extends RPGEntitySaveable {
     return $capitalize ? ucwords($pronoun) : $pronoun;
   }
 
+  public function get_other_pronoun ($capitalize = false) {
+    $pronoun = $this->gender == Adventurer::GENDER_MALE ? 'him' : 'her';
+    return $capitalize ? ucwords($pronoun) : $pronoun;
+  }
+
+  public function get_possessive_pronoun ($capitalize = false) {
+    $pronoun = $this->gender == Adventurer::GENDER_MALE ? 'his' : 'her';
+    return $capitalize ? ucwords($pronoun) : $pronoun;
+  }
+
+  public function get_possessive () {
+    return substr($this->name, -1) == 's' ? "'" : "'s";
+  }
+
   public function get_gender ($capitalize = false) {
     return $capitalize ? ucwords($this->gender) : $this->gender;
   }

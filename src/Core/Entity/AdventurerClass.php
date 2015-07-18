@@ -31,39 +31,65 @@ class AdventurerClass extends RPGEntitySaveable {
 
     switch ($this->name_id) {
       case 'shaman':
+        // Questing/Exploring mods.
         $bonus->add_mod(Bonus::DEATH_RATE, -0.05);
+        // Challenge mods.
+        $bonus->add_mod(Bonus::BREAK_AS_SUCCESS, 0.05, 'Challenge->'.Challenge::MOVE_BREAK);
         break;
 
       case 'brigand':
+        // Questing/Exploring mods.
         $bonus->add_mod(Bonus::QUEST_REWARD_GOLD, 0.10);
         $bonus->add_mod(Bonus::QUEST_REWARD_ITEM, 0.03);
+        // Challenge mods.
+        $bonus->add_mod(Bonus::LOSS_BY_ONE_AS_TIE, 0.05);
         break;
 
       case 'judge':
+        // Questing/Exploring mods.
         $bonus->add_mod(Bonus::QUEST_REWARD_FAME, 0.05);
+        // Challenge mods.
+        $bonus->add_mod(Bonus::ATTACK_AS_SUCCESS, 0.05, 'Challenge->'.Challenge::MOVE_ATTACK);
         break;
 
       case 'magus':
+        // Questing/Exploring mods.
         $bonus->add_mod(Bonus::QUEST_REWARD_EXP, 0.10);
+        // Challenge mods.
+        $bonus->add_mod(Bonus::CRIT_RATE, 0.15);
+        $bonus->add_mod(Bonus::LOSS_ON_SUCCESS, 0.10, 'Challenge->'.Challenge::MOVE_DEFEND);
         break;
 
       case 'dragoon':
+        // Questing/Exploring mods.
         $bonus->add_mod(Bonus::QUEST_SUCCESS, 0.05, 'Quest->'.Quest::TYPE_BOSS);
         $bonus->add_mod(Bonus::QUEST_SUCCESS, 0.05, 'Quest->'.Quest::TYPE_FIGHT);
         $bonus->add_mod(Bonus::QUEST_SPEED, -0.10, 'Quest->'.Quest::TYPE_BOSS);
         $bonus->add_mod(Bonus::QUEST_SPEED, -0.10, 'Quest->'.Quest::TYPE_FIGHT);
+        // Challenge mods.
+        $bonus->add_mod(Bonus::MISS_RATE, -0.05);
+        $bonus->add_mod(Bonus::CRIT_RATE, 0.05);
         break;
 
       case 'strider':
+        // Questing/Exploring mods.
         $bonus->add_mod(Bonus::TRAVEL_SPEED, -0.05);
+        // Challenge mods.
+        $bonus->add_mod(Bonus::OPPONENT_MISS_RATE, 0.08);
         break;
 
       case 'oracle':
+        // Questing/Exploring mods.
         $bonus->add_mod(Bonus::QUEST_SUCCESS, 0.05);
+        // Challenge mods.
+        $bonus->add_mod(Bonus::TIE_BREAKER_ON_FAIL, 0.05);
         break;
 
       case 'juggernaut':
+        // Questing/Exploring mods.
         $adventurer->level += 2;
+        // Challenge mods.
+        $bonus->add_mod(Bonus::DEFEND_AS_SUCCESS, 0.05, 'Challenge->'.Challenge::MOVE_DEFEND);
         break;
     }
   }
