@@ -150,6 +150,35 @@ function get_user_channel ($slack_user_id) {
   return isset($im_channels[$slack_user_id]) ? $im_channels[$slack_user_id] : FALSE;
 }
 
+function gather_im_channels (&$commander) {
+  $response = $commander->execute('im.list', array());
+  $body = $response->getBody();
+
+  $list = array();
+  if (isset($body['ok']) && $body['ok']) {
+    foreach ($body['ims'] as $im) {
+      if (!$im['is_im'] || $im['is_user_deleted']) continue;
+      $list[$im['user']] = $im['id'];
+    }
+  }
+
+  return $list;
+}
+
+function gather_user_list (&$commander) {
+  $response = $commander->execute('users.list', array());
+  $body = $response->getBody();
+
+  $list = array();
+  if (isset($body['ok']) && $body['ok']) {
+    foreach ($body['members'] as $member) {
+      if ($member['deleted']) continue;
+      $list[$member['id']] = $member;
+    }
+  }
+
+  return $list;
+}
 
 /* =====================================================
    _________    __  _________   __    ____  ____  ____ 
@@ -180,26 +209,10 @@ if (isset($body['ok']) && $body['ok']) $url = $body['url'];
 
 
 // Create list of IMs.
-$response = $commander->execute('im.list', array());
-$body = $response->getBody();
-$im_channels = array();
-if (isset($body['ok']) && $body['ok']) {
-  foreach ($body['ims'] as $im) {
-    if (!$im['is_im'] || $im['is_user_deleted']) continue;
-    $im_channels[$im['user']] = $im['id'];
-  }
-}
+$im_channels = gather_im_channels($commander);
 
 // Create list of Users.
-$response = $commander->execute('users.list', array());
-$body = $response->getBody();
-$user_list = array();
-if (isset($body['ok']) && $body['ok']) {
-  foreach ($body['members'] as $member) {
-    if ($member['deleted']) continue;
-    $user_list[$member['id']] = $member;
-  }
-}
+$user_list = gather_user_list($commander);
 
 //echo var_export($im_channels, true)."\n";
 //echo var_export($response->toArray(), true)."\n";
@@ -238,9 +251,80 @@ $client->on("connect", function() use ($logger, $client) {
 });
 
 $client->on("message", function($message) use ($client, $logger) {
-  // Only keep track of messages.
+  // Only keep track of messages and reactions.
   $data = json_decode($message->getData(), true);
-  if (isset($data['type']) && $data['type'] == 'message' && !isset($data['subtype'])) {
+
+  // If a new IM channel is opened, refresh the list.
+  if (isset($data['type']) && $data['type'] == 'im_created') {
+    global $im_channels, $commander;
+    $im_channels = gather_im_channels($commander);
+    return;
+  }
+
+  // If a new team member joins, refresh the list.
+  if (isset($data['type']) && $data['type'] == 'team_join') {
+    global $im_channels, $commander;
+    $user_list = gather_user_list($commander);
+    return;
+  }
+  
+  // Reaction (aka confirmation) from the user.
+  else if (isset($data['type']) && $data['type'] == 'reaction_added' && isset($data['reaction']) && $data['reaction'] == 'confirm') {
+    // Skip if we don't have the appropriate data.
+    if (!isset($data['user'])) return;
+    if (!isset($data['item'])) return;
+
+    // Get the message and make sure it's from RPG bot in a personal message.
+    $item = $data['item'];
+    if (!isset($item['ts'])) return;
+    if (!isset($item['type']) || $item['type'] != 'message') return;
+    if (!isset($item['channel'])) return;
+
+    global $im_channels, $user_list, $commander;
+    $user_id = $data['user'];
+    $channel = $item['channel'];
+
+    // Get the list of current reactions to find the message (very tediuos step).
+    $response = $commander->execute('reactions.list', array('user' => $user_id, 'count' => 5, 'page' => 1));
+    $body = $response->getBody();
+    $reaction = null;
+    if (isset($body['ok']) && $body['ok']) {
+      foreach ($body['items'] as $areaction) {
+        if ($areaction['channel'] != $channel) continue;
+        if ($areaction['message']['type'] != 'message') continue;
+        if ($areaction['message']['ts'] != $item['ts']) continue;
+        $reaction = $areaction;
+        break;
+      }
+    }
+    if (empty($reaction)) return;
+
+    // Check that the user data exists.
+    if (!isset($user_list[$user_id])) return;
+    $user = $user_list[$user_id];
+
+    // $logger->notice("Got reaction from user: ".$message->getData());
+
+    // Get the message text.
+    $orig_text = $reaction['message']['text'];
+
+    // Extract the code from the message.
+    // $pieces = preg_split("/\s|\\n|\\r|\v|\n|\r/", $orig_text);
+    // Take the first piece to get the unique code.
+    // $code = array_shift($pieces);
+    // Tack CONFIRM onto the end.
+    // $text = implode(' ', Confirmation::decode($code)) .' CONFIRM';
+
+    // Look for confirmation snippet.
+    preg_match("/Type `\+:confirm:` to confirm\.\\n\(You typed: `(.+)`\)/", $orig_text, $matches);
+    if (count($matches) < 2) return;
+    $text = $matches[1].' CONFIRM';
+
+    // $logger->notice("Reaction command: ".$text);
+  }
+
+  // Message from the user.
+  else if (isset($data['type']) && $data['type'] == 'message' && !isset($data['subtype'])) {
     // Skip if we don't have the appropriate data.
     if (!isset($data['user'])) return;
     if (!isset($data['channel'])) return;
@@ -260,11 +344,14 @@ $client->on("message", function($message) use ($client, $logger) {
     if (!isset($user_list[$user_id])) return;
     $user = $user_list[$user_id];
 
-    $logger->notice("Got personal message from user: ".$message->getData());
+    // $logger->notice("Got personal message from user: ".$message->getData());
 
     // Get the message text.
     $text = $data['text'];
+  }
 
+  // If we have some text, process it.
+  if (isset($text) && !empty($text)) {
     // Bust it up and send it as a command to RPGSession.
     $session_data = array(
       'user_id' => $user_id,

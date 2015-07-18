@@ -1481,7 +1481,6 @@ class RPGSession {
       $response[] = '*Wager*: '.Display::get_fame($wager);
       $response[] = '*Your Champion*: '.$champion->get_display_name();
       $response[] = '';
-      $response[] = 'To confirm your challenge, type:';
       $response[] = $this->get_confirm($cmd_word, $orig_args);
       $this->respond($response);
       return FALSE;
@@ -1571,8 +1570,31 @@ class RPGSession {
 
 
   protected function cmd_test ($args = array()) {
+    $orig_args = $args;
+    $cmd_word = 'test';
+
     // Load the player and fail out if they have not created a Guild.
     if (!($player = $this->load_current_player())) return;
+
+    // $plain_txt = 'test some stuff here';
+    // $encrypted_txt = Confirmation::encrypt($plain_txt);
+    // $decrypted_txt = Confirmation::decrypt($encrypted_txt);
+    // d($plain_txt);
+    // d($encrypted_txt);
+    // d($decrypted_txt);
+
+    $cmd_args = array_merge(array($cmd_word), $orig_args);
+    $this->respond("Let's try this confirmation thing. ".$this->get_confirm($cmd_word, $orig_args));
+    // $orig_text = "Let's try this confirmation thing. ".$this->get_confirm($cmd_word, $orig_args);
+    // preg_match("/Type `\+:confirm:` to confirm\.\\n\(You typed: `(.+)`\)/", $orig_text, $matches);
+    // if (count($matches) < 2) return;
+    // $text = $matches[1].' CONFIRM';
+    // d($matches);
+    // d($text);
+
+    return FALSE;
+
+
 
 
     // Test creating a Challenge and processing it.
@@ -1900,11 +1922,13 @@ class RPGSession {
   }
 
   protected function get_typed ($cmd, $args, $include_space = true) {
-    return ($include_space ? "\n" : "")."(You typed: `".$cmd." ".implode(' ', $args)."`)";
+    $arg_text = implode(' ', $args);
+    return ($include_space ? "\n" : "")."(You typed: `".$cmd.(!empty($arg_text) ? " ".$arg_text : '')."`)";
   }
 
-  protected function get_confirm ($cmd, $args, $confirm = 'CONFIRM') {
-    return "`".$cmd." ".implode(' ', $args).(!empty($confirm) ? " ".$confirm : "")."`";
+  protected function get_confirm ($cmd, $args) {
+    //return "`".$cmd." ".implode(' ', $args).(!empty($confirm) ? " ".$confirm : "")."`";
+    return "Type `+:confirm:` to confirm.".$this->get_typed($cmd, $args);
   }
 
   protected function check_for_valid_adventurers ($guild, $names, $check_is_available = true) {
