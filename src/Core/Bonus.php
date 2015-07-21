@@ -28,6 +28,7 @@ class Bonus {
   protected $_loss_by_one_as_tie_modifiers;
   protected $_loss_on_success_modifiers;
   protected $_tie_breaker_on_fail_modifiers;
+  protected $_item_type_find_rate_modifiers;
 
   // 2. Modifiers available for retrieval.
   const TRAVEL_SPEED = '_travel_speed_modifiers';
@@ -48,13 +49,14 @@ class Bonus {
   const LOSS_BY_ONE_AS_TIE = '_loss_by_one_as_tie_modifiers';
   const LOSS_ON_SUCCESS = '_loss_on_success_modifiers';
   const TIE_BREAKER_ON_FAIL = '_tie_breaker_on_fail_modifiers';
+  const ITEM_TYPE_FIND_RATE = '_item_type_find_rate_modifiers';
 
   // 3. List of all available modifiers.
   static $all_modifiers = array(Bonus::TRAVEL_SPEED, Bonus::QUEST_SPEED, Bonus::QUEST_SUCCESS, Bonus::DEATH_RATE,
     Bonus::QUEST_REWARD_GOLD, Bonus::QUEST_REWARD_FAME, Bonus::QUEST_REWARD_EXP, Bonus::QUEST_REWARD_ITEM,
     Bonus::MISS_RATE, Bonus::CRIT_RATE, Bonus::OPPONENT_MISS_RATE, Bonus::OPPONENT_CRIT_RATE, Bonus::ATTACK_AS_SUCCESS,
     Bonus::DEFEND_AS_SUCCESS, Bonus::BREAK_AS_SUCCESS, Bonus::LOSS_BY_ONE_AS_TIE, Bonus::LOSS_ON_SUCCESS,
-    Bonus::TIE_BREAKER_ON_FAIL);
+    Bonus::TIE_BREAKER_ON_FAIL, Bonus::ITEM_TYPE_FIND_RATE);
 
   // Change how the modifier is returned.
   const MOD_ORIGINAL = 'original'; // Get as decimal version (1.05) for +5%
@@ -94,6 +96,7 @@ class Bonus {
       'Quest' => array(),
       'Location' => array(),
       'Challenge' => array(),
+      'ItemType' => array(),
     );
 
     return $mods;
@@ -139,6 +142,7 @@ class Bonus {
       case 'Quest':
       case 'Location':
       case 'Challenge':
+      case 'ItemType':
         $type = is_array($info) ? $info['type'] : $info->type;
         $mod = isset($mods[$for][$type]) ? $mods[$for][$type] : $mods[Bonus::FOR_DEFAULT];
         break;
@@ -163,6 +167,7 @@ class Bonus {
       case 'Quest':
       case 'Location':
       case 'Challenge':
+      case 'ItemType':
         $type = is_array($info) ? $info['type'] : $info->type;
         $mods[$for][$type] = $value;
         break;
@@ -186,6 +191,7 @@ class Bonus {
       case 'Quest':
       case 'Location':
       case 'Challenge':
+      case 'ItemType':
         $type = is_array($info) ? $info['type'] : $info->type;
         if (!isset($mods[$for][$type])) $mods[$for][$type] = $mods[Bonus::FOR_DEFAULT];
         $mods[$for][$type] += $value;

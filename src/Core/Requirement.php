@@ -6,6 +6,9 @@ class Requirement {
   public $type;
   public $qty;
 
+  const TYPE_ITEM = 'item';
+  const TYPE_UPGRADE = 'upgrade';
+
   function __construct($data = array()) {
     // Save values to object.
     $this->__copy_data($data);
@@ -31,7 +34,9 @@ class Requirement {
   /**
    * Format the requirement into a string for saving in the database.
    *
-   * @return "TYPE,NAME_ID,QTY" --> Current types supported = "item", "upgrade"
+   * @return "TYPE,NAME_ID,QTY" --> Current types supported:
+   *    "item" -> Requirement::TYPE_ITEM)
+   *    "upgrade" -> Requirement::TYPE_UPGRADE)
    *
    * Examples:
    *    requirement of 3 iron ore returns -->  "item,ore_iron,3"

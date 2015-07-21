@@ -9,9 +9,11 @@ class ItemTemplate extends RPGEntitySaveable {
   public $type;
   public $rarity_lo;
   public $rarity_hi;
+  public $cost;
+  public $for_sale;
   
   // Private vars
-  static $fields_int = array('rarity_lo', 'rarity_hi');
+  static $fields_int = array('rarity_lo', 'rarity_hi', 'cost');
   static $db_table = 'item_templates';
   static $default_class = 'ItemTemplate';
   static $primary_key = 'itid';
@@ -24,6 +26,10 @@ class ItemTemplate extends RPGEntitySaveable {
 
   public function get_display_name ($bold = true) {
     return (!empty($this->icon) ? $this->icon.' ' : '').($bold ? '*' : '').$this->name.($bold ? '*' : '');
+  }
+
+  public function get_description () {
+    return ItemDesc::get($this);
   }
 
 
@@ -39,9 +45,9 @@ class ItemTemplate extends RPGEntitySaveable {
   /**
    * $exclude 
    */
-  public static function random ($num_items = 1, $rarity_min = 0, $rarity_max = 5, $exclude_types = array(), $exclude_items = array()) {
+  public static function random ($num_items = 1, $rarity_min = 0, $rarity_max = 5, $exclude_types = array(), $exclude_items = array(), $item_type_probabilities = NULL) {
     // Choose an item based on the probability that the type will appear.
-    $all_probs = ItemType::PROBABILITIES();
+    $all_probs = ($item_type_probabilities === NULL ? ItemType::PROBABILITIES() : $item_type_probabilities);
     $items = array();
     
     // Populate a list full of the types based on the probability given.
@@ -62,9 +68,7 @@ class ItemTemplate extends RPGEntitySaveable {
           // Check if the item's rarity range overlaps with the randomization's range.
           if ($an_item->rarity_hi < $rarity_min || $an_item->rarity_lo > $rarity_max) $remove_me = true;
           // If we need to remove the item, do so.
-          if ($remove_me) {
-            unset($all_items[$type][$index]);
-          }
+          if ($remove_me) unset($all_items[$type][$index]);
         }
         // Re-index the array.
         $all_items[$type] = array_values($all_items[$type]);

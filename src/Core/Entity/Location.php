@@ -43,26 +43,27 @@ class Location extends RPGEntitySaveable {
   }
 
   public function get_display_name () {
-    return '['.$this->get_coord_name().']'.(!empty($this->name) ? ' '.$this->name : '');
+    return '`'.$this->get_coord_name().'` '.(!empty($this->name) ? ' '.$this->name : '');
   }
 
   public function get_coord_name () {
     return Location::get_letter($this->col) .$this->row;
   }
 
-  public function get_duration ($guild, $adventurers) {
+  public function get_duration ($guild, $adventurers, $kit) {
     // Get the map so we can find the town location.
     $map = $this->get_map();
     // Get the capital in the map.
     $capital = $map->get_capital();
     // Calculate the raw distance and multiply by a time constant.
-    $travel_speed_modifier = $this->calculate_travel_speed_modifier($guild, $adventurers);
+    $travel_speed_modifier = $this->calculate_travel_speed_modifier($guild, $adventurers, $kit);
     $travel_per_tile = Location::TRAVEL_BASE * $travel_speed_modifier;
     return ceil(sqrt(pow(($capital->row - $this->row), 2) + pow(($capital->col - $this->col), 2)) * $travel_per_tile);
   }
 
-  public function calculate_travel_speed_modifier ($guild, $adventurers) {
+  public function calculate_travel_speed_modifier ($guild, $adventurers, $kit) {
     $mod = $guild->get_bonus()->get_mod(Bonus::TRAVEL_SPEED, $this);
+    if (!empty($kit)) $mod += $kit->get_bonus()->get_mod(Bonus::TRAVEL_SPEED, $this, Bonus::MOD_DIFF);
     foreach ($adventurers as $adventurer) $mod += $adventurer->get_bonus()->get_mod(Bonus::TRAVEL_SPEED, $this, Bonus::MOD_DIFF);
     return $mod;
   }

@@ -26,6 +26,17 @@ class ItemDesc {
 
       case 'herb_green': return $item->name.' is used to upgrade your Healer\'s Garden.';
       case 'herb_red': return $item->name.' is used to upgrade your Apothecary.';
+
+      case 'revival_fenixdown': return $item->name.' is used to revive a fallen Adventurer in town.';
+
+      case 'kit_firstaid': return $item->name.' is a one-time use item that reduces the chances of Adventurers dying while on a Quest.';
+      case 'kit_advsupplies': return $item->name.' is a one-time use item that increases the chances of success while on a Quest.';
+      case 'kit_guildbanner': return $item->name.' is a one-time use item that increases the amount of Fame earned while on a Quest.';
+      case 'kit_guide': return $item->name.' is a hired helper that reduces the travel time when Exploring and Questing (after which they will leave having fulfilled their duty).';
+      case 'kit_seisreport': return $item->name.' is a one-time use item that increases the chances of finding Ore when Exploring and Questing.';
+      case 'kit_apprentice': return $item->name.' is a hired helper that increases the chances of finding Powerstones when Exploring and Questing (after which they will leave having fulfilled their duty).';
+      case 'kit_herbalist': return $item->name.' is a hired helper that increases the chances of finding Herbs when Exploring and Questing (after which they will leave having fulfilled their duty).';
+      case 'kit_shepherd': return $item->name.' is a hired helper that increases the chances of finding Animals when Exploring and Questing (after which they will leave having fulfilled their duty).';
     }
     return '';
   }

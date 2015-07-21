@@ -79,6 +79,7 @@ function update_version_0_0_0 ($forced = false) {
   $quests_table[] = "level INT(10) UNSIGNED NOT NULL";
   $quests_table[] = "success_rate INT(10) UNSIGNED NOT NULL";
   $quests_table[] = "death_rate INT(10) UNSIGNED NOT NULL";
+  $quests_table[] = "kit_id INT(11) UNSIGNED NOT NULL";
   $quests_table[] = "PRIMARY KEY ( qid )";
   add_update_query( "CREATE TABLE IF NOT EXISTS quests (". implode(',', $quests_table) .")" );
 
@@ -158,6 +159,8 @@ function update_version_0_0_0 ($forced = false) {
   $item_template_table[] = "type VARCHAR(100) NOT NULL";
   $item_template_table[] = "rarity_lo INT(10) UNSIGNED NOT NULL";
   $item_template_table[] = "rarity_hi INT(10) UNSIGNED NOT NULL";
+  $item_template_table[] = "cost INT(10) UNSIGNED NOT NULL";
+  $item_template_table[] = "for_sale TINYINT(1) NOT NULL";
   $item_template_table[] = "PRIMARY KEY ( itid )";
   add_update_query( "CREATE TABLE IF NOT EXISTS item_templates (". implode(',', $item_template_table) .")" );
 
@@ -172,6 +175,8 @@ function update_version_0_0_0 ($forced = false) {
   $item_table[] = "type VARCHAR(100) NOT NULL";
   $item_table[] = "rarity_lo INT(10) UNSIGNED NOT NULL";
   $item_table[] = "rarity_hi INT(10) UNSIGNED NOT NULL";
+  $item_table[] = "cost INT(10) UNSIGNED NOT NULL";
+  $item_table[] = "for_sale TINYINT(1) NOT NULL";
   $item_table[] = "PRIMARY KEY ( iid )";
   add_update_query( "CREATE TABLE IF NOT EXISTS items (". implode(',', $item_table) .")" );
 
@@ -286,31 +291,43 @@ function update_version_0_0_0 ($forced = false) {
 
   // Add ItemTemplates.
   $item_templates = array();
-  $item_templates[] = array(':name_id' => 'powerstone_shaman', ':name' => 'Shaman Powerstone', ':icon' => '', ':type' => 'powerstone', ':rarity_lo' => 3, ':rarity_hi' => 5);
-  $item_templates[] = array(':name_id' => 'powerstone_brigand', ':name' => 'Brigand Powerstone', ':icon' => '', ':type' => 'powerstone', ':rarity_lo' => 3, ':rarity_hi' => 5);
-  $item_templates[] = array(':name_id' => 'powerstone_judge', ':name' => 'Judge Powerstone', ':icon' => '', ':type' => 'powerstone', ':rarity_lo' => 3, ':rarity_hi' => 5);
-  $item_templates[] = array(':name_id' => 'powerstone_magus', ':name' => 'Magus Powerstone', ':icon' => '', ':type' => 'powerstone', ':rarity_lo' => 3, ':rarity_hi' => 5);
-  $item_templates[] = array(':name_id' => 'powerstone_dragoon', ':name' => 'Dragoon Powerstone', ':icon' => '', ':type' => 'powerstone', ':rarity_lo' => 3, ':rarity_hi' => 5);
-  $item_templates[] = array(':name_id' => 'powerstone_strider', ':name' => 'Strider Powerstone', ':icon' => '', ':type' => 'powerstone', ':rarity_lo' => 3, ':rarity_hi' => 5);
-  $item_templates[] = array(':name_id' => 'powerstone_oracle', ':name' => 'Oracle Powerstone', ':icon' => '', ':type' => 'powerstone', ':rarity_lo' => 3, ':rarity_hi' => 5);
-  $item_templates[] = array(':name_id' => 'powerstone_juggernaut', ':name' => 'Juggernaut Powerstone', ':icon' => '', ':type' => 'powerstone', ':rarity_lo' => 3, ':rarity_hi' => 5);
+  $item_templates[] = array(':name_id' => 'powerstone_shaman', ':name' => 'Shaman Powerstone', ':icon' => '', ':type' => 'powerstone', ':rarity_lo' => 3, ':rarity_hi' => 5, ':cost' => 0, ':for_sale' => false);
+  $item_templates[] = array(':name_id' => 'powerstone_brigand', ':name' => 'Brigand Powerstone', ':icon' => '', ':type' => 'powerstone', ':rarity_lo' => 3, ':rarity_hi' => 5, ':cost' => 0, ':for_sale' => false);
+  $item_templates[] = array(':name_id' => 'powerstone_judge', ':name' => 'Judge Powerstone', ':icon' => '', ':type' => 'powerstone', ':rarity_lo' => 3, ':rarity_hi' => 5, ':cost' => 0, ':for_sale' => false);
+  $item_templates[] = array(':name_id' => 'powerstone_magus', ':name' => 'Magus Powerstone', ':icon' => '', ':type' => 'powerstone', ':rarity_lo' => 3, ':rarity_hi' => 5, ':cost' => 0, ':for_sale' => false);
+  $item_templates[] = array(':name_id' => 'powerstone_dragoon', ':name' => 'Dragoon Powerstone', ':icon' => '', ':type' => 'powerstone', ':rarity_lo' => 3, ':rarity_hi' => 5, ':cost' => 0, ':for_sale' => false);
+  $item_templates[] = array(':name_id' => 'powerstone_strider', ':name' => 'Strider Powerstone', ':icon' => '', ':type' => 'powerstone', ':rarity_lo' => 3, ':rarity_hi' => 5, ':cost' => 0, ':for_sale' => false);
+  $item_templates[] = array(':name_id' => 'powerstone_oracle', ':name' => 'Oracle Powerstone', ':icon' => '', ':type' => 'powerstone', ':rarity_lo' => 3, ':rarity_hi' => 5, ':cost' => 0, ':for_sale' => false);
+  $item_templates[] = array(':name_id' => 'powerstone_juggernaut', ':name' => 'Juggernaut Powerstone', ':icon' => '', ':type' => 'powerstone', ':rarity_lo' => 3, ':rarity_hi' => 5, ':cost' => 0, ':for_sale' => false);
   
-  $item_templates[] = array(':name_id' => 'ore_iron', ':name' => 'Iron Ore', ':icon' => '', ':type' => 'ore', ':rarity_lo' => 0, ':rarity_hi' => 2);
-  $item_templates[] = array(':name_id' => 'ore_steel', ':name' => 'Steel', ':icon' => '', ':type' => 'ore', ':rarity_lo' => 2, ':rarity_hi' => 3);
-  $item_templates[] = array(':name_id' => 'ore_mithril', ':name' => 'Mithril Ore', ':icon' => '', ':type' => 'ore', ':rarity_lo' => 3, ':rarity_hi' => 4);
-  $item_templates[] = array(':name_id' => 'ore_crystal', ':name' => 'Crystal Shard', ':icon' => '', ':type' => 'ore', ':rarity_lo' => 3, ':rarity_hi' => 4);
-  $item_templates[] = array(':name_id' => 'ore_diamond', ':name' => 'Diamond', ':icon' => '', ':type' => 'ore', ':rarity_lo' => 4, ':rarity_hi' => 5);
-  $item_templates[] = array(':name_id' => 'ore_adamantine', ':name' => 'Adamantine', ':icon' => '', ':type' => 'ore', ':rarity_lo' => 4, ':rarity_hi' => 5);
-  $item_templates[] = array(':name_id' => 'ore_demonite', ':name' => 'Demonite', ':icon' => '', ':type' => 'ore', ':rarity_lo' => 5, ':rarity_hi' => 5);
-  $item_templates[] = array(':name_id' => 'ore_godstone', ':name' => 'Godstone', ':icon' => '', ':type' => 'ore', ':rarity_lo' => 5, ':rarity_hi' => 5);
+  $item_templates[] = array(':name_id' => 'ore_iron', ':name' => 'Iron Ore', ':icon' => '', ':type' => 'ore', ':rarity_lo' => 0, ':rarity_hi' => 2, ':cost' => 0, ':for_sale' => false);
+  $item_templates[] = array(':name_id' => 'ore_steel', ':name' => 'Steel', ':icon' => '', ':type' => 'ore', ':rarity_lo' => 2, ':rarity_hi' => 3, ':cost' => 0, ':for_sale' => false);
+  $item_templates[] = array(':name_id' => 'ore_mithril', ':name' => 'Mithril Ore', ':icon' => '', ':type' => 'ore', ':rarity_lo' => 3, ':rarity_hi' => 4, ':cost' => 0, ':for_sale' => false);
+  $item_templates[] = array(':name_id' => 'ore_crystal', ':name' => 'Crystal Shard', ':icon' => '', ':type' => 'ore', ':rarity_lo' => 3, ':rarity_hi' => 4, ':cost' => 0, ':for_sale' => false);
+  $item_templates[] = array(':name_id' => 'ore_diamond', ':name' => 'Diamond', ':icon' => '', ':type' => 'ore', ':rarity_lo' => 4, ':rarity_hi' => 5, ':cost' => 0, ':for_sale' => false);
+  $item_templates[] = array(':name_id' => 'ore_adamantine', ':name' => 'Adamantine', ':icon' => '', ':type' => 'ore', ':rarity_lo' => 4, ':rarity_hi' => 5, ':cost' => 0, ':for_sale' => false);
+  $item_templates[] = array(':name_id' => 'ore_demonite', ':name' => 'Demonite', ':icon' => '', ':type' => 'ore', ':rarity_lo' => 5, ':rarity_hi' => 5, ':cost' => 0, ':for_sale' => false);
+  $item_templates[] = array(':name_id' => 'ore_godstone', ':name' => 'Godstone', ':icon' => '', ':type' => 'ore', ':rarity_lo' => 5, ':rarity_hi' => 5, ':cost' => 0, ':for_sale' => false);
+  
+  $item_templates[] = array(':name_id' => 'animal_horse', ':name' => 'Horse', ':icon' => '', ':type' => 'animal', ':rarity_lo' => 1, ':rarity_hi' => 3, ':cost' => 0, ':for_sale' => false);
+  $item_templates[] = array(':name_id' => 'animal_pegasus', ':name' => 'Pegasus', ':icon' => '', ':type' => 'animal', ':rarity_lo' => 3, ':rarity_hi' => 5, ':cost' => 0, ':for_sale' => false);
+  
+  $item_templates[] = array(':name_id' => 'herb_green', ':name' => 'Green Herb', ':icon' => '', ':type' => 'herb', ':rarity_lo' => 1, ':rarity_hi' => 2, ':cost' => 0, ':for_sale' => false);
+  $item_templates[] = array(':name_id' => 'herb_red', ':name' => 'Red Herb', ':icon' => '', ':type' => 'herb', ':rarity_lo' => 3, ':rarity_hi' => 4, ':cost' => 0, ':for_sale' => false);
+  
+  $item_templates[] = array(':name_id' => 'revival_fenixdown', ':name' => 'Fenix Down', ':icon' => '', ':type' => 'revival', ':rarity_lo' => 1, ':rarity_hi' => 5, ':cost' => 0, ':for_sale' => false);
+  
+  $item_templates[] = array(':name_id' => 'kit_firstaid', ':name' => 'First Aid Kit', ':icon' => '', ':type' => 'kit', ':rarity_lo' => 0, ':rarity_hi' => 5, ':cost' => 500, ':for_sale' => true);
+  $item_templates[] = array(':name_id' => 'kit_advsupplies', ':name' => 'Adventuring Supplies', ':icon' => '', ':type' => 'kit', ':rarity_lo' => 0, ':rarity_hi' => 5, ':cost' => 350, ':for_sale' => true);
+  $item_templates[] = array(':name_id' => 'kit_guildbanner', ':name' => 'Guild Banner', ':icon' => '', ':type' => 'kit', ':rarity_lo' => 0, ':rarity_hi' => 5, ':cost' => 150, ':for_sale' => true);
+  $item_templates[] = array(':name_id' => 'kit_guide', ':name' => 'Guide', ':icon' => '', ':type' => 'kit', ':rarity_lo' => 0, ':rarity_hi' => 5, ':cost' => 300, ':for_sale' => true);
+  $item_templates[] = array(':name_id' => 'kit_seisreport', ':name' => 'Seismology Report', ':icon' => '', ':type' => 'kit', ':rarity_lo' => 0, ':rarity_hi' => 5, ':cost' => 150, ':for_sale' => true);
+  $item_templates[] = array(':name_id' => 'kit_apprentice', ':name' => 'Magus Apprentice', ':icon' => '', ':type' => 'kit', ':rarity_lo' => 0, ':rarity_hi' => 5, ':cost' => 1000, ':for_sale' => true);
+  $item_templates[] = array(':name_id' => 'kit_herbalist', ':name' => 'Herbalist Assistant', ':icon' => '', ':type' => 'kit', ':rarity_lo' => 0, ':rarity_hi' => 5, ':cost' => 150, ':for_sale' => true);
+  $item_templates[] = array(':name_id' => 'kit_shepherd', ':name' => 'Shepherd', ':icon' => '', ':type' => 'kit', ':rarity_lo' => 0, ':rarity_hi' => 5, ':cost' => 150, ':for_sale' => true);
 
-  $item_templates[] = array(':name_id' => 'animal_horse', ':name' => 'Horse', ':icon' => '', ':type' => 'animal', ':rarity_lo' => 1, ':rarity_hi' => 3);
-  $item_templates[] = array(':name_id' => 'animal_pegasus', ':name' => 'Pegasus', ':icon' => '', ':type' => 'animal', ':rarity_lo' => 3, ':rarity_hi' => 5);
-
-  $item_templates[] = array(':name_id' => 'herb_green', ':name' => 'Green Herb', ':icon' => '', ':type' => 'herb', ':rarity_lo' => 1, ':rarity_hi' => 2);
-  $item_templates[] = array(':name_id' => 'herb_red', ':name' => 'Red Herb', ':icon' => '', ':type' => 'herb', ':rarity_lo' => 3, ':rarity_hi' => 4);
-  //$item_templates[] = array(':name_id' => '', ':name' => '', ':icon' => '', ':type' => '', ':rarity_lo' => 0, ':rarity_hi' => 5);
+  //$item_templates[] = array(':name_id' => '', ':name' => '', ':icon' => '', ':type' => '', ':rarity_lo' => 0, ':rarity_hi' => 5, ':cost' => 0, ':for_sale' => false);
   foreach ($item_templates as $item_template) {
-    add_update_query("INSERT INTO item_templates (name_id, name, icon, type, rarity_lo, rarity_hi) VALUES (:name_id, :name, :icon, :type, :rarity_lo, :rarity_hi)", $item_template);
+    add_update_query("INSERT INTO item_templates (name_id, name, icon, type, rarity_lo, rarity_hi, cost, for_sale) VALUES (:name_id, :name, :icon, :type, :rarity_lo, :rarity_hi, :cost, :for_sale)", $item_template);
   }
 }

@@ -24,9 +24,11 @@ class Quest extends RPGEntitySaveable {
   public $level;
   public $success_rate;
   public $death_rate;
+  public $kit_id; // ID of the Kit item being used on the quest.
   
   // Protected
   protected $_location;
+  protected $_kit;
 
   // Private vars
   static $fields_int = array('stars', 'created', 'reward_gold', 'reward_exp', 'reward_fame', 'duration', 'cooldown', 'party_size_min', 'party_size_max', 'level', 'success_rate', 'death_rate');
@@ -70,31 +72,45 @@ class Quest extends RPGEntitySaveable {
     return $this->_location;
   }
 
+  public function load_kit () {
+    $this->_kit = Item::load(array('iid' => $this->kit_id));
+  }
+
+  public function get_kit () {
+    if (empty($this->_kit)) {
+      $this->load_kit();
+    }
+
+    return $this->_kit;
+  }
+
   public function get_party_size () {
     return $this->party_size_min .($this->party_size_max > 0 && $this->party_size_max != $this->party_size_min ? '-'.$this->party_size_max : '');
   }
 
-  public function get_duration ($guild, $adventurers) {
+  public function get_duration ($guild, $adventurers, $kit) {
     $duration = $this->duration;
     // Get quest duration modifier.
     $duration_mod = $guild->get_bonus()->get_mod(Bonus::QUEST_SPEED, $this);
+    if (!empty($kit)) $duration_mod += $kit->get_bonus()->get_mod(Bonus::QUEST_SPEED, $this, Bonus::MOD_DIFF);
     foreach ($adventurers as $adventurer) $duration_mod += $adventurer->get_bonus()->get_mod(Bonus::QUEST_SPEED, $this, Bonus::MOD_DIFF);
     // Modify quest duration.
     $duration = ceil($duration * $duration_mod);
 
     // Load up the location for this Quest.
     $location = Location::load(array('locid' => $this->locid));
-    if (!empty($location)) $duration += $location->get_duration($guild, $adventurers);
+    if (!empty($location)) $duration += $location->get_duration($guild, $adventurers, $kit);
     return $duration;
   }
 
-  public function get_success_rate ($guild, $adventurers) {
+  public function get_success_rate ($guild, $adventurers, $kit) {
     $rate = $this->success_rate;
 
     // Adjust it based on the level of the adventurers vs. the level of the quest.
     $levels = 0;
     // Get the quest success rate from the Guild.
     $mod = $guild->get_bonus()->get_mod(Bonus::QUEST_SUCCESS, $this, Bonus::MOD_HUNDREDS);
+    if (!empty($kit)) $mod += $kit->get_bonus()->get_mod(Bonus::QUEST_SUCCESS, $this, Bonus::MOD_HUNDREDS);
     foreach ($adventurers as $adventurer) {
       $levels += $adventurer->level;
       $mod += $adventurer->get_bonus()->get_mod(Bonus::QUEST_SUCCESS, $this, Bonus::MOD_HUNDREDS);
@@ -114,47 +130,53 @@ class Quest extends RPGEntitySaveable {
     return $rate < 100 ? floor($rate) : 100;
   }
 
-  public function get_death_rate ($guild, $adventurers) {
+  public function get_death_rate ($guild, $adventurers, $kit) {
     $rate = $this->death_rate;
     // Get the death rate modifier from the Guild.
     $mod = $guild->get_bonus()->get_mod(Bonus::DEATH_RATE, $this);
+    if (!empty($kit)) $mod -= $kit->get_bonus()->get_mod(Bonus::DEATH_RATE, $this, Bonus::MOD_DIFF);
     // Check if adventurers modify the death rate at all.
     foreach ($adventurers as $adventurer) $mod -= $adventurer->get_bonus()->get_mod(Bonus::DEATH_RATE, $this, Bonus::MOD_DIFF);
     return ceil($rate * $mod);
   }
 
-  public function get_reward_gold ($guild, $adventurers) {
+  public function get_reward_gold ($guild, $adventurers, $kit) {
     $gold = $this->reward_gold;
     $mod = $guild->get_bonus()->get_mod(Bonus::QUEST_REWARD_GOLD, $this);
+    if (!empty($kit)) $mod += $kit->get_bonus()->get_mod(Bonus::QUEST_REWARD_GOLD, $this, Bonus::MOD_DIFF);
     foreach ($adventurers as $adventurer) $mod += $adventurer->get_bonus()->get_mod(Bonus::QUEST_REWARD_GOLD, $this, Bonus::MOD_DIFF);
     return ceil($gold * $mod);
   }
 
-  public function get_reward_fame ($guild, $adventurers) {
+  public function get_reward_fame ($guild, $adventurers, $kit) {
     $fame = $this->reward_fame;
     $mod = $guild->get_bonus()->get_mod(Bonus::QUEST_REWARD_FAME, $this);
+    if (!empty($kit)) $mod += $kit->get_bonus()->get_mod(Bonus::QUEST_REWARD_FAME, $this, Bonus::MOD_DIFF);
     foreach ($adventurers as $adventurer) $mod += $adventurer->get_bonus()->get_mod(Bonus::QUEST_REWARD_FAME, $this, Bonus::MOD_DIFF);
     return ceil($fame * $mod);
   }
 
-  public function get_reward_exp ($guild, $adventurers) {
+  public function get_reward_exp ($guild, $adventurers, $kit) {
     $exp = $this->reward_exp;
     $mod = $guild->get_bonus()->get_mod(Bonus::QUEST_REWARD_EXP, $this);
+    if (!empty($kit)) $mod += $kit->get_bonus()->get_mod(Bonus::QUEST_REWARD_EXP, $this, Bonus::MOD_DIFF);
     foreach ($adventurers as $adventurer) $mod += $adventurer->get_bonus()->get_mod(Bonus::QUEST_REWARD_EXP, $this, Bonus::MOD_DIFF);
     return ceil($exp * $mod);
   }
 
-  public function get_reward_items ($guild, $adventurers) {
+  public function get_reward_items ($guild, $adventurers, $kit) {
     $chance_of_item = 5;
     $mod = $guild->get_bonus()->get_mod(Bonus::QUEST_REWARD_ITEM, $this);
+    if (!empty($kit)) $mod += $kit->get_bonus()->get_mod(Bonus::QUEST_REWARD_ITEM, $this, Bonus::MOD_DIFF);
     foreach ($adventurers as $adventurer) $mod += $adventurer->get_bonus()->get_mod(Bonus::QUEST_REWARD_ITEM, $this, Bonus::MOD_DIFF);
     // Check if any items were found.
-    $rarity_min = ($this->stars - 1);
-    $rarity_max = $this->stars;
     $items = array();
     if (rand(1, 100) <= $chance_of_item) {
+      $rarity_min = ($this->stars - 1);
+      $rarity_max = $this->stars;
+      $item_probabilities = $this->get_item_probabilities($guild, $adventurers, $kit);
       // Generate an item to be found, with the rarity relating to the Quest star rating.
-      $templates = ItemTemplate::random(1, $rarity_min, $rarity_max);
+      $templates = ItemTemplate::random(1, $rarity_min, $rarity_max, array(), array(), $item_probabilities);
       // Create the items and assign them to the Guild.
       foreach ($templates as $template) {
         $item = $guild->add_item($template);
@@ -162,6 +184,20 @@ class Quest extends RPGEntitySaveable {
       }
     }
     return $items;
+  }
+
+  public function get_item_probabilities ($guild, $adventurers, $kit) {
+    $probs = ItemType::PROBABILITIES();
+    // Loop through each ItemType and modify the probability.
+    foreach ($probs as $type => $value) {
+      $mod = $guild->get_bonus()->get_mod(Bonus::ITEM_TYPE_FIND_RATE, "ItemType->".$type, Bonus::MOD_DIFF);
+      if (!empty($kit)) $mod += $kit->get_bonus()->get_mod(Bonus::ITEM_TYPE_FIND_RATE, "ItemType->".$type, Bonus::MOD_DIFF);
+      foreach ($adventurers as $adventurer) $mod += $adventurer->get_bonus()->get_mod(Bonus::ITEM_TYPE_FIND_RATE, "ItemType->".$type, Bonus::MOD_DIFF);
+      // Add to the existing probability.
+      $probs[$type] = ($value + $mod);
+    }
+    
+    return $probs;
   }
 
   public function queue_process ($queue = null) {
@@ -184,13 +220,14 @@ class Quest extends RPGEntitySaveable {
     // Get all the adventurers on this quest.
     $adventurers = Adventurer::load_multiple(array('agid' => $this->agid, 'gid' => $this->gid));
     $adv_count = count($adventurers);
+    $kit = $this->get_kit();
 
     // Disband the adventuring group.
     $advgroup->delete();
 
     // Determine if the quest was successful.
-    $success_rate = $this->get_success_rate($guild, $adventurers);
-    $death_rate = $this->get_death_rate($guild, $adventurers);
+    $success_rate = $this->get_success_rate($guild, $adventurers, $kit);
+    $death_rate = $this->get_death_rate($guild, $adventurers, $kit);
     // Generate a number between 1-100 and see if it's successful.
     $success = (rand(1, 100) <= $success_rate);
 
@@ -202,11 +239,11 @@ class Quest extends RPGEntitySaveable {
     if ($success) {
       $quest_data['success_msg'] = 'SUCCESS!';
       $quest_data['text'][] = $this->name .' was completed.';
-      $reward_gold = $this->get_reward_gold($guild, $adventurers);
-      $reward_fame = $this->get_reward_fame($guild, $adventurers);
-      $reward_items = $this->get_reward_items($guild, $adventurers);
+      $reward_gold = $this->get_reward_gold($guild, $adventurers, $kit);
+      $reward_fame = $this->get_reward_fame($guild, $adventurers, $kit);
+      $reward_items = $this->get_reward_items($guild, $adventurers, $kit);
       // Calculate the exp per adventurer.
-      $reward_exp = ceil($this->get_reward_exp($guild, $adventurers) / count($adventurers));
+      $reward_exp = ceil($this->get_reward_exp($guild, $adventurers, $kit) / count($adventurers));
 
       // Give the Guild its reward.
       if ($reward_gold > 0) {
@@ -266,6 +303,9 @@ class Quest extends RPGEntitySaveable {
       }
       $adventurer->save();
     }
+
+    // Consume the kit item.
+    if (!empty($kit)) $kit->delete();
 
     // Check if we need to reactivate this quest.
     $this->agid = 0;

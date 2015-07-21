@@ -11,11 +11,15 @@ class Item extends RPGEntitySaveable {
   public $type;
   public $rarity_lo;
   public $rarity_hi;
+  public $cost;
+  public $for_sale;
 
+  // Protected
   protected $_description;
+  protected $_bonus;
   
   // Private vars
-  static $fields_int = array('rarity_lo', 'rarity_hi');
+  static $fields_int = array('rarity_lo', 'rarity_hi', 'cost');
   static $db_table = 'items';
   static $default_class = 'Item';
   static $primary_key = 'iid';
@@ -39,6 +43,10 @@ class Item extends RPGEntitySaveable {
 
     // Load up the item description.
     $this->_description = ItemDesc::get($this);
+    if (empty($this->for_sale)) $this->for_sale = false;
+
+    // Load up the bonus objects.
+    $this->calculate_bonus();
   }
 
   public function get_display_name ($bold = true) {
@@ -47,5 +55,24 @@ class Item extends RPGEntitySaveable {
 
   public function get_description () {
     return $this->_description;
+  }
+
+  public function load_bonus () {
+    if (empty($this->_bonus)) $this->_bonus = new Bonus ();
+    return $this->_bonus;
+  }
+
+  public function get_bonus () {
+    if (empty($this->_bonus)) $this->load_bonus();
+    return $this->_bonus;
+  }
+
+  public function calculate_bonus () {
+    // Load up the bonus object.
+    $this->_bonus = null;
+    $this->load_bonus();
+
+    // Apply item modifiers.
+    ItemBonus::apply_bonus($this);
   }
 }

@@ -25,6 +25,7 @@ class RPGSession {
     $this->register_callback(array('register'), 'cmd_register');
     $this->register_callback(array('edit'), 'cmd_edit');
     $this->register_callback(array('upgrades', 'upgrade'), 'cmd_upgrade');
+    $this->register_callback(array('shop'), 'cmd_shop');
     $this->register_callback(array('items', 'item', 'inventory', 'inv'), 'cmd_inventory');
 
     $this->register_callback(array('recruit'), 'cmd_recruit');
@@ -32,6 +33,7 @@ class RPGSession {
     $this->register_callback(array('dismiss'), 'cmd_dismiss');
     $this->register_callback(array('champion'), 'cmd_champion');
     $this->register_callback(array('powerup', 'power'), 'cmd_powerup');
+    $this->register_callback(array('revive'), 'cmd_revive');
     
     $this->register_callback(array('quest'), 'cmd_quest');
     $this->register_callback(array('map'), 'cmd_map');
@@ -66,15 +68,18 @@ class RPGSession {
     //$response[] = 'View the Map: `map`';
     $response[] = 'Explore the Map: `explore`';
     $response[] = 'Quests: `quest`';
+    $response[] = 'Colosseum - Challenge another Guild: `challenge`';
     $response[] = '';
 
     $response[] = 'Recruit Adventurers: `recruit`';
     $response[] = 'View an Adventurer\'s status: `status [ADVENTURER NAME]`';
     $response[] = 'Dismiss an Adventurer: `dismiss`';
     $response[] = 'Power Up an Adventurer: `powerup`';
+    $response[] = 'Revive an Adventurer: `revive`';
     $response[] = '';
 
     $response[] = 'Upgrade your Guild: `upgrade`';
+    $response[] = 'Shop for items: `shop`';
     $response[] = 'Inventory: `inv`';
     $response[] = 'View an item: `item [ITEM NAME]`';
     $response[] = '';
@@ -121,6 +126,9 @@ class RPGSession {
    * Register your Guild to play in the current season.
    */
   protected function cmd_register ($args = array()) {
+    $orig_args = $args;
+    $cmd_word = 'register';
+
     $player = $this->get_current_player();
     // If the player exists already, no need to register.
     if (!empty($player)) {
@@ -133,6 +141,12 @@ class RPGSession {
     if (empty($season)) {
       $this->respond('You must wait for a new Season to begin.');
       return FALSE;
+    }
+
+    // Check the last argument for the confirmation code.
+    $confirmation = false;
+    if (!empty($args) && strpos($args[count($args)-1], 'CONFIRM') === 0) {
+      $confirmation = array_pop($args);
     }
 
     // Check if they gave a Guild name.
@@ -154,6 +168,17 @@ class RPGSession {
       return FALSE;
     }
 
+    // Check for a valid confirmation code.
+    if (!empty($confirmation) && $confirmation != 'CONFIRM') {
+      $response[] = 'The confirmation code "'.$confirmation.'" is invalid. The code should be: `CONFIRM`.';
+      $response[] = '';
+      // Re-display the confirmation text.
+      $confirmation = false;
+    }
+
+    // Make sure Guild only contains alpha-numeric characters and a few extra symbols.
+    $name = preg_replace("/[^A-Za-z0-9!&%$#\.\-\,\(\)\+<>\/\\ ]/", '', $name);
+
     // Create the new player.
     $data = array(
       'slack_user_id' => $this->data['user_id'],
@@ -164,6 +189,17 @@ class RPGSession {
       'gold' => 1000, // Starting gold.
     );
     $player = new Guild ($data);
+
+    // Display the confirmation message and code.
+    if (empty($confirmation)) {
+      $response[] = "Are you sure you want to register as ".$player->get_display_name()."?";
+      $response[] = "Once you've chosen a name, you cannot change it.";
+      $response[] = "_Note: If some of your special characters are missing from your name, it means they are not allowed. Sorry!_";
+      $response[] = '';
+      $response[] = $this->get_confirm($cmd_word, $orig_args);
+      $this->respond($response);
+      return FALSE;
+    }
 
     // Try to save the new player.
     $success = $player->save();
@@ -319,8 +355,7 @@ class RPGSession {
     if (empty($confirmation)) {
       $response[] = $this->show_adventurer_status($adventurer);
       $response[] = '';
-      $response[] = 'To confirm the recruiting, type:';
-      $response[] = '`'.$cmd_word.' '.implode(' ', $orig_args).' CONFIRM`';
+      $response[] = $this->get_confirm($cmd_word, $orig_args);
       $this->respond($response);
       return FALSE;
     }
@@ -375,7 +410,7 @@ class RPGSession {
 
     // They chose a name, so let's check if that adventurer is available.
     $adventurer_name = implode(' ', $args);
-    $adventurer = Adventurer::load(array('name' => $adventurer_name, 'gid' => $player->gid), true);
+    $adventurer = Adventurer::load(array('name' => $adventurer_name, 'gid' => $player->gid, 'dead' => false), true);
     if (empty($adventurer)) {
       $this->respond('You do not have an Adventurer by the name of "'.$adventurer_name.'".');
       return FALSE;
@@ -398,9 +433,22 @@ class RPGSession {
     // Load the player and fail out if they have not created a Guild.
     if (!($player = $this->load_current_player())) return;
     
+    $response = array();
+
     // If no Adventurer is selected, list the available ones.
     if (empty($args) || empty($args[0])) {
-      $this->respond("You must select an Adventurer to dismiss.");
+      $adventurers = $player->get_adventurers();
+      if (!empty($adventurers)) {
+        $response[] = "You must select an Adventurer to dismiss.";
+        $response[] = '';
+        foreach ($adventurers as $adventurer) {
+          $response[] = $adventurer->get_display_name();
+        }
+      }
+      else {
+        $response[] = "You have no Adventurers to dismiss.";
+      }
+      $this->respond($response);
       return FALSE;
     }
 
@@ -411,7 +459,7 @@ class RPGSession {
     }
 
     // They chose a name, so let's check if that adventurer is available.
-    $adventurer = Adventurer::load(array('name' => implode(' ', $args), 'gid' => $player->gid), true);
+    $adventurer = Adventurer::load(array('name' => implode(' ', $args), 'gid' => $player->gid, 'dead' => false), true);
     if (empty($adventurer)) {
       $this->respond('You do not have an Adventurer by the name of "'.implode(' ', $args).'".');
       return FALSE;
@@ -422,8 +470,6 @@ class RPGSession {
       $this->respond($adventurer->get_display_name().' is currently out on an adventure. You can only dismiss an Adventurer once they have returned.');
       return FALSE;
     }
-
-    $response = array();
 
     // Check for a valid confirmation code.
     if (!empty($confirmation) && $confirmation != 'CONFIRM') {
@@ -439,8 +485,7 @@ class RPGSession {
       $response[] = '';
       $response[] = $this->show_adventurer_status($adventurer);
       $response[] = '';
-      $response[] = 'To confirm the dismissal, type:';
-      $response[] = '`'.$cmd_word.' '.implode(' ', $orig_args).' CONFIRM`';
+      $response[] = $this->get_confirm($cmd_word, $orig_args);
       $this->respond($response);
       return FALSE;
     }
@@ -483,22 +528,41 @@ class RPGSession {
       $response = array();
       $response[] = Display::get_difficulty_legend();
       $response[] = '';
-      $response[] = 'Quests available:';
+      $response[] = 'To embark on a Quest, type: `quest [QUEST ID] [MODIFIER ITEM ID (optional)] [ADVENTURER NAMES (comma-separated)]` (example: `quest q23 `)';
+      $response[] = '';
+      $response[] = '*Quests available*:';
       foreach ($quests as $quest) {
         // Get the best adventurers available for questing.
         $best_adventurers = $player->get_best_adventurers($quest->party_size_max);
-        $success_rate = $quest->get_success_rate($player, $best_adventurers);
+        $success_rate = $quest->get_success_rate($player, $best_adventurers, NULL);
         $death_rate = $quest->death_rate;
-        $response[] = Display::get_difficulty($success_rate) .' '.($death_rate > 0 ? ':skull: ' : ''). Display::get_stars($quest->stars).' '.$quest->name.' (adventurers required: '.$quest->get_party_size().')  `quest q'.$quest->qid.' [ADVENTURER NAMES (comma-separated)]`';
+        $response[] = '`q'.$quest->qid.'` '. Display::get_difficulty($success_rate) .' '.($death_rate > 0 ? ':skull: ' : ''). ' '.$quest->name.' (adventurers required: '.$quest->get_party_size().') '.Display::get_stars($quest->stars);
       }
+
+      // Also show the list of available item modifiers.
+      $response[] = '';
+      $response[] = '*Modifier Items*:';
+      // Compact same-name items.
+      $items = $player->get_items();
+      $compact_items = $this->compact_items($items);
+      foreach ($compact_items as $citemid => $citems) {
+        $count = count($citems);
+        if ($count <= 0) continue;
+        if ($citems[0]->type != ItemType::KIT) continue;
+        $kits[] = $citems[0];
+        $response[] = '`i'.$citems[0]->iid.'` '. ($count > 1 ? $count.'x ' : ''). $citems[0]->get_display_name(false);
+      }
+      if (empty($kits)) $response[] = '_None_';
 
       // Also show the list of available adventurers.
       $response[] = '';
-      $response[] = 'Adventurers available for quests:';
-      foreach ($player->get_adventurers() as $adventurer) {
+      $response[] = '*Adventurers available for quests*:';
+      $adventurers = $player->get_adventurers();
+      foreach ($adventurers as $adventurer) {
         if (!empty($adventurer->agid)) continue;
-        $response[] = $adventurer->get_display_name();
+        $response[] = $adventurer->get_display_name(false);
       }
+      if (empty($adventurers)) $response[] = '_None_';
 
       $this->respond($response);
       return FALSE;
@@ -514,7 +578,23 @@ class RPGSession {
 
     // Get the adventurers going.
     if (empty($args)) {
-      $this->respond('Please choose Adventurers to go on this quest. Type: `quest q'.$quest->qid.' [ADVENTURER NAMES (comma-separated)]`');
+      $this->respond('Please choose Adventurers to go on this quest.'.$this->get_typed($cmd_word, $orig_args));
+      return FALSE;
+    }
+
+    // Check if there is an optional modifier item ID available.
+    if (substr($args[0], 0, 1) == 'i') {
+      $iid = substr(array_shift($args), 1);
+      $kit = Item::load(array('iid' => $iid, 'gid' => $player->gid));
+      if (empty($kit)) {
+        $this->respond("This item is not available to use as a modifier. Please choose a different item or remove it.".$this->get_typed($cmd_word, $orig_args));
+        return FALSE;
+      }
+    }
+
+    // Get the adventurers going.
+    if (empty($args)) {
+      $this->respond('Please choose Adventurers to go on this quest.'.$this->get_typed($cmd_word, $orig_args));
       return FALSE;
     }
 
@@ -586,14 +666,14 @@ class RPGSession {
     // Display the confirmation message and code.
     if (empty($confirmation)) {
       $response[] = '*Quest*: '.Display::get_stars($quest->stars).' '.$quest->name;
+      if (isset($kit)) $response[] = '*Modifier Item*: '. $kit->get_display_name(false);
       $response[] = '*Duration*: '.Display::get_duration_as_hours($duration);
       $response[] = '*Chance of Success*: '.Display::get_difficulty($success_rate).' '.$success_rate.'%';
       if ($death_rate > 0) $response[] = '*Chance of Death*: :skull: '.$death_rate.'%';
-      $response[] = '*Adventuring party*: ('.count($adventurers).')';
-      foreach ($adventurers as $adventurer) $response[] = $adventurer->get_display_name();
+      $response[] = '*Adventuring party ('.count($adventurers).')*:';
+      foreach ($adventurers as $adventurer) $response[] = $adventurer->get_display_name(false);
       $response[] = '';
-      $response[] = 'To confirm your departure, type:';
-      $response[] = '`quest q'.$quest->qid.' '.$adventurer_args.' CONFIRM`';
+      $response[] = $this->get_confirm($cmd_word, $orig_args);
       $this->respond($response);
       return FALSE;
     }
@@ -630,11 +710,16 @@ class RPGSession {
     $quest->gid = $player->gid;
     $quest->agid = $advgroup->agid;
     $quest->active = false;
+    // Add the kit to the quest.
+    if (isset($kit)) $quest->kit_id = $kit->iid;
     $success = $quest->save();
     if ($success === false) {
       $this->respond('There was a problem saving the quest. Please talk to Paul.');
       return FALSE;
     }
+
+    // Remove the kit from the guild inventory.
+    $player->remove_item($kit);
 
     // Queue the quest for completion.
     $queue = $quest->queue( $duration );
@@ -702,18 +787,29 @@ class RPGSession {
       $this->respond('Location '.$coord.' was already explored'.$revealed_text.'.');
       return false;
     }
-    
+
+    // Check if there is an optional modifier item ID available.
+    if (!empty($args) && substr($args[0], 0, 1) == 'i') {
+      $iid = substr(array_shift($args), 1);
+      $kit = Item::load(array('iid' => $iid, 'gid' => $player->gid));
+      if (empty($kit)) {
+        $this->respond("This item is not available to use as a modifier. Please choose a different item or remove it.".$this->get_typed($cmd_word, $orig_args));
+        return FALSE;
+      }
+    }
+
     // Get the adventurers going.
     if (empty($args)) {
       $response = array();
-      $response[] = 'Please choose Adventurers to go exploring. Type: `explore '.$coord.' [ADVENTURER NAMES (comma-separated)]`';
+      $response[] = 'Please choose Adventurers to go exploring.';
       // Also show the list of available adventurers.
       $response[] = '';
-      $response[] = 'Adventurers available for exploring:';
+      $response[] = '*Adventurers available for exploring*:';
       foreach ($player->get_adventurers() as $adventurer) {
         if (!empty($adventurer->agid)) continue;
-        $response[] = $adventurer->get_display_name();
+        $response[] = $adventurer->get_display_name(false);
       }
+      $response[] = $this->get_typed($cmd_word, $orig_args);
       $this->respond($response);
       return FALSE;
     }
@@ -762,19 +858,19 @@ class RPGSession {
     }
 
     // Calculate the duration.
-    $duration = $location->get_duration($player, $adventurers);
+    $duration = $location->get_duration($player, $adventurers, (isset($kit) ? $kit : NULL));
 
     // Display the confirmation message and code.
     if (empty($confirmation)) {
       $response[] = '*Quest*: Exploration';
+      if (isset($kit)) $response[] = '*Modifier Item*: '. $kit->get_display_name(false);
       $response[] = '*Duration*: '.Display::get_duration_as_hours($duration);
-      $response[] = '*Adventuring party*: ('.count($adventurers).')';
+      $response[] = '*Adventuring party ('.count($adventurers).')*:';
       foreach ($adventurers as $adventurer) {
-        $response[] = $adventurer->get_display_name();
+        $response[] = $adventurer->get_display_name(false);
       }
       $response[] = '';
-      $response[] = 'To confirm your departure, type:';
-      $response[] = '`explore '.$coord.' '.$adventurer_args.' CONFIRM`';
+      $response[] = $this->get_confirm($cmd_word, $orig_args);
       $this->respond($response);
       return FALSE;
     }
@@ -798,6 +894,7 @@ class RPGSession {
       'max_party_size' => 0,
       'success_rate' => 100,
       'death_rate' => 0,
+      'kit' => (isset($kit) ? $kit->iid : 0),
     ));
     $success = $quest->save();
     if ($success === false) {
@@ -871,23 +968,39 @@ class RPGSession {
     $locations = Location::load_multiple(array('mapid' => $map->mapid));
 
     $response = array();
+    $response[] = 'To explore a location on the map, type: `explore [LETTER][NUMBER] [MODIFIER ITEM ID (optional)] [ADVENTURER NAMES (comma-separated)]` (ex: `explore A4 i10 Morgan, Gareth`).';
+    $response[] = '';
     $response[] = '[MAP GOES HERE]';
 
+    $response[] = '';
+    $response[] = '*Temp Locations for testing*:';
     foreach ($locations as $location) {
       if ($location->revealed) continue;
-      $response[] = $location->get_display_name().': `explore '.$location->get_coord_name().' [ADVENTURER NAMES (comma-separated)]`';
+      $response[] = $location->get_display_name();
     }
+
+    // Also show the list of available item modifiers.
+    $response[] = '';
+    $response[] = '*Modifier Items*:';
+    // Compact same-name items.
+    $items = $player->get_items();
+    $compact_items = $this->compact_items($items);
+    foreach ($compact_items as $citemid => $citems) {
+      $count = count($citems);
+      if ($count <= 0) continue;
+      if ($citems[0]->type != ItemType::KIT) continue;
+      $kits[] = $citems[0];
+      $response[] = '`i'.$citems[0]->iid.'` '. ($count > 1 ? $count.'x ' : ''). $citems[0]->get_display_name(false);
+    }
+    if (empty($kits)) $response[] = '_None_';
 
     // Also show the list of available adventurers.
     $response[] = '';
-    $response[] = 'Adventurers available for exploring:';
+    $response[] = '*Adventurers available for exploring*:';
     foreach ($player->get_adventurers() as $adventurer) {
       if (!empty($adventurer->agid)) continue;
-      $response[] = $adventurer->get_display_name();
+      $response[] = $adventurer->get_display_name(false);
     }
-
-    $response[] = '';
-    $response[] = 'To explore a location on the map, type: `explore [LETTER][NUMBER] [ADVENTURER NAMES (comma-separated)]` (ex: `explore A4 Morgan, Gareth`).';
 
     return $response;
   }
@@ -918,7 +1031,7 @@ class RPGSession {
 
     // Check if the adventurer they named exists for them.
     $name = implode(' ', $args);
-    $champion = Adventurer::load(array('name' => $name, 'gid' => $player->gid), true);
+    $champion = Adventurer::load(array('name' => $name, 'gid' => $player->gid, 'dead' => false), true);
     if (empty($champion)) {
       $response[] = 'You do not have an adventurer by the name of "'.$name.'".';
       $response[] = '';
@@ -1122,8 +1235,7 @@ class RPGSession {
     if ($confirm != 'CONFIRM') {
       $response[] = $this->show_upgrade($upgrade);
       $response[] = '';
-      $response[] = 'To confirm your departure, type:';
-      $response[] = '`'.$cmd_word.' '.implode(' ', $orig_args).' CONFIRM`';
+      $response[] = $this->get_confirm($cmd_word, $orig_args);
       $this->respond($response);
       return TRUE;
     }
@@ -1192,8 +1304,7 @@ class RPGSession {
     }
 
     // Show the item details.
-    $response[] = $item->get_display_name();
-    $response[] = $item->get_description();
+    $response[] = $this->show_item_information($item);
 
     $this->respond($response);
   }
@@ -1246,6 +1357,12 @@ class RPGSession {
       return FALSE;
     }
 
+    // Check the last argument for the confirmation code.
+    $confirmation = false;
+    if (!empty($args) && strpos($args[count($args)-1], 'CONFIRM') === 0) {
+      $confirmation = array_pop($args);
+    }
+
     // Get the class name.
     $class_name = array_pop($args);
     $adventurer_class = AdventurerClass::load(array('name_id' => $class_name), true);
@@ -1266,7 +1383,7 @@ class RPGSession {
 
     // Get the adventurer name.
     $adventurer_name = implode(' ', $args);
-    $adventurer = Adventurer::load(array('gid' => $player->gid, 'name' => $adventurer_name), true);
+    $adventurer = Adventurer::load(array('gid' => $player->gid, 'name' => $adventurer_name, 'dead' => false), true);
     if (empty($adventurer)) {
       $response[] = 'Please specify a valid adventurer name. Example: `powerup Morgan LeClair Shaman`';
       $response[] = $this->get_typed($cmd_word, $orig_args);
@@ -1306,6 +1423,25 @@ class RPGSession {
       return FALSE;
     }
 
+    // Check for a valid confirmation code.
+    if (!empty($confirmation) && $confirmation != 'CONFIRM') {
+      $response[] = 'The confirmation code "'.$confirmation.'" is invalid. The code should be: `CONFIRM`.';
+      $response[] = '';
+      // Re-display the confirmation text.
+      $confirmation = false;
+    }
+
+    // Display the confirmation message and code.
+    if (empty($confirmation)) {
+      $response[] = "Are you sure you want to power up ".$adventurer->get_display_name()."?";
+      $response[] = '';
+      $response[] = $this->show_adventurer_status($adventurer);
+      $response[] = '';
+      $response[] = $this->get_confirm($cmd_word, $orig_args);
+      $this->respond($response);
+      return FALSE;
+    }
+
     // Power up the Adventurer.
     $adventurer->set_adventurer_class($adventurer_class);
     $adventurer->icon = ':rpg-adv-'.$adventurer->gender.'-'.$adventurer_class->name_id.':';
@@ -1331,6 +1467,9 @@ class RPGSession {
 
 
 
+  /**
+   * Challenge another Guild to a fight in the Colosseum.
+   */
   protected function cmd_challenge ($args = array()) {
     $orig_args = $args;
     $cmd_word = 'challenge';
@@ -1568,6 +1707,212 @@ class RPGSession {
   }
 
 
+  /**
+   * Revive a fallen Adventurer.
+   */
+  protected function cmd_revive ($args = array()) {
+    $orig_args = $args;
+    $cmd_word = 'revive';
+
+    // Load the player and fail out if they have not created a Guild.
+    if (!($player = $this->load_current_player())) return;
+
+    $response = array();
+
+    $cost = 5000;
+    $revival_template = ItemTemplate::load(array('name_id' => 'revival_fenixdown'));
+
+    // Show list of fallen adventurers.
+    if (empty($args) || empty($args[0])) {
+      $response[] = "All revivals cost ".Display::get_currency($cost)." and a ".$revival_template->get_display_name().'.';
+      $response[] = '';
+      $response[] = "Graveyard:";
+      $adventurers = Adventurer::load_multiple(array('gid' => $player->gid, 'dead' => true));
+      if (!empty($adventurers)) {
+        foreach ($adventurers as $adventurer) {
+          $response[] = ':rpg-tomb: '.$adventurer->get_display_name(true, false);
+        }
+        $response[] = '';
+        $response[] = 'To revive a fallen adventurer, type: `revive [ADVENTURER NAME]`';
+      }
+      else {
+        $response[] = "There are no adventurers here.";
+      }
+
+      $this->respond($response);
+      return TRUE;
+    }
+
+    // Check the last argument for the confirmation code.
+    $confirmation = false;
+    if (!empty($args) && strpos($args[count($args)-1], 'CONFIRM') === 0) {
+      $confirmation = array_pop($args);
+    }
+
+    // They chose a name, so let's check if that adventurer is available.
+    $adventurer = Adventurer::load(array('name' => implode(' ', $args), 'gid' => $player->gid, 'dead' => true), true);
+    if (empty($adventurer)) {
+      $this->respond('There is no deceased Adventurer by the name of "'.implode(' ', $args).'".');
+      return FALSE;
+    }
+
+    // Check that there's enough room to revive an Adventurer.
+    if ($player->get_adventurers_count() >= $player->adventurer_limit) {
+      $this->respond("There is no room in your Guild to revive this Adventurer.");
+      return FALSE;
+    }
+
+    // Check that they can afford to revive an adventurer.
+    if ($player->gold < $cost) {
+      $this->respond("You do not have ".Display::get_currency($cost)." to revive ".$adventurer->name.".");
+      return FALSE;
+    }
+
+    // Check that they have the revival item.
+    $requirement = Requirement::from("item,".$revival_template->name_id);
+    $items = $player->has_required_items($requirement);
+    if ($items === FALSE) {
+      $this->respond("You do not have a ".$revival_template->get_display_name()." which is needed to revive ".$adventurer->name.".");
+      return FALSE;
+    }
+
+    // Check for a valid confirmation code.
+    if (!empty($confirmation) && $confirmation != 'CONFIRM') {
+      $response[] = 'The confirmation code "'.$confirmation.'" is invalid. The code should be: `CONFIRM`.';
+      $response[] = '';
+      // Re-display the confirmation text.
+      $confirmation = false;
+    }
+
+    // Display the confirmation message and code.
+    if (empty($confirmation)) {
+      $response[] = 'Are you sure you want to revive *'.$adventurer->name.'*?';
+      $response[] = '';
+      $response[] = $this->show_adventurer_status($adventurer);
+      $response[] = '';
+      $response[] = $this->get_confirm($cmd_word, $orig_args);
+      $this->respond($response);
+      return FALSE;
+    }
+
+    // Remove the items they used to revive.
+    foreach ($items as $item) {
+      $player->remove_item($item);
+      $item->delete();
+    }
+
+    // Pay for the revival.
+    $player->gold -= $cost;
+    $success = $player->save();
+    if ($success === false) {
+      $this->respond('There was a problem saving your Guild when reviving '.$adventurer->name.'. Please talk to Paul.');
+      return FALSE;
+    }
+
+    // Revive the Adventurer.
+    $adventurer->champion = false;
+    $adventurer->agid = 0;
+    $adventurer->dead = false;
+    $success = $adventurer->save();
+    if ($success === false) {
+      $this->respond('There was a problem reviving '.$adventurer->name.'. Please talk to Paul.');
+      return FALSE;
+    }
+
+    $this->respond($adventurer->get_display_name().' has risen from the dead and rejoined your party.');
+  }
+
+
+
+  /**
+   * Shop for items.
+   */
+  protected function cmd_shop ($args = array()) {
+    $orig_args = $args;
+    $cmd_word = 'shop';
+
+    // Load the player and fail out if they have not created a Guild.
+    if (!($player = $this->load_current_player())) return;
+    $response = array();
+    
+    // Show the list of available items.
+    if (empty($args) || empty($args[0])) {
+      $response[] = 'Welcome to the *Shop*';
+      $response[] = 'To purchase an item, type: `shop [ITEM NAME]` (example: `shop Shepherd`)';
+      $response[] = '';
+      $response[] = 'Items for sale:';
+
+      // Show items for sale.
+      $items = ItemTemplate::load_multiple(array('for_sale' => true));
+      foreach ($items as $item) {
+        $response[] = $item->get_display_name() .' ('. Display::get_currency($item->cost) .')';
+      }
+      if (empty($items)) $response[] = '_None_';
+      
+      $this->respond($response);
+      return FALSE;
+    }
+
+    // Check the last argument for the confirmation code.
+    $confirmation = false;
+    if (!empty($args) && strpos($args[count($args)-1], 'CONFIRM') === 0) {
+      $confirmation = array_pop($args);
+    }
+
+    // Get the item name.
+    $item_name = implode(' ', $args);
+    $item_template = ItemTemplate::load(array('name' => $item_name, 'for_sale' => true), true);
+    if (empty($item_template)) {
+      $response[] = 'There is no item named "'.$item_name.'" for sale.';
+      $response[] = $this->get_typed($cmd_word, $orig_args);
+      $this->respond($response);
+      return FALSE;
+    }
+
+    // Check if the player can afford the item.
+    if ($player->gold < $item_template->cost) {
+      $this->respond("You cannot afford to purchase ".$item_template->get_display_name().".");
+      return FALSE;
+    }
+
+    // Check for a valid confirmation code.
+    if (!empty($confirmation) && $confirmation != 'CONFIRM') {
+      $response[] = 'The confirmation code "'.$confirmation.'" is invalid. The code should be: `CONFIRM`.';
+      $response[] = '';
+      // Re-display the confirmation text.
+      $confirmation = false;
+    }
+
+    // Display the confirmation message and code.
+    if (empty($confirmation)) {
+      $response[] = "Are you sure you want to purchase a ".$item_template->get_display_name()."?";
+      $response[] = '';
+      $response[] = $this->show_item_information($item_template, true);
+      $response[] = '';
+      $response[] = $this->get_confirm($cmd_word, $orig_args);
+      $this->respond($response);
+      return FALSE;
+    }
+
+    // Purchase the item.
+    $player->gold -= $item_template->cost;
+    $success = $player->save();
+    if ($success === false) {
+      $this->respond('There was a problem saving your Guild information after paying. Please talk to Paul.');
+      return FALSE;
+    }
+
+    // Receive the item.
+    $success = $player->add_item($item_template);
+    if ($success === false) {
+      $this->respond('There was a problem giving you the item you purchased. Please talk to Paul.');
+      return FALSE;
+    }
+    
+    $this->respond("You purchased a ".$item_template->get_display_name()." for ".Display::get_currency($item_template->cost).".");
+  }
+
+
 
   protected function cmd_test ($args = array()) {
     $orig_args = $args;
@@ -1576,55 +1921,69 @@ class RPGSession {
     // Load the player and fail out if they have not created a Guild.
     if (!($player = $this->load_current_player())) return;
 
-    // $plain_txt = 'test some stuff here';
-    // $encrypted_txt = Confirmation::encrypt($plain_txt);
-    // $decrypted_txt = Confirmation::decrypt($encrypted_txt);
-    // d($plain_txt);
-    // d($encrypted_txt);
-    // d($decrypted_txt);
 
-    $cmd_args = array_merge(array($cmd_word), $orig_args);
-    $this->respond("Let's try this confirmation thing. ".$this->get_confirm($cmd_word, $orig_args));
-    // $orig_text = "Let's try this confirmation thing. ".$this->get_confirm($cmd_word, $orig_args);
-    // preg_match("/Type `\+:confirm:` to confirm\.\\n\(You typed: `(.+)`\)/", $orig_text, $matches);
-    // if (count($matches) < 2) return;
-    // $text = $matches[1].' CONFIRM';
-    // d($matches);
-    // d($text);
-
+    $item_template = ItemTemplate::load(array('name_id' => 'kit_seisreport'));
+    $player->add_item($item_template);
     return FALSE;
 
 
+    // Create a kit to test.
+    // $item_template = ItemTemplate::load(array('name_id' => 'kit_seisreport'));
+    // $kit = new Item (array('gid' => $player->gid), $item_template);
+
+    // // Make a fake quest to test out item probabilities.
+    // $quest_data = array(
+    //   'locid' => 10,
+    //   'name' => 'Test Quest',
+    //   'type' => Quest::TYPE_INVESTIGATE,
+    //   'stars' => 1,
+    //   'active' => true,
+    //   'reward_gold' => 300,
+    //   'reward_exp' => 200,
+    //   'reward_fame' => 100,
+    //   'duration' => 1000,
+    //   'party_size_min' => 1,
+    //   'party_size_max' => 3,
+    //   'level' => 6,
+    //   'success_rate' => 75,
+    //   'death_rate' => 25,
+    // );
+    // $quest = new Quest ($quest_data);
+
+    // $best_adventurers = $player->get_best_adventurers($quest->party_size_max);
+
+    // d($quest->get_item_probabilities($player, $best_adventurers, $kit));
 
 
+    
     // Test creating a Challenge and processing it.
-    $guilds = Guild::load_multiple(array('season' => $player->season));
+    // $guilds = Guild::load_multiple(array('season' => $player->season));
 
-    // Create a challenge using the first 2 found.
-    $challenger = array_pop($guilds);
-    $opponent = array_pop($guilds);
-    $challenger_champ = $challenger->get_champion();
-    $opponent_champ = $opponent->get_champion();
+    // // Create a challenge using the first 2 found.
+    // $challenger = array_pop($guilds);
+    // $opponent = array_pop($guilds);
+    // $challenger_champ = $challenger->get_champion();
+    // $opponent_champ = $opponent->get_champion();
 
-    // Create a new challenge.
-    $challenge_data = array(
-      'challenger_id' => $challenger->gid,
-      'challenger_champ' => $challenger_champ->aid,
-      'challenger_moves' => 'attack,attack,attack,attack,attack,break', //'attack,attack,break,attack,attack,attack',
-      'opponent_id' => $opponent->gid,
-      'opponent_champ' => $opponent_champ->aid,
-      'opponent_moves' => 'defend,defend,defend,defend,defend,defend', //'attack,defend,break,attack,defend,break',
-      'created' => time(),
-      'wager' => 5,
-      'confirmed' => TRUE,
-      'winner' => '',
-      'reward' => 10,
-    );
-    $challenge = new Challenge ($challenge_data);
-    d($challenge);
+    // // Create a new challenge.
+    // $challenge_data = array(
+    //   'challenger_id' => $challenger->gid,
+    //   'challenger_champ' => $challenger_champ->aid,
+    //   'challenger_moves' => 'attack,attack,attack,attack,attack,break', //'attack,attack,break,attack,attack,attack',
+    //   'opponent_id' => $opponent->gid,
+    //   'opponent_champ' => $opponent_champ->aid,
+    //   'opponent_moves' => 'defend,defend,defend,defend,defend,defend', //'attack,defend,break,attack,defend,break',
+    //   'created' => time(),
+    //   'wager' => 5,
+    //   'confirmed' => TRUE,
+    //   'winner' => '',
+    //   'reward' => 10,
+    // );
+    // $challenge = new Challenge ($challenge_data);
+    // d($challenge);
 
-    // Process the challenge.
-    d($challenge->queue_process());
+    // // Process the challenge.
+    // d($challenge->queue_process());
 
 
 
@@ -2022,6 +2381,15 @@ class RPGSession {
       if (empty($req_upgrade)) continue;
       $response[] = $req_upgrade->get_display_name(false, false);
     }
+
+    return implode("\n", $response);
+  }
+
+  protected function show_item_information ($item, $include_cost = false) {
+    $response = array();
+    $response[] = $item->get_display_name();
+    $response[] = $item->get_description();
+    if ($include_cost && $item->for_sale) $response[] = '*Cost*: '. Display::get_currency($item->cost);
 
     return implode("\n", $response);
   }

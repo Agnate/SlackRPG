@@ -41,7 +41,7 @@ class Display {
   }
 
   public static function get_difficulty_legend () {
-    return 'Difficulty Legend:'."\n".':rpg-quest-diff0: Impossible, :rpg-quest-diff1: Risky, :rpg-quest-diff2: Difficult, :rpg-quest-diff3: Challenging, :rpg-quest-diff4: Recommended, :skull: Adventurers can die';
+    return "*Difficulty Legend*:\n:rpg-quest-diff0: Impossible, :rpg-quest-diff1: Risky, :rpg-quest-diff2: Difficult, :rpg-quest-diff3: Challenging, :rpg-quest-diff4: Recommended\n:skull: Adventurers can die";
   }
 
   public static function addOrdinalNumberSuffix ($num) {

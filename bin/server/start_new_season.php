@@ -100,7 +100,7 @@ function start_new_season ($output_information = false) {
   if ($output_information) print " Done.\n";
 
   // Refresh the Tavern to add new adventurers for hire.
-  if ($output_information) print "Refreshing the Tavern...";
+  if ($output_information) print "Refreshing the Tavern...\n";
   generate_new_adventurers($output_information);
   if ($output_information) print " Done.\n";
 

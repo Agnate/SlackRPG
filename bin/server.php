@@ -262,7 +262,7 @@ $client->on("message", function($message) use ($client, $logger) {
   }
 
   // If a new team member joins, refresh the list.
-  if (isset($data['type']) && $data['type'] == 'team_join') {
+  else if (isset($data['type']) && $data['type'] == 'team_join') {
     global $im_channels, $commander;
     $user_list = gather_user_list($commander);
     return;
@@ -307,13 +307,6 @@ $client->on("message", function($message) use ($client, $logger) {
 
     // Get the message text.
     $orig_text = $reaction['message']['text'];
-
-    // Extract the code from the message.
-    // $pieces = preg_split("/\s|\\n|\\r|\v|\n|\r/", $orig_text);
-    // Take the first piece to get the unique code.
-    // $code = array_shift($pieces);
-    // Tack CONFIRM onto the end.
-    // $text = implode(' ', Confirmation::decode($code)) .' CONFIRM';
 
     // Look for confirmation snippet.
     preg_match("/Type `\+:confirm:` to confirm\.\\n\(You typed: `(.+)`\)/", $orig_text, $matches);

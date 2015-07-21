@@ -19,6 +19,7 @@ class Upgrade extends RPGEntitySaveable {
   static $default_class = 'Upgrade';
   static $primary_key = 'upid';
 
+
   function __construct($data = array()) {
     // Perform regular constructor.
     parent::__construct( $data );
@@ -97,7 +98,7 @@ class Upgrade extends RPGEntitySaveable {
   }
 
   /**
-   * $type -> 'item', 'upgrade'
+   * $type -> Requirement::TYPE_ITEM, Requirement::TYPE_UPGRADE
    */
   public function get_required_type ($type) {
     $requires = $this->get_requires();
