@@ -125,6 +125,7 @@ function update_version_0_0_0 ($forced = false) {
   $location_table[] = "revealed TINYINT(1) NOT NULL";
   $location_table[] = "star_min INT(10) UNSIGNED NOT NULL";
   $location_table[] = "star_max INT(10) UNSIGNED NOT NULL";
+  $location_table[] = "keywords VARCHAR(255) NOT NULL";
   $location_table[] = "PRIMARY KEY ( locid )";
   add_update_query( "CREATE TABLE IF NOT EXISTS locations (". implode(',', $location_table) .")" );
 

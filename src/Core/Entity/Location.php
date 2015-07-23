@@ -13,9 +13,11 @@ class Location extends RPGEntitySaveable {
   public $revealed;
   public $star_min;
   public $star_max;
+  public $keywords;
 
   // Protected
   protected $_map;
+  protected $_keywords;
 
   // Private vars
   static $fields_int = array('created', 'row', 'col', 'star_min', 'star_max');
@@ -79,11 +81,27 @@ class Location extends RPGEntitySaveable {
 
   public function get_map () {
     // Load the Map if it hasn't been loaded.
-    if ( empty($this->_map) ) {
+    if (empty($this->_map)) {
       $this->load_map();
     }
 
     return $this->_map;
+  }
+
+  public function load_keywords () {
+    $this->_keywords = $this->__decode_keywords($this->keywords);
+  }
+
+  public function get_keywords () {
+    if ($this->_keywords === NULL) $this->load_keywords();
+    return $this->_keywords;
+  }
+
+  public function set_keywords ($list) {
+    // Encode the keywords and store them.
+    $this->keywords = $this->__encode_keywords($list);
+    // Reload the keywords.
+    $this->load_keywords();
   }
 
   
@@ -116,16 +134,20 @@ class Location extends RPGEntitySaveable {
       $type = $types[array_rand($types)];
     }
 
+    // Get name and keywords.
+    $name_keywords = Location::generate_name($type, $json, $original_json);
+
     // Create location.
     $location_data = array(
       'mapid' => $map->mapid,
       'gid' => 0,
-      'name' => Location::generate_name($type, $json, $original_json),
+      'name' => $name_keywords['name'],
       'row' => $row,
       'col' => $col,
       'type' => $type,
       'created' => time(),
       'revealed' => false,
+      'keywords' => Location::__encode_keywords($name_keywords['keywords']),
     );
 
     $location = new Location ($location_data);
@@ -137,8 +159,11 @@ class Location extends RPGEntitySaveable {
 
   public static function generate_name ($type, &$json = NULL, $original_json = NULL) {
     // Empty locations are just blank.
-    $name = '';
-    if ($type == Location::TYPE_EMPTY) return $name;
+    $info = array(
+      'name' => '',
+      'keywords' => array(),
+    );
+    if ($type == Location::TYPE_EMPTY) return $info;
 
     // Load up the list of location names.
     $save_json = empty($json);
@@ -159,23 +184,30 @@ class Location extends RPGEntitySaveable {
         if (!isset($data['parts'])) continue;
         // Generate the token value.
         $join = isset($data['join']) ? $data['join'] : ' ';
-        $tokens[$token] = Location::generate_from_parts($data['parts'], $original_json[$type][$token]['parts'], $join);
+        $parts = Location::generate_from_parts($data['parts'], $original_json[$type][$token]['parts']);
+        $tokens[$token] = implode($join, $parts);
       }
-      $name = str_replace(array_keys($tokens), array_values($tokens), $format);
+      $token_keys = array_keys($tokens);
+      $info['keywords'] = array_values($tokens);
+      $info['name'] = str_replace($token_keys, $info['keywords'], $format);
+      // Add format to the keywords after the name replacement.
+      $keyword = str_replace($token_keys, '', $format);
+      $info['keywords'][] = trim($keyword);
     }
     // If it's just a series of parts, connect them.
     else if (isset($type_json['parts'])) {
       $join = isset($type_json['join']) ? $type_json['join'] : ' ';
-      $name = Location::generate_from_parts($type_json['parts'], $original_json[$type]['parts'], $join);
+      $info['keywords'] = Location::generate_from_parts($type_json['parts'], $original_json[$type]['parts']);
+      $info['name'] = implode($join, $info['keywords']);
     }
 
     // If we're supposed to save the JSON, do so now.
     if ($save_json) Location::save_location_names_list($json);
 
-    return $name;
+    return $info;
   }
 
-  protected static function generate_from_parts (&$parts, $original_parts, $join = ' ') {
+  protected static function generate_from_parts (&$parts, $original_parts) {
     if (is_string($parts)) return $parts;
     if (!is_array($parts)) return '';
 
@@ -195,7 +227,7 @@ class Location extends RPGEntitySaveable {
       else if (is_string($list)) $name[] = $list;
     }
 
-    return implode($join, $name);
+    return $name;
   }
 
   /**
@@ -228,5 +260,13 @@ class Location extends RPGEntitySaveable {
     Location::save_location_names_list($json);
 
     return $json;
+  }
+
+  protected static function __encode_keywords ($list) {
+    return is_array($list) ? implode('|', $list) : array();
+  }
+
+  protected static function __decode_keywords ($string) {
+    return empty($string) ? '' : explode('|', $string);
   }
 }

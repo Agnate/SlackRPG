@@ -62,8 +62,13 @@ $creature_adjectives = array('Dire', 'Giant', 'Great', 'Demonic', 'Fiery', 'Flam
 
 $creature_names = array('Angel', 'Banshee', 'Basilisk', 'Behemoth', 'Dragon', 'Centaur', 'Cerberus', 'Chimera', 'Cockatrice', 'Cyclops', 'Demon', 'Dragon', 'Echidna', 'Ghost', 'Ghoul', 'Golem', 'Gorgon',
   'Gremlin', 'Griffin', 'Hydra', 'Imp', 'Kraken', 'Leviathan', 'Python', 'Manticore', 'Medusa', 'Merfolk', 'Minotaur', 'Mummy', 'Naga', 'Necromancer', 'Ogre', 'Orc', 'Pegasus', 'Phoenix', 'Satyr', 'Siren',
-  'Skeleton', 'Sphinx', 'Succubus', 'Unicorn', 'Vampire', 'Wendigo', 'Werewolf', 'Wights', 'Wraith', 'Wyrm', 'Wyvern', 'Zombie', 'Hellhound', 'Leprechaun', 'Pixie', 'Troll', 'Drow', 'Dryads', 'Fairies',
-  'Genie', 'Goblins', 'Hobgoblins', 'Nymph', 'Ratmen', 'Faun', 'Troglodytes', 'Firebird', 'Harpies', 'Peryton', 'Ent', 'Fey', 'Spectre', 'Assassin', 'Ninja', 'Bandit', 'Tauren', 'Lycan', 'Slime', 'Nightmare');
+  'Skeleton', 'Sphinx', 'Succubus', 'Unicorn', 'Vampire', 'Wendigo', 'Werewolf', 'Wight', 'Wraith', 'Wyrm', 'Wyvern', 'Zombie', 'Hellhound', 'Leprechaun', 'Pixie', 'Troll', 'Drow', 'Dryad', 'Fairy',
+  'Genie', 'Goblin', 'Hobgoblin', 'Nymph', 'Ratman', 'Faun', 'Troglodyte', 'Firebird', 'Harpy', 'Peryton', 'Ent', 'Fey', 'Spectre', 'Assassin', 'Ninja', 'Bandit', 'Tauren', 'Lycan', 'Slime', 'Nightmare',
+  'Wolf', 'Ant', 'Crab', 'Lobster', 'Scorpion', 'Spider', 'Eagle', 'Salamander', 'Crow', 'Woodpecker', 'Pigeon', 'Bear', 'Fox', 'Antelope', 'Deer', 'Buffalo', 'Sheep', 'Chicken', 'Rabbit', 'Porcupine',
+  'Snake', 'Rattlesnake', 'Mosquito', 'Elephant', 'Alligator', 'Lion', 'Zebra', 'Gazelle', 'Whale', 'Platypus', 'Toad', 'Lemur', 'Leopard', 'Lizard', 'Sloth', 'Giraffe', 'Moose', 'Reindeer',
+  'Caribou', 'Koala', 'Penguin', 'Shark', 'Octopus', 'Narwhal', 'Cow', 'Rooster', 'Llama', 'Emu', 'Alpaca', 'Hippopotamus', 'Rhino', 'Hyena', 'Coyote', 'Mole', 'Mantis', 'Dragonfly', 'Bat', 'Cobra',
+  'Monkey', 'Horse', 'Boar', 'Fly', 'Falcon', 'Eel', 'Pug');
+
 
 $creature_dwelling = array('Dungeon', 'Cave', 'Lair', 'Fossils', 'Cavern', 'Hollow', 'Forest', 'Canyon', 'Gulch', 'Mountain', 'Gorge', 'Ravine', 'Ruins', 'Tower', 'Barrow', 'Crater', 'Den', 'Hideout', 'Hole', 'Crevice', 'Chasm', 'Tunnels', 'Pits', 'Crypt', 'Spire');
 
