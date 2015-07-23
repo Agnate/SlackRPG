@@ -593,6 +593,14 @@ class Quest extends RPGEntitySaveable {
   public static function quest_probabilities () {
     // Set probabilities based on location type.
     $types = array();
+    $types[Location::TYPE_DOMICILE] = array(
+      Quest::TYPE_FIGHT => 0.15,
+      Quest::TYPE_BOSS => 0.05,
+      Quest::TYPE_INVESTIGATE => 0.25,
+      Quest::TYPE_AID => 0.45,
+      Quest::TYPE_SPECIAL => 0.10,
+    );
+
     $types[Location::TYPE_CREATURE] = array(
       Quest::TYPE_FIGHT => 0.45,
       Quest::TYPE_BOSS => 0.15,
@@ -602,10 +610,10 @@ class Quest extends RPGEntitySaveable {
     );
 
     $types[Location::TYPE_STRUCTURE] = array(
-      Quest::TYPE_FIGHT => 0.10,
+      Quest::TYPE_FIGHT => 0.25,
       Quest::TYPE_BOSS => 0.02,
-      Quest::TYPE_INVESTIGATE => 0.25,
-      Quest::TYPE_AID => 0.50,
+      Quest::TYPE_INVESTIGATE => 0.50,
+      Quest::TYPE_AID => 0.10,
       Quest::TYPE_SPECIAL => 0.13,
     );
 

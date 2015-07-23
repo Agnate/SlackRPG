@@ -18,7 +18,7 @@ code {
 	border: 1px solid #e1e1e8;
 }
 
-img {
+img.icon {
 	display: inline-block;
 	vertical-align: baseline;
 	margin: -2px 0;

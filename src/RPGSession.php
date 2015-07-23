@@ -1922,9 +1922,36 @@ class RPGSession {
     if (!($player = $this->load_current_player())) return;
 
 
-    $item_template = ItemTemplate::load(array('name_id' => 'kit_seisreport'));
-    $player->add_item($item_template);
-    return FALSE;
+    // Create the Map image.
+    $season = Season::load(array('active' => true));
+    $map = Map::load(array('season' => $season->sid));
+    $mapimage = MapImage::generate_image($map);
+
+    $this->respond('<img src="'.$mapimage->url.'">');
+
+
+
+    // Make a random type and create a name.
+    // $json = Location::load_location_names_list();
+    // $original_json = Location::load_location_names_list(true);
+    // $types = Location::types();
+    // $names = array();
+    // for ($i = 0; $i < 20; $i++)
+    //   $names[] = Location::generate_name($types[array_rand($types)], $json, $original_json); // Location::generate_name(Location::TYPE_CREATURE, $json, $original_json);
+
+    // d($names);
+
+
+
+    // Generate new locations for the season.
+    // $season = Season::load(array('active' => true));
+    // $map = Map::load(array('season' => $season->sid));
+    // $locations = $map->generate_locations(false);
+
+
+    // $item_template = ItemTemplate::load(array('name_id' => 'kit_seisreport'));
+    // $player->add_item($item_template);
+    // return FALSE;
 
 
     // Create a kit to test.
@@ -2448,7 +2475,7 @@ class RPGSession {
 
   protected function _convert_to_markup ( $string ) {
     $info = array(
-      '/:([A-Za-z0-9_\-\+]+?):/' => '<img src="/debug/icons/\1.png" width="22px" height="22px">',
+      '/:([A-Za-z0-9_\-\+]+?):/' => '<img class="icon" src="/debug/icons/\1.png" width="22px" height="22px">',
       '/\\n/' => '<br>',
       '/\*(.*?)\*/' => '<strong>\1</strong>',
       '/\b_((?:__|[\s\S])+?)_\b|^\*((?:\*\*|[\s\S])+?)\*(?!\*)/' => '<em>\1</em>',

@@ -16,6 +16,10 @@ class Map extends RPGEntitySaveable {
   static $default_class = 'Map';
   static $primary_key = 'mapid';
 
+  const DENSITY = 0.15; // Percentage of Locations that are significant
+  const NUM_ROWS = 26;
+  const NUM_COLS = 26;
+
   
   function __construct($data = array()) {
     // Perform regular constructor.
@@ -47,5 +51,74 @@ class Map extends RPGEntitySaveable {
     }
 
     return $this->_capital;
+  }
+
+  public function generate_locations ($save_locations = true) {
+    $json = Location::load_location_names_list();
+    $original_json = Location::load_location_names_list(true);
+
+    $locations = array();
+
+    $num_rows = Map::NUM_ROWS;
+    $num_cols = Map::NUM_COLS; // Letter
+    $total = $num_rows * $num_cols;
+
+    // Initialize the grid.
+    $grid = array();
+    $open = array();
+    for ($r = 1; $r <= $num_rows; $r++) {
+      $grid[$r] = array();
+      for ($c = 1; $c <= $num_cols; $c++) {
+        $grid[$r][$c] = NULL;
+        $open[$r.'-'.$c] = array('row' => $r, 'col' => $c);
+      }
+    }
+
+    // Create Capital somewhere in the middle.
+    $middle_row = floor($num_rows / 2);
+    $capital_row = rand($middle_row - 3, $middle_row + 3);
+    $middle_col = floor($num_cols / 2);
+    $capital_col = rand($middle_col - 3, $middle_col + 3);
+
+    $capital_data = array(
+      'mapid' => $this->mapid,
+      'gid' => 0,
+      'name' => 'The Capital',
+      'row' => $capital_row,
+      'col' => $capital_col,
+      'type' => Location::TYPE_CAPITAL,
+      'created' => time(),
+      'revealed' => true,
+    );
+    $capital = new Location ($capital_data);
+    if ($save_locations) $capital->save();
+    $grid[$capital_row][$capital_col] = $capital;
+    $locations[] = $capital;
+    unset($open[$capital_row.'-'.$capital_col]);
+
+    // Loop through and create the rest of the Locations.
+    $num_locs = ceil($total * Map::DENSITY);
+    for ($i = 0; $i < $num_locs; $i++) {
+      // Find an empty location.
+      $open_index = array_rand($open);
+      $coord = $open[$open_index];
+      unset($open[$open_index]);
+      // Generate the location.
+      $location = Location::random_location($this, $coord['row'], $coord['col'], NULL, $json, $original_json, $save_locations);
+      // if ($save_locations) $location->save();
+      $grid[$coord['row']][$coord['col']] = $location;
+      $locations[] = $location;
+    }
+
+    // Fill the rest of the map with empty locations.
+    foreach ($open as $coord) {
+      // Generate the location.
+      $location = Location::random_location($this, $coord['row'], $coord['col'], Location::TYPE_EMPTY, $json, $original_json, $save_locations);
+      // if ($save_locations) $location->save();
+      $grid[$coord['row']][$coord['col']] = $location;
+      $locations[] = $location;
+    }
+
+    return $locations;
   }
 }

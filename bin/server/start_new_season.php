@@ -20,6 +20,11 @@ function reset_json_lists ($output_information = false) {
   Challenge::refresh_original_texts_list();
   if ($output_information) print " Done.\n";
 
+  // Reset location names.
+  if ($output_information) print "Resetting location names list...";
+  Location::refresh_original_location_names_list();
+  if ($output_information) print " Done.\n";
+
   if ($output_information) print "All JSON lists have be reset.\n";
 }
 
@@ -60,37 +65,7 @@ function start_new_season ($output_information = false) {
 
   // Generate the locations.
   if ($output_information) print "Creating new locations...";
-  $row_offset = 10;
-  $col_offset = 10;
-  $loc_types = Location::types(true);
-  $locations = array();
-  for ($i = 0; $i <= 5; $i++) {
-    // Generate the fake capital.
-    if ($i == 0) {
-      $location_data = array('mapid' => $map->mapid, 'gid' => 0, 'name' => 'The Capital', 'row' => $row_offset+$i, 'col' => $col_offset+$i, 'type' => Location::TYPE_CAPITAL, 'created' => $time, 'revealed' => true);
-      $location = new Location ($location_data);
-      $location->save();
-      $locations[] = $location;
-    }
-    // Generate some random locations.
-    else {
-      $col_diff = rand(-5, 5);
-      $stars = rand(1, 5);
-      $star_diff = rand(0, 1);
-      $location_data = array('mapid' => $map->mapid, 'gid' => 0, 'name' => 'Random Name '.($row_offset+$i), 'row' => $row_offset+$i, 'col' => $col_offset+$col_diff, 'type' => $loc_types[array_rand($loc_types)], 'created' => $time, 'revealed' => false, 'star_min' => ($stars > 1 ? ($stars - $star_diff) : $stars), 'star_max' => $stars);
-      $location = new Location ($location_data);
-      $location->save();
-      $locations[] = $location;
-
-      $col_diff = rand(-5, 5);
-      $stars = rand(1, 5);
-      $star_diff = rand(0, 1);
-      $location_data = array('mapid' => $map->mapid, 'gid' => 0, 'name' => 'Random Name '.($row_offset-$i), 'row' => $row_offset-$i, 'col' => $col_offset+$col_diff, 'type' => $loc_types[array_rand($loc_types)], 'created' => $time, 'revealed' => false, 'star_min' => ($stars > 1 ? ($stars - $star_diff) : $stars), 'star_max' => $stars);
-      $location = new Location ($location_data);
-      $location->save();
-      $locations[] = $location;
-    }
-  }
+  $locations = $map->generate_locations();
   if ($output_information) print " ".count($locations)." created.\n";
 
   // Set the season to active.
