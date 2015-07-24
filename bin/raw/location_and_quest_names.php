@@ -51,12 +51,24 @@ $domicile_names_last = array('afon', 'ard', 'ay', 'beck', 'berg', 'bost', 'burn'
 $domicile_formats = array('Castle !name', 'Fort !name', 'Town of !name', '!name Village', '!name Outpost', '!name Mine', '!name Ranch', '!name Farm', 'Church of !name', '!name Palace', '!name Fortress', '!name Borough', '!name Stronghold', '!name Keep', '!name Citadel', '!name Sanctuary', '!name Wall', '!name Frontier', '!name Quarters', '!name Estate', '!name Empire', '!name Kingdom', '!name Mansion', '!name Enclave', '!name Bastille', '!name Garrison');
 
 
+$first_names = array(
+  'Abram', 'Adrian', 'Alden', 'Alexander', 'Algar', 'Ambrose', 'Andre', 'Anthony', 'Astor', 'Auberon', 'Augustus', 'Ayden', 'Baldric', 'Balfour', 'Barrett', 'Bartholomew', 'Benedict', 'Bertrand', 'Bishop', 'Blair', 'Blaze', 'Booker', 'Bram', 'Brock', 'Brody', 'Caleb', 'Cameron', 'Carlisle', 'Casey', 'Cavan', 'Cedric', 'Chadwick', 'Channing', 'Chet', 'Clark', 'Claude', 'Clyde', 'Constantine', 'Cornelius', 'Cyrus', 'Damian', 'Darian', 'Darrell', 'Dorian', 'Dederick', 'Denzil', 'Devon', 'Dylan', 'Dominic', 'Duncan', 'Edgar', 'Esmond', 'Ethan', 'Evander', 'Fletcher', 'Floyd', 'Frasier', 'Gabriel', 'Gareth', 'Geoffrey', 'Gerald', 'Gideon', 'Gladwin', 'Godfrey', 'Grant', 'Griffin', 'Guile', 'Hector', 'Horatio', 'Hugo', 'Ian', 'Ike', 'Irvine', 'Isaac', 'Isaiah', 'Ivan', 'Jameson', 'Jarrod', 'Jarvis', 'Jasper', 'Jeffrey', 'Jonah', 'Justice', 'Julius', 'Knox', 'Korbin', 'Lambert', 'Lando', 'Laxas', 'Lucius', 'Lucinder', 'Luther', 'Malakai', 'Markus', 'Maverick', 'Maxwell', 'Mortimer', 'Nikolas', 'Odin', 'Owen', 'Peregrine', 'Fenix', 'Quincy', 'Reed', 'Reginald', 'Rex', 'Rickard', 'Rufus', 'Ryker', 'Samuel', 'Sebastian', 'Sidonius', 'Silas', 'Solomon', 'Sullivan', 'Sylvanus', 'Thaddeus', 'Theo', 'Tristan', 'Titus', 'Tobias', 'Ulric', 'Vaughn', 'Virgil', 'Vern', 'Vincent', 'Wade', 'Wallace', 'Wayland', 'Wesley', 'Wilfred', 'William', 'Winston', 'Xander', 'Xavier', 'Zedekiah', 
+  'Abegail', 'Adalynn', 'Adamina', 'Addison', 'Adelle', 'Agatha', 'Agnes', 'Ainsley', 'Alaina', 'Alannah', 'Alicia', 'Alexis', 'Alice', 'Allison', 'Amber', 'Amelia', 'Angel', 'Anita', 'Ashlynn', 'Aurora', 'Ava', 'Baylee', 'Beatrix', 'Belinda', 'Briana', 'Brooklyn', 'Cadence', 'Caitlin', 'Calanthe', 'Calista', 'Camille', 'Candice', 'Carmella', 'Cassandra', 'Cecilia', 'Chastity', 'Chelsea', 'Chloe', 'Claire', 'Claudia', 'Cleo', 'Corinna', 'Cornelia', 'Courtney', 'Dakota', 'Daphne', 'Darcy', 'Dawn', 'Deborah', 'Deidre', 'Delilah', 'Desiree', 'Ebony', 'Effie', 'Eileen', 'Eleanor', 'Elisabeth', 'Eloise', 'Emma', 'Eulalia', 'Eva', 'Eve', 'Felicia', 'Felicity', 'Frieda', 'Genevieve', 'Ginger', 'Giselle', 'Grace', 'Gretchen', 'Gwendolyn', 'Gwenevere', 'Hailey', 'Harmonie', 'Hazel', 'Heidi', 'Holly', 'Ida', 'Imogen', 'Iris', 'Ivy', 'Jada', 'Janice', 'Jewell', 'Juniper', 'Kassidy', 'Lauren', 'Leslie', 'Lillian', 'Lotus', 'Mackenzie', 'Madalyn', 'Madison', 'Maeghan', 'Magdalene', 'Marci', 'Marsha', 'Nadia', 'Naomi', 'Nova', 'Ocean', 'Ophelia', 'Paige', 'Pamela', 'Penelope', 'Phoebe', 'Piper', 'Raine', 'Raven', 'Robyn', 'Sabrina', 'Samantha', 'Sarina', 'Scarlett', 'Serenity', 'Shavonne', 'Sibyl', 'Summer', 'Tamara', 'Natasha', 'Tempest', 'Toph', 'Trinity', 'Valerie', 'Vanessa', 'Veronica', 'Vivian', 'Wynter', 'Zoe'
+);
+
+$last_names = array('Anderson', 'Arbeiter', 'Auclair', 'Avila', 'Beaumont', 'Beauregard', 'Belgrave', 'Bishop', 'Blackwelder', 'Blythe', 'Bourdeau', 'Briarthorne', 'Crane', 'Crofton', 'Crystallance', 'Cullen', 'Delorisci', 'Delvecchio', 'Donovan', 'Dusk', 'Eckhardt', 'Eldred', 'Elwood', 'Emerson', 'Engles', 'Everstone', 'Everard', 'Fairhawk', 'Fentress', 'Ferdinand', 'Flamegazer', 'Gaines', 'Gallagher', 'Garfield', 'Godley', 'Goldblum', 'Goldboar', 'Goldstein', 'Grayson', 'Hawthorne', 'Haywood', 'Hemsley', 'Holcombe', 'Isenhour', 'Kaminski', 'Kingsley', 'Knights', 'Kraus', 'Laverne', 'LeClaire', 'Lighthammer', 'Lioncrusher', 'Livermore', 'Lockheart', 'Loh', 'Magner', 'Montague', 'Noble', 'Norwood', 'Oceanhunter', 'Orso', 'Payne', 'Pond', 'Quill', 'Rainborne', 'Rainhelm', 'Reaves', 'Rife', 'Rivers', 'Rosenfeld', 'Ruud', 'Runefall', 'Shadewalker', 'Shields', 'Shinra', 'Silvas', 'Silverwind', 'Sinclair', 'Steckel', 'Stormfury', 'Tatum', 'Tigerlily', 'Twomore', 'Vanslyke', 'Vass', 'von Alfheimr', 'Waddington', 'Wagner', 'Warsinger', 'Warwick', 'Winterhelm');
+
+
 $items = array('rare stone', 'emerald knife');
 $plants = array('vanilla', 'saffron', 'cardamom', 'cloves', 'cinnamon', 'turmeric', 'angelpetals');
 $gems = array('diamond', 'ruby', 'emerald', 'sapphire', 'opal', 'onyx', 'crystal', 'amethyst', 'alabaster', 'aquamarine', 'alexandrite', 'peridot', 'topaz', 'garnet', 'citrine', 'tanzanite');
 $nature_destroyable = array('the ozone layer', 'the planet\'s core', 'everything that is good', 'the forest', 'the desert', 'the ocean', 'an ancient tower');
 $shipments = array('supplies', 'herbs', 'spices', 'food and water', 'expensive linens', 'fancy clothes', 'cattle', 'sheep', 'horses', 'goats', 'chickens', 'llamas', 'bison', 'boars');
 $escortable = array('a group of adventurers', 'a power wizard', 'a wise sage', 'the Queen', 'the King', 'a merchant', 'a guild leader', 'a noble', 'an ambassador', 'a circus', 'a travelling band', 'some mercenaries');
+$excavatable = array('fossils', 'bones', 'relics', 'magic items', 'tombs', 'graves', 'minerals', 'materials', 'artifacts', 'scriptures');
+$sighting = array('some crop circles', 'a shrine', 'a portal', 'a crater', 'an unidentified flying object', 'an earthquake', 'an obelisk', 'a tower', 'several crystal pillars', 'a smoking ruin', 'a demonic void');
+$trainable = array('local fighters', 'the town\'s guards', 'the sentries', 'military dogs', 'military wolves', 'war horses');
+$securable = array('the water supply', 'the harvest', 'a large load of lumber', 'the town walls', 'the local dam', 'the bridge', 'city hall');
 
 $handle = array('Kill', 'Capture', 'Dispose of', 'Take care of', 'Eliminate', 'Destroy', 'Murder', 'Relocate', 'Stop', 'Restrain', 'Arrest', 'Hold off');
 $prevent = array('Prevent', 'Stop', 'Halt', 'Interrupt', 'Hamper', 'Hinder', 'Impede', 'Thwart');
@@ -124,20 +136,45 @@ $location_names = array(
  *    !dwelling -> The name of the dwelling/domicile (only for Domicile or Creature locations).
  */
 
+
+// teach, guard 
+
+// infiltrate, fend off, defend against, tame
+
+// collect, gather, assemble, steal, plant (like planting evidence or a bomb)
+
+
+
 $quest_names = array(
   'investigate' => array(
+    '!creature' => array('parts' => array($creature_adjectives, $creature_names)),
+    '!excavatable' => array('parts' => array($excavatable)),
+    '!sighting' => array('parts' => array($sighting)),
     'format' => array(
       'Journey into the !fullname',
       'Learn about the !fullname',
       'Enter the !fullname',
-      'Escort group to the !fullname',
+      'Research the !creature found near !fullname',
+      'Excavate !excavatable located around !fullname',
+      'Hunt for treasure near !fullname',
+      'Investigate !sighting at !fullname',
     ),
   ),
   'aid' => array(
     '!shipment' => array('parts' => array($shipments)),
+    '!escortable' => array('parts' => array($escortable)),
+    '!gem' => array('parts' => array($gems)),
+    '!trainable' => array('parts' => array($trainable)),
+    '!securable' => array('parts' => array($securable)),
     'format' => array(
       'Help fortify the !fullname',
       'Bring a shipment of !shipment to !fullname',
+      'Escort !escortable to the !fullname',
+      'Accompany !escortable to the !fullname',
+      'Begin construction on a !gem mine at the !fullname',
+      'Provide train to !trainable at !fullname',
+      'Secure !securable at !fullname',
+      'Dam a flooding river near !fullname',
     ),
   ),
   'fight' => array(
@@ -160,13 +197,15 @@ $quest_names = array(
   'special' => array(
     '!item' => array('parts' => array($items)),
     '!plants' => array('parts' => array($plants)),
-    '!escortable' => array('parts' => array($escortable)),
+    '!person' => array('parts' => array($first_names, $last_names)),
+    '!family' => array('parts' => array($last_names)),
     'format' => array(
       'Retrieve the !item in the !fullname',
       'Gather some !plants at the !fullname',
       'Sneak into the !fullname and steal the !item',
-      'Escort !escortable to the !fullname',
-      'Begin construction on a !gem mine at the !fullname',
+      'Close a magical portal found near !fullname',
+      'Collect the bounty on !person who was spotted near !fullname',
+      'Negotiate a treaty with the !family Family',
     ),
   ),
 );
