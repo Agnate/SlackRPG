@@ -69,6 +69,9 @@ $excavatable = array('fossils', 'bones', 'relics', 'magic items', 'tombs', 'grav
 $sighting = array('some crop circles', 'a shrine', 'a portal', 'a crater', 'an unidentified flying object', 'an earthquake', 'an obelisk', 'a tower', 'several crystal pillars', 'a smoking ruin', 'a demonic void');
 $trainable = array('local fighters', 'the town\'s guards', 'the sentries', 'military dogs', 'military wolves', 'war horses');
 $securable = array('the water supply', 'the harvest', 'a large load of lumber', 'the town walls', 'the local dam', 'the bridge', 'city hall');
+$affecting = array('terrorizing', 'raping', 'pillaging', 'murdering', 'pilfering', 'antagonizing', 'corrupting', 'violating', 'decimating', 'conquering', 'crippling', 'attacking', 'fighting', 'crushing');
+$innocents = array('villagers', 'townsfolk', 'livestock', 'pilgrims', 'gypsies', 'wandering nomads', 'peasants', 'royalty', 'nobles', 'workers', 'farmers', 'guardsmen', 'merchants', 'entertainers');
+$destroying = array('destroying', 'crushing', 'demolishing', 'decimating', 'obliterating');
 
 $handle = array('Kill', 'Capture', 'Dispose of', 'Take care of', 'Eliminate', 'Destroy', 'Murder', 'Relocate', 'Stop', 'Restrain', 'Arrest', 'Hold off');
 $prevent = array('Prevent', 'Stop', 'Halt', 'Interrupt', 'Hamper', 'Hinder', 'Impede', 'Thwart');
@@ -144,6 +147,8 @@ $location_names = array(
 // collect, gather, assemble, steal, plant (like planting evidence or a bomb)
 
 
+// 
+
 
 $quest_names = array(
   'investigate' => array(
@@ -189,9 +194,12 @@ $quest_names = array(
     '!nature_destroyable' => array('parts' => array($nature_destroyable)),
     '!handle' => array('parts' => array($handle)),
     '!prevent' => array('parts' => array($prevent)),
+    '!affecting' => array('parts' => array($affecting)),
+    '!innocents' => array('parts' => array($innocents)),
+    '!destroying' => array('parts' => array($destroying)),
     'format' => array(
-      '!handle the !boss that is terrorizing villagers near !fullname',
-      '!prevent the !boss from destroying !nature_destroyable',
+      '!handle the !boss that is !affecting !innocents near !fullname',
+      '!prevent the !boss from !destroying !nature_destroyable',
     ),
   ),
   'special' => array(
