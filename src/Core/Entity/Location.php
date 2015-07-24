@@ -104,6 +104,40 @@ class Location extends RPGEntitySaveable {
     $this->load_keywords();
   }
 
+  /**
+   * Token options:
+   *
+   *    !fullname -> The full name of the location.
+   *    !creature -> The creature name (only for Creature locations).
+   *    !creatureadj -> The adjective describing the creature name (only for Creature locations).
+   *    !creaturefull -> The creature name including the adjective (only for Creature locations).
+   *    !name -> The name of the domicile (only for Domicile locations).
+   *    !dwelling -> The name of the dwelling/domicile (only for Domicile or Creature locations).
+   */
+  public function get_tokens_from_keywords () {
+    $tokens = array(
+      '!fullname' => $this->name,
+    );
+
+    // Sift through the keywords if it's important.
+    $keywords = $this->get_keywords();
+    switch ($this->type) {
+      case Location::TYPE_CREATURE:
+        $tokens['!creature'] = $keywords[1];
+        $tokens['!creatureadj'] = $keywords[0];
+        $tokens['!creaturefull'] = $keywords[0].' '.$keywords[1];
+        $tokens['!dwelling'] = $keywords[2];
+        break;
+
+      case Location::TYPE_DOMICILE:
+        $tokens['!name'] = $keywords[0];
+        $tokens['!dwelling'] = $keywords[1];
+        break;
+    }
+
+    return $tokens;
+  }
+
   
 
   /* =================================
@@ -171,35 +205,11 @@ class Location extends RPGEntitySaveable {
     if (empty($original_json)) $original_json = Location::load_location_names_list(true);
 
     // Get the JSON for this location type.
-    $type_json =& $json[$type];
+    $json_list =& $json[$type];
+    $original_json_list = $original_json[$type];
 
-    // If it is format-based, pick a format and generate the pieces.
-    if (isset($type_json['format'])) {
-      $format_index = array_rand($type_json['format']);
-      $format = $type_json['format'][$format_index];
-      // Create the list of substitution tokens.
-      $tokens = array();
-      foreach ($type_json as $token => &$data) {
-        if ($token == 'format') continue;
-        if (!isset($data['parts'])) continue;
-        // Generate the token value.
-        $join = isset($data['join']) ? $data['join'] : ' ';
-        $parts = Location::generate_from_parts($data['parts'], $original_json[$type][$token]['parts']);
-        $tokens[$token] = implode($join, $parts);
-      }
-      $token_keys = array_keys($tokens);
-      $info['keywords'] = array_values($tokens);
-      $info['name'] = str_replace($token_keys, $info['keywords'], $format);
-      // Add format to the keywords after the name replacement.
-      $keyword = str_replace($token_keys, '', $format);
-      $info['keywords'][] = trim($keyword);
-    }
-    // If it's just a series of parts, connect them.
-    else if (isset($type_json['parts'])) {
-      $join = isset($type_json['join']) ? $type_json['join'] : ' ';
-      $info['keywords'] = Location::generate_from_parts($type_json['parts'], $original_json[$type]['parts']);
-      $info['name'] = implode($join, $info['keywords']);
-    }
+    // Randomly generate the name.
+    $info = JSONList::generate_name($json_list, $original_json_list);
 
     // If we're supposed to save the JSON, do so now.
     if ($save_json) Location::save_location_names_list($json);

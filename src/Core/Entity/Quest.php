@@ -437,8 +437,12 @@ class Quest extends RPGEntitySaveable {
   /**
    * Generate quests for a location.
    */
-  public static function generate_quests ($location, $num_quests = 0, $save = true) {
+  public static function generate_quests ($location, $num_quests = 0, &$json = NULL, $original_json = NULL, $save = true) {
     if (empty($location) || !is_a($location, 'Location')) return false;
+
+    $save_json = empty($json);
+    if (empty($json)) $json = Quest::load_quest_names_list();
+    if (empty($original_json)) $original_json = Quest::load_quest_names_list(true);
 
     $quests = array();
     if ($num_quests <= 0) $num_quests = rand(1, 3) + 1;
@@ -451,11 +455,18 @@ class Quest extends RPGEntitySaveable {
       $quests[] = $quest;
     }
 
+    // Save JSON file.
+    if ($save_json) Quest::save_quest_names_list($json);
+
     return $quests;
   }
 
-  public static function generate_quest_type ($location, $type, $save = true) {
+  public static function generate_quest_type ($location, $type, &$json = NULL, $original_json = NULL, $save = true) {
     if (empty($location) || !is_a($location, 'Location')) return false;
+
+    $save_json = empty($json);
+    if (empty($json)) $json = Quest::load_quest_names_list();
+    if (empty($original_json)) $original_json = Quest::load_quest_names_list(true);
 
     $hours = 60 * 60;
     $days = 24 * $hours;
@@ -474,8 +485,9 @@ class Quest extends RPGEntitySaveable {
     );
 
     // Generate the name and icon.
-    $data['name'] = 'Test Quest '.uniqid();
-    $data['icon'] = ':pushpin:';
+    $name_and_icon = Quest::generate_quest_name_and_icon($location, $type, $json, $original_json);
+    $data['name'] = $name_and_icon['name'];
+    $data['icon'] = $name_and_icon['icon'];
 
     // Overrides for 1-star quests.
     if ($stars == 1) {
@@ -552,12 +564,45 @@ class Quest extends RPGEntitySaveable {
       if ($quest->cooldown > 0 && !$quest->active) $quest->queue($quest->cooldown);
     }
 
+    // Save JSON file.
+    if ($save_json) Quest::save_quest_names_list($json);
+
     return $quest;
   }
 
   public static function types () {
     // Not included: Quest::TYPE_EXPLORE, Quest::TYPE_TRAIN
     return Quest::$_types;
+  }
+
+  protected static function generate_quest_name_and_icon ($location, $type, &$json, $original_json) {
+    $info = array(
+      'name' => '',
+      'keywords' => array(),
+      'icon' => ':pushpin:',
+    );
+    if ($location->type == Location::TYPE_EMPTY) return $info;
+
+    // Load up the list of location names.
+    $save_json = empty($json);
+    if (empty($json)) $json = Quest::load_quest_names_list();
+    if (empty($original_json)) $original_json = Quest::load_quest_names_list(true);
+
+    // Get the JSON for this location type.
+    $json_list =& $json[$type];
+    $original_json_list = $original_json[$type];
+
+    // Create any extra tokens that should be passed into the format-type.
+    $tokens = $location->get_tokens_from_keywords();
+
+    // Randomly generate the name.
+    $name_info = JSONList::generate_name($json_list, $original_json_list, $tokens);
+    $info = array_merge($info, $name_info);
+
+    // If we're supposed to save the JSON, do so now.
+    if ($save_json) Location::save_location_names_list($json);
+
+    return $info;
   }
 
   /**

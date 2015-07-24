@@ -3,11 +3,10 @@ error_reporting(E_ALL);
 ini_set("display_errors", 1);
 
 require_once('config.php');
-require_once(RPG_SERVER_ROOT.'/bin/raw/adventurer_names.php');
-require_once(RPG_SERVER_ROOT.'/bin/raw/challenge_texts.php');
-require_once(RPG_SERVER_ROOT.'/bin/raw/location_names.php');
+
 
 echo "Generating adventurer names...";
+require_once(RPG_SERVER_ROOT.'/bin/raw/adventurer_names.php');
 
 // Assemble the data.
 $data = array(
@@ -26,6 +25,7 @@ echo " Done!";
 
 
 echo "\nGenerating challenge texts...";
+require_once(RPG_SERVER_ROOT.'/bin/raw/challenge_texts.php');
 
 // Write out the JSON file.
 $fp = fopen(RPG_SERVER_ROOT.'/bin/json/original/challenge_texts.json', 'w');
@@ -37,10 +37,23 @@ echo " Done!";
 
 
 echo "\nGenerating location names...";
+require_once(RPG_SERVER_ROOT.'/bin/raw/location_and_quest_names.php');
 
 // Write out the JSON file.
 $fp = fopen(RPG_SERVER_ROOT.'/bin/json/original/location_names.json', 'w');
 fwrite($fp, json_encode($location_names));
+fclose($fp);
+
+echo " Done!";
+
+
+
+echo "\nGenerating quest names...";
+// List is included with location names php file.
+
+// Write out the JSON file.
+$fp = fopen(RPG_SERVER_ROOT.'/bin/json/original/quest_names.json', 'w');
+fwrite($fp, json_encode($quest_names));
 fclose($fp);
 
 echo " Done!";

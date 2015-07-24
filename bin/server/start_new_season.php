@@ -25,6 +25,11 @@ function reset_json_lists ($output_information = false) {
   Location::refresh_original_location_names_list();
   if ($output_information) print " Done.\n";
 
+  // Reset quest names.
+  if ($output_information) print "Resetting quest names list...";
+  Quest::refresh_original_quest_names_list();
+  if ($output_information) print " Done.\n";
+
   if ($output_information) print "All JSON lists have be reset.\n";
 }
 

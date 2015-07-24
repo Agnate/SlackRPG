@@ -1922,12 +1922,23 @@ class RPGSession {
     if (!($player = $this->load_current_player())) return;
 
 
-    // Create the Map image.
-    $season = Season::load(array('active' => true));
-    $map = Map::load(array('season' => $season->sid));
-    $mapimage = MapImage::generate_image($map);
 
-    $this->respond('<img src="'.$mapimage->url.'">');
+    // Generate a quest based on a location.
+    $json = Quest::load_quest_names_list();
+    $original_json = Quest::load_quest_names_list(true);
+    d($json);
+    $location = Location::load(array('locid' => 5));
+    $quest = Quest::generate_quest_type($location, Quest::TYPE_BOSS, $json, $original_json, false);
+    d($quest);
+    d($json);
+
+
+    // Create the Map image.
+    // $season = Season::load(array('active' => true));
+    // $map = Map::load(array('season' => $season->sid));
+    // $mapimage = MapImage::generate_image($map);
+
+    // $this->respond('<img src="'.$mapimage->url.'">');
 
 
 
@@ -1936,9 +1947,11 @@ class RPGSession {
     // $original_json = Location::load_location_names_list(true);
     // $types = Location::types();
     // $names = array();
-    // for ($i = 0; $i < 20; $i++)
-    //   $names[] = Location::generate_name($types[array_rand($types)], $json, $original_json); // Location::generate_name(Location::TYPE_CREATURE, $json, $original_json);
+    // d($json);
+    // // for ($i = 0; $i < 20; $i++)
+    //   $names[] = Location::generate_name(Location::TYPE_CREATURE, $json, $original_json); // Location::generate_name($types[array_rand($types)], $json, $original_json);
 
+    // d($json);
     // d($names);
 
 
