@@ -1933,6 +1933,13 @@ class RPGSession {
     // d($json);
 
 
+    // $lined = SpriteSheet::add_grid_to_sheet('/terrain.png', true);
+    // $this->respond('<img class="map" src="'.$lined['debug'].'">');
+
+    // $lined = SpriteSheet::add_grid_to_sheet('/capital.png', true);
+    // $this->respond('<img class="map" src="'.$lined['debug'].'">');
+
+
     // Create the sprite sheet.
     $spritesheet = SpriteSheet::generate(true);
     $this->respond('<img class="map" src="'.$spritesheet['debug'].'">');

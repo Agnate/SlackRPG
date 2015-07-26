@@ -55,7 +55,7 @@ class MapImage {
       for ($c = 1; $c <= $num_cols; $c++) {
         $x = $r * $cell_size;
         $y = $c * $cell_size;
-        MapImage::create_random_cell($image, $spritesheet, $sheet['tiles']['grass'], $x, $y);
+        MapImage::create_random_cells($image, $spritesheet, $sheet['tiles']['grass'][0], $x, $y);
       }
     }
 
@@ -78,7 +78,7 @@ class MapImage {
       }
       // Fog of war.
       else {
-        MapImage::create_random_cell($image, $spritesheet, $sheet['tiles']['fog'], $x, $y, 75);
+        MapImage::create_random_cells($image, $spritesheet, $sheet['tiles']['fog'][0], $x, $y, 75);
       }
     }
 
@@ -98,8 +98,8 @@ class MapImage {
       for ($c = $capital_info['col']; $c <= $capital_info['col']+1; $c++) {
         $x = $c * $cell_size;
         $y = $r * $cell_size;
+        MapImage::create_cell($image, $spritesheet, $sheet['tiles']['capital'][$count], $x, $y);
         $count++;
-        MapImage::create_cell($image, $spritesheet, $sheet['tiles']['capital'.$count], $x, $y);
       }
     }
 
@@ -128,7 +128,7 @@ class MapImage {
     return new MapImage (array('map' => $map, 'url' => $image_url));
   }
 
-  protected static function create_random_cell (&$image, $icon_image, $icon_options, $x, $y, $opacity = 100) {
+  protected static function create_random_cells (&$image, $icon_image, $icon_options, $x, $y, $opacity = 100) {
     $tiles = array();
     // Select 4 tiles.
     for ($t = 1; $t <= 4; $t++) {
@@ -160,7 +160,4 @@ class MapImage {
       }
     }
   }
-
-  
-  
 }
