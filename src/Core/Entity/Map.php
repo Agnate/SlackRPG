@@ -80,21 +80,29 @@ class Map extends RPGEntitySaveable {
     $middle_col = floor($num_cols / 2);
     $capital_col = rand($middle_col - 3, $middle_col + 3);
 
-    $capital_data = array(
-      'mapid' => $this->mapid,
-      'gid' => 0,
-      'name' => 'The Capital',
-      'row' => $capital_row,
-      'col' => $capital_col,
-      'type' => Location::TYPE_CAPITAL,
-      'created' => time(),
-      'revealed' => true,
-    );
-    $capital = new Location ($capital_data);
-    if ($save_locations) $capital->save();
-    $grid[$capital_row][$capital_col] = $capital;
-    $locations[] = $capital;
-    unset($open[$capital_row.'-'.$capital_col]);
+    // The capital is actually 4 locations.
+    for ($crow = 0; $crow < 2; $crow++) {
+      for ($ccol = 0; $ccol < 2; $ccol++) {
+        $temprow = $capital_row + $crow;
+        $tempcol = $capital_col + $ccol;
+        $capital_data = array(
+          'mapid' => $this->mapid,
+          'gid' => 0,
+          'name' => 'The Capital',
+          'row' => $temprow,
+          'col' => $tempcol,
+          'type' => Location::TYPE_CAPITAL,
+          'created' => time(),
+          'revealed' => true,
+        );
+        $capital = new Location ($capital_data);
+        if ($save_locations) $capital->save();
+        $grid[$temprow][$tempcol] = $capital;
+        $locations[] = $capital;
+        unset($open[$temprow.'-'.$tempcol]);
+      }
+    }
+    
 
     // Loop through and create the rest of the Locations.
     $num_locs = ceil($total * Map::DENSITY);

@@ -1924,21 +1924,25 @@ class RPGSession {
 
 
     // Generate a quest based on a location.
-    $json = Quest::load_quest_names_list();
-    $original_json = Quest::load_quest_names_list(true);
-    d($json);
-    $location = Location::load(array('locid' => 5));
-    $quest = Quest::generate_quest_type($location, Quest::TYPE_BOSS, $json, $original_json, false);
-    d($quest);
-    d($json);
+    // $json = Quest::load_quest_names_list();
+    // $original_json = Quest::load_quest_names_list(true);
+    // d($json);
+    // $location = Location::load(array('locid' => 5));
+    // $quest = Quest::generate_quest_type($location, Quest::TYPE_BOSS, $json, $original_json, false);
+    // d($quest);
+    // d($json);
 
+
+    // Create the sprite sheet.
+    $spritesheet = SpriteSheet::generate(true);
+    $this->respond('<img class="map" src="'.$spritesheet['debug'].'">');
 
     // Create the Map image.
-    // $season = Season::load(array('active' => true));
-    // $map = Map::load(array('season' => $season->sid));
-    // $mapimage = MapImage::generate_image($map);
+    $season = Season::load(array('active' => true));
+    $map = Map::load(array('season' => $season->sid));
+    $mapimage = MapImage::generate_image($map);
 
-    // $this->respond('<img src="'.$mapimage->url.'">');
+    $this->respond('<img class="map" src="'.$mapimage->url.'">');
 
 
 
