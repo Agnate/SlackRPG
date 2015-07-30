@@ -32,7 +32,7 @@ $boss_adjectives = array('Giant', 'Great', 'Demonic', 'Fiery', 'Hellish', 'Grote
 $boss_creature_names = array('Angel', 'Banshee', 'Basilisk', 'Behemoth', 'Dragon', 'Cerberus', 'Chimera', 'Cockatrice', 'Cyclops', 'Demon', 'Dragon', 'Ghost', 'Ghoul', 'Golem', 'Gorgon', 'Hydra', 'Kraken', 'Leviathan', 'Manticore', 'Medusa', 'Minotaur', 'Mummy', 'Naga', 'Necromancer', 'Ogre', 'Orc', 'Phoenix', 'Skeleton', 'Sphinx', 'Succubus', 'Vampire', 'Wendigo', 'Werewolf', 'Wight', 'Wraith', 'Wyrm', 'Wyvern', 'Zombie', 'Hellhound','Troll', 'Genie', 'Goblin', 'Hobgoblin', 'Troglodyte', 'Firebird', 'Harpy', 'Peryton', 'Ent', 'Spectre', 'Assassin', 'Ninja', 'Bandit', 'Lycan', 'Slime', 'Nightmare', 'Wolf', 'Crab', 'Scorpion', 'Spider', 'Eagle', 'Bear', 'Rattlesnake', 'Mosquito', 'Elephant', 'Alligator', 'Lion', 'Whale', 'Octopus', 'Hippopotamus', 'Rhinoceros', 'Hyena', 'Mantis', 'Bat', 'Cobra', 'Gorilla');
 
 
-$creature_dwelling = array('Dungeon', 'Cave', 'Lair', 'Fossils', 'Cavern', 'Hollow', 'Forest', 'Canyon', 'Gulch', 'Mountain', 'Gorge', 'Ravine', 'Ruins', 'Tower', 'Barrow', 'Crater', 'Den', 'Hideout', 'Hole', 'Crevice', 'Chasm', 'Tunnels', 'Pits', 'Crypt', 'Spire');
+$creature_dwelling = array('Dungeon', 'Cave', 'Lair', 'Fossils', 'Cavern', 'Hollow', 'Forest', 'Canyon', 'Gulch', 'Mountain', 'Gorge', 'Ravine', 'Ruins', 'Tower', 'Barrow', 'Crater', 'Den', 'Hideout', 'Hole', 'Crevice', 'Chasm', 'Tunnels', 'Pits', 'Crypt', 'Spire', 'Bones', 'Remains');
 
 
 $landmark_names = array('Lava Lake', 'Magma Pool', 'Hollow', 'Thicket', 'Brier', 'Forest', 'Meadow', 'Field', 'Lowland', 'Grassland', 'River', 'Stream', 'Brook', 'Creek', 'Rill', 'Swamp',
@@ -48,7 +48,7 @@ $domicile_names_first = array('Aber', 'Ac', 'Ar', 'Ash', 'Ast', 'Auch', 'Bex', '
 $domicile_names_last = array('afon', 'ard', 'ay', 'beck', 'berg', 'bost', 'burn', 'bury', 'by', 'carden', 'caster', 'chester', 'cot', 'cott', 'creag', 'combe', 'dale', 'don', 'dow', 'field', 'ham', 'ing',
   'cheth', 'keth', 'kirk', 'mouth', 'ness', 'ster', 'tun', 'thwaite', 'wych', 'wardine');
 
-$domicile_formats = array('Castle !name', 'Fort !name', 'Town of !name', '!name Village', '!name Outpost', '!name Mine', '!name Ranch', '!name Farm', 'Church of !name', '!name Palace', '!name Fortress', '!name Borough', '!name Stronghold', '!name Keep', '!name Citadel', '!name Sanctuary', '!name Wall', '!name Frontier', '!name Quarters', '!name Estate', '!name Empire', '!name Kingdom', '!name Mansion', '!name Enclave', '!name Bastille', '!name Garrison');
+$domicile_formats = array('Castle !name', 'Fort !name', 'Town of !name', '!name Village', '!name Outpost', '!name Mine', '!name Ranch', '!name Farm', 'Church of !name', '!name Palace', '!name Fortress', '!name Borough', '!name Stronghold', '!name Keep', '!name Citadel', '!name Sanctuary', '!name Wall', '!name Frontier', '!name Quarters', '!name Estate', '!name Empire', '!name Kingdom', '!name Mansion', '!name Enclave', '!name Bastille', '!name Garrison', '!name Prison', '!name Lookout', '!name Cathedral', '!name City', '!name Metropolis', '!name Library');
 
 
 $first_names = array(

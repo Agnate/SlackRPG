@@ -46,6 +46,7 @@ class RPGSession {
 
 
     $this->register_callback(array('test'), 'cmd_test');
+    $this->register_callback(array('tsprites'), 'cmd_test_sprites');
   }
 
 
@@ -1914,13 +1915,30 @@ class RPGSession {
 
 
 
-  protected function cmd_test ($args = array()) {
+  protected function cmd_test_sprites ($args = array()) {
     $orig_args = $args;
     $cmd_word = 'test';
 
     // Load the player and fail out if they have not created a Guild.
     if (!($player = $this->load_current_player())) return;
 
+    // Rough spritesheets directory.
+    foreach(glob(RPG_SERVER_ROOT.'/icons/rough/*.*') as $file) {
+      $file_name = explode('/', $file);
+      $file_name = array_pop($file_name);
+      $lined = SpriteSheet::add_grid_to_sheet('/'.$file_name, true);
+      $this->respond("*".$file_name."*\n".'<img class="map" src="'.$lined['debug'].'">');      
+    }
+  }
+
+
+
+  protected function cmd_test ($args = array()) {
+    $orig_args = $args;
+    $cmd_word = 'test';
+
+    // Load the player and fail out if they have not created a Guild.
+    if (!($player = $this->load_current_player())) return;
 
 
     // Generate a quest based on a location.
@@ -1948,7 +1966,6 @@ class RPGSession {
     $season = Season::load(array('active' => true));
     $map = Map::load(array('season' => $season->sid));
     $mapimage = MapImage::generate_image($map);
-
     $this->respond('<img class="map" src="'.$mapimage->url.'">');
 
 

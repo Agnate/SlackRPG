@@ -138,6 +138,20 @@ class Location extends RPGEntitySaveable {
     return $tokens;
   }
 
+  /**
+   * Extract what category of icon we want to use on the map based on the keywords.
+   */
+  public function get_map_icon () {
+    $keywords = $this->get_keywords();
+
+    switch ($this->type) {
+      default:
+        // Take the last keyword, split by space and take the first word of the group.
+        $pieces = explode(' ', array_pop($keywords));
+        return strtolower(array_shift($pieces));
+    }
+  }
+
   
 
   /* =================================
