@@ -7,49 +7,50 @@ class Bonus {
    *   2. Add a "const" with that variable's name as the string.
    *   3. Add the new "const" to the list called ALL_MODIFIERS.
    *   4. Add a default value in the __construct function.
+   *   5. Add bonus name to static function list.
    */
 
   // 1. Fields
-  protected $_travel_speed_modifiers;
-  protected $_quest_speed_modifiers;
-  protected $_quest_success_modifiers;
-  protected $_death_rate_modifiers;
-  protected $_quest_reward_gold_modifiers;
-  protected $_quest_reward_fame_modifiers;
-  protected $_quest_reward_exp_modifiers;
-  protected $_quest_reward_item_modifiers;
-  protected $_miss_rate_modifiers;
-  protected $_crit_rate_modifiers;
-  protected $_opponent_miss_rate_modifiers;
-  protected $_opponent_crit_rate_modifiers;
-  protected $_attack_as_success_modifiers;
-  protected $_defend_as_success_modifiers;
-  protected $_break_as_success_modifiers;
-  protected $_loss_by_one_as_tie_modifiers;
-  protected $_loss_on_success_modifiers;
-  protected $_tie_breaker_on_fail_modifiers;
-  protected $_item_type_find_rate_modifiers;
+  protected $_travel_speed;
+  protected $_quest_speed;
+  protected $_quest_success;
+  protected $_death_rate;
+  protected $_quest_reward_gold;
+  protected $_quest_reward_fame;
+  protected $_quest_reward_exp;
+  protected $_quest_reward_item;
+  protected $_miss_rate;
+  protected $_crit_rate;
+  protected $_opponent_miss_rate;
+  protected $_opponent_crit_rate;
+  protected $_attack_as_success;
+  protected $_defend_as_success;
+  protected $_break_as_success;
+  protected $_loss_by_one_as_tie;
+  protected $_loss_on_success;
+  protected $_tie_breaker_on_fail;
+  protected $_item_type_find_rate;
 
   // 2. Modifiers available for retrieval.
-  const TRAVEL_SPEED = '_travel_speed_modifiers';
-  const QUEST_SPEED = '_quest_speed_modifiers';
-  const QUEST_SUCCESS = '_quest_success_modifiers';
-  const DEATH_RATE = '_death_rate_modifiers';
-  const QUEST_REWARD_GOLD = '_quest_reward_gold_modifiers';
-  const QUEST_REWARD_FAME = '_quest_reward_fame_modifiers';
-  const QUEST_REWARD_EXP = '_quest_reward_exp_modifiers';
-  const QUEST_REWARD_ITEM = '_quest_reward_item_modifiers';
-  const MISS_RATE = '_miss_rate_modifiers';
-  const CRIT_RATE = '_crit_rate_modifiers';
-  const OPPONENT_MISS_RATE = '_opponent_miss_rate_modifiers';
-  const OPPONENT_CRIT_RATE = '_opponent_crit_rate_modifiers';
-  const ATTACK_AS_SUCCESS = '_attack_as_success_modifiers';
-  const DEFEND_AS_SUCCESS = '_defend_as_success_modifiers';
-  const BREAK_AS_SUCCESS = '_break_as_success_modifiers';
-  const LOSS_BY_ONE_AS_TIE = '_loss_by_one_as_tie_modifiers';
-  const LOSS_ON_SUCCESS = '_loss_on_success_modifiers';
-  const TIE_BREAKER_ON_FAIL = '_tie_breaker_on_fail_modifiers';
-  const ITEM_TYPE_FIND_RATE = '_item_type_find_rate_modifiers';
+  const TRAVEL_SPEED = '_travel_speed';
+  const QUEST_SPEED = '_quest_speed';
+  const QUEST_SUCCESS = '_quest_success';
+  const DEATH_RATE = '_death_rate';
+  const QUEST_REWARD_GOLD = '_quest_reward_gold';
+  const QUEST_REWARD_FAME = '_quest_reward_fame';
+  const QUEST_REWARD_EXP = '_quest_reward_exp';
+  const QUEST_REWARD_ITEM = '_quest_reward_item';
+  const MISS_RATE = '_miss_rate';
+  const CRIT_RATE = '_crit_rate';
+  const OPPONENT_MISS_RATE = '_opponent_miss_rate';
+  const OPPONENT_CRIT_RATE = '_opponent_crit_rate';
+  const ATTACK_AS_SUCCESS = '_attack_as_success';
+  const DEFEND_AS_SUCCESS = '_defend_as_success';
+  const BREAK_AS_SUCCESS = '_break_as_success';
+  const LOSS_BY_ONE_AS_TIE = '_loss_by_one_as_tie';
+  const LOSS_ON_SUCCESS = '_loss_on_success';
+  const TIE_BREAKER_ON_FAIL = '_tie_breaker_on_fail';
+  const ITEM_TYPE_FIND_RATE = '_item_type_find_rate';
 
   // 3. List of all available modifiers.
   static $all_modifiers = array(Bonus::TRAVEL_SPEED, Bonus::QUEST_SPEED, Bonus::QUEST_SUCCESS, Bonus::DEATH_RATE,
@@ -108,21 +109,6 @@ class Bonus {
     return $this->$mod_name;
   }
 
-  protected function __evaluate_for ($for) {
-    if (is_object($for)) return $for;
-    $data = explode('->', $for);
-    $info = array();
-    if (isset($data[0])) $info['for'] = $data[0];
-    if (isset($data[1])) $info['type'] = $data[1];
-    return $info;
-  }
-
-  protected function __adjust_modifier ($mod, $value_as) {
-    if ($value_as == Bonus::MOD_DIFF) return ($mod - 1);
-    if ($value_as == Bonus::MOD_HUNDREDS) return floor(($mod - 1) * 100);
-    return $mod;
-  }
-
 
   /**
    * $mod_name - Use the constants defined here in Bonus to retrieve the desired modifier (ex. Bonus::TRAVEL_SPEED).
@@ -133,7 +119,7 @@ class Bonus {
     $mods = &$this->__get_modifier($mod_name);
     if ($mods === FALSE) return FALSE;
     // Convert $for object/string into meaningful data to categorize the modifier.
-    $info = $this->__evaluate_for($for);
+    $info = Bonus::evaluate_for($for);
     $for = is_object($info) ? get_class($info) : $info['for'];
     // Look for the value.
     if (!isset($mods[$for])) return FALSE;
@@ -152,7 +138,7 @@ class Bonus {
         break;
     }
     // Return the modifier value for whatever specific scenario we need.
-    return $this->__adjust_modifier($mod, $value_as);
+    return Bonus::adjust_modifier($mod, $value_as);
   }
 
   public function set_mod ($mod_name, $value, $for = Bonus::FOR_DEFAULT) {
@@ -160,7 +146,7 @@ class Bonus {
     $mods = &$this->__get_modifier($mod_name);
     if ($mods === FALSE) return FALSE;
     // Convert $for object/string into meaningful data to categorize the modifier.
-    $info = $this->__evaluate_for($for);
+    $info = Bonus::evaluate_for($for);
     $for = is_object($info) ? get_class($info) : $info['for'];
     // Set the value.
     switch ($for) {
@@ -184,7 +170,7 @@ class Bonus {
     $mods = &$this->__get_modifier($mod_name);
     if ($mods === FALSE) return FALSE;
     // Convert $for object/string into meaningful data to categorize the modifier.
-    $info = $this->__evaluate_for($for);
+    $info = Bonus::evaluate_for($for);
     $for = is_object($info) ? get_class($info) : $info['for'];
     // Set the value.
     switch ($for) {
@@ -203,5 +189,97 @@ class Bonus {
         break;
     }
     return TRUE;
+  }
+
+
+
+  /* =================================
+     ______________  ________________
+    / ___/_  __/   |/_  __/  _/ ____/
+    \__ \ / / / /| | / /  / // /     
+   ___/ // / / ___ |/ / _/ // /___   
+  /____//_/ /_/  |_/_/ /___/\____/   
+                                     
+  ==================================== */
+
+  public static function get_name ($bonus_name, $value, $for = Bonus::FOR_DEFAULT) {
+    $for = $for != Bonus::FOR_DEFAULT ? Bonus::evaluate_for($for) : '';
+    $name = '';
+
+    // 5. Add bonus name to the list.
+    switch ($bonus_name) {
+      case Bonus::TRAVEL_SPEED: $name = 'travel speed'; break;
+      case Bonus::QUEST_SPEED: $name = 'time to complete !Quest'; break;
+      case Bonus::QUEST_SUCCESS: $name = 'chance of completing !Quest'; break;
+      case Bonus::DEATH_RATE: $name = 'chance of adventurers dying during !Quest'; break;
+      case Bonus::QUEST_REWARD_GOLD: $name = 'amount of gold received for completing !Quest'; break;
+      case Bonus::QUEST_REWARD_FAME: $name = 'amount of fame received for completing !Quest'; break;
+      case Bonus::QUEST_REWARD_EXP: $name = 'amount of experience points received for completing !Quest'; break;
+      case Bonus::QUEST_REWARD_ITEM: $name = 'chance of finding an item when completing !Quest'; break;
+      case Bonus::ITEM_TYPE_FIND_RATE: $name = 'chance of finding !ItemType when completing !Quest'; break;
+
+      case Bonus::MISS_RATE: $name = 'miss rate in a Colosseum fight'; break;
+      case Bonus::CRIT_RATE: $name = 'crit rate in a Colosseum fight'; break;
+      case Bonus::OPPONENT_MISS_RATE: $name = 'OPPONENT_MISS_RATE'; break;
+      case Bonus::OPPONENT_CRIT_RATE: $name = 'OPPONENT_CRIT_RATE'; break;
+      case Bonus::ATTACK_AS_SUCCESS: $name = 'ATTACK_AS_SUCCESS'; break;
+      case Bonus::DEFEND_AS_SUCCESS: $name = 'DEFEND_AS_SUCCESS'; break;
+      case Bonus::BREAK_AS_SUCCESS: $name = 'BREAK_AS_SUCCESS'; break;
+      case Bonus::LOSS_BY_ONE_AS_TIE: $name = 'LOSS_BY_ONE_AS_TIE'; break;
+      case Bonus::LOSS_ON_SUCCESS: $name = 'LOSS_ON_SUCCESS'; break;
+      case Bonus::TIE_BREAKER_ON_FAIL: $name = 'TIE_BREAKER_ON_FAIL'; break;
+    }
+
+    if (empty($name)) return $bonus_name;
+
+    // Create any replacement tokens.
+    $tokens = array();
+
+    // Specific tokens based on the "for" value.
+    if (!empty($for)) {
+      switch ($for['for']) {
+        case 'Quest':
+        case 'ItemType':
+          $tokens['!'.$for['for']] = $for['for']::get_type_name($for['type']);
+      }
+    }
+    // Special tokens for default "for" value.
+    else {
+      switch ($bonus_name) {
+        case Bonus::QUEST_SPEED:
+        case Bonus::QUEST_SUCCESS:
+        case Bonus::DEATH_RATE:
+          $tokens['!Quest'] = 'a quest';
+          break;
+
+        case Bonus::QUEST_REWARD_GOLD:
+        case Bonus::QUEST_REWARD_FAME:
+        case Bonus::QUEST_REWARD_EXP:
+        case Bonus::QUEST_REWARD_ITEM:
+        case Bonus::ITEM_TYPE_FIND_RATE:
+          $tokens['!Quest'] = 'a quest or exploring';
+          break;
+      }
+    }
+
+    // Replace tokens.
+    $name = str_replace(array_keys($tokens), array_values($tokens), $name);
+
+    return $name .' by '.floor($value * 100).'%';
+  }
+
+  public static function evaluate_for ($for) {
+    if (is_object($for)) return $for;
+    $data = explode('->', $for);
+    $info = array();
+    if (isset($data[0])) $info['for'] = $data[0];
+    if (isset($data[1])) $info['type'] = $data[1];
+    return $info;
+  }
+
+  public static function adjust_modifier ($mod, $value_as) {
+    if ($value_as == Bonus::MOD_DIFF) return ($mod - 1);
+    if ($value_as == Bonus::MOD_HUNDREDS) return floor(($mod - 1) * 100);
+    return $mod;
   }
 }

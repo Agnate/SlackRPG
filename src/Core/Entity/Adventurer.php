@@ -17,10 +17,12 @@ class Adventurer extends RPGEntitySaveable {
   public $champion;
   public $dead;
   public $gender;
+  public $enhancements;
 
   // Protected
   protected $_bonus;
   protected $_adventurer_class;
+  protected $_enhancements;
 
   // Private vars
   static $fields_int = array('created', 'level', 'popularity', 'exp', 'exp_tnl');
@@ -32,6 +34,7 @@ class Adventurer extends RPGEntitySaveable {
   const FILENAME_ADVENTURER_NAMES = '/bin/json/adventurer_names.json';
 
   const LEVEL_CAP = 20;
+  const ENHANCE_AT_LEVELS = 5;
   const GENDER_MALE = 'male';
   const GENDER_FEMALE = 'female';
 
@@ -92,16 +95,38 @@ class Adventurer extends RPGEntitySaveable {
     return (!$include_mods && $this->class == 'juggernaut') ? ($this->level - 2) : $this->level;
   }
 
-  public function set_level ($level) {
+  /**
+   * Very crude enhancement calculation (aka basically none).
+   */
+  public function set_level ($level, $include_enhancement = false) {
+    $orig_level = $this->level;
     $this->level = $level - 1;
-    $this->level_up();
+    $this->level_up(false);
+
+    // Add enhancements depending on level differences (ignore if level was reduced).
+    if ($include_enhancement && $orig_level < $level) {
+      $cur_enhs = floor($orig_level / Adventurer::ENHANCE_AT_LEVELS);
+      $total_enhs = floor($level / Adventurer::ENHANCE_AT_LEVELS);
+      if ($cur_enhs < $total_enhs) {
+        // Add extra enhancements.
+        for ($i = $cur_enhs; $i < $total_enhs; $i++) {
+          $this->add_enhancement($this->get_random_enhancement());
+        }
+      }
+    }
   }
 
-  protected function level_up () {
+  protected function level_up ($include_enhancement = true) {
     if ($this->level >= Adventurer::LEVEL_CAP) return FALSE;
     // Level up!
     $this->level++;
     $this->exp_tnl = $this->calculate_exp_tnl();
+
+    // Check for level-up enhancement (every 5th levels).
+    if ($include_enhancement && $this->get_level(false) % Adventurer::ENHANCE_AT_LEVELS == 0) {
+      $this->add_enhancement($this->get_random_enhancement());
+    }
+
     return TRUE;
   }
 
@@ -151,6 +176,9 @@ class Adventurer extends RPGEntitySaveable {
     $this->_bonus = null;
     $this->load_bonus();
 
+    // Apply enhancement bonuses.
+    $this->apply_enhancements();
+
     // If they have a class, load up the appropriate class.
     $this->_adventurer_class = null;
     $this->load_adventurer_class();
@@ -159,6 +187,138 @@ class Adventurer extends RPGEntitySaveable {
     $adventurer_class = $this->get_adventurer_class();
     if (!empty($adventurer_class)) $adventurer_class->apply_bonus($this);
   }
+
+  protected function apply_enhancements () {
+    $enhancements = $this->get_enhancements();
+
+    foreach ($enhancements as $enhancement) {
+      $this->_bonus->add_mod($enhancement->bonus, $enhancement->value, $enhancement->for);
+    }
+  }
+
+  public function load_enhancements () {
+    $this->_enhancements = $this->__decode_enhancements($this->enhancements);
+    return $this->_enhancements;
+  }
+
+  public function get_enhancements () {
+    if ($this->_enhancements === NULL) $this->load_enhancements();
+    return $this->_enhancements;
+  }
+
+  public function set_enhancements ($list) {
+    if (is_array($list)) $this->enhancements = $this->__encode_enhancements($list);
+    else if (is_string($list)) $this->enhancements = $list;
+    else return FALSE;
+
+    // Re-load the enhancements to properly encode them.
+    $this->load_enhancements();
+
+    // Recalculate the bonus.
+    $this->calculate_bonus();
+  }
+
+  public function add_enhancement ($enhancement) {
+    if (is_string($enhancement)) $enhancement = Enhancement::from($enhancement);
+
+    $enhancements = $this->get_enhancements();
+    $enhancements[] = $enhancement;
+
+    return $this->set_enhancements($enhancements);
+  }
+
+  public function get_random_enhancement () {
+    $options = array(
+      array('bonus' => Bonus::QUEST_SUCCESS, 'value' => 0.01, 'random_quest' => TRUE),
+      array('bonus' => Bonus::QUEST_SPEED, 'value' => -0.01, 'random_quest' => TRUE),
+      array('bonus' => Bonus::DEATH_RATE, 'value' => 0.01, 'random_quest' => TRUE),
+      array('bonus' => Bonus::QUEST_REWARD_GOLD, 'value' => 0.01, 'random_quest' => TRUE),
+      array('bonus' => Bonus::QUEST_REWARD_FAME, 'value' => 0.01, 'random_quest' => TRUE),
+      array('bonus' => Bonus::QUEST_REWARD_EXP, 'value' => 0.01, 'random_quest' => TRUE),
+      array('bonus' => Bonus::QUEST_REWARD_ITEM, 'value' => 0.01, 'random_quest' => TRUE),
+
+      array('bonus' => Bonus::ITEM_TYPE_FIND_RATE, 'value' => 0.01, 'random_item' => TRUE),
+
+      array('bonus' => Bonus::TRAVEL_SPEED, 'value' => -0.01),
+      array('bonus' => Bonus::MISS_RATE, 'value' => -0.01),
+      array('bonus' => Bonus::CRIT_RATE, 'value' => 0.01),
+    );
+
+    // Choose an enhancement.
+    $enhancement = $options[array_rand($options)];
+
+    if (isset($enhancement['random_quest']) && $enhancement['random_quest']) {
+      $types = Quest::types();
+      $type = $types[array_rand($types)];
+      $enhancement['for'] = 'Quest->'.$type;
+    }
+
+    if (isset($enhancement['random_item']) && $enhancement['random_item']) {
+      $types = ItemType::ALL(false);
+      $type = $types[array_rand($types)];
+      $enhancement['for'] = 'ItemType->'.$type;
+    }
+
+    return new Enhancement ($enhancement);
+  }
+
+  /**
+   * Format for the array-version of the list of enhancements:
+   *
+   * $list -> an array of Enhancement objects.
+   *
+   * Examples:
+   *    increase travel speed by 5%:
+   *    $list = array(
+   *      new Enhancement (array('bonus => Bonus::TRAVEL_SPEED, 'value' => -0.05))
+   *    );
+   *
+   *    increase Boss quest success by 5%:
+   *    $list = array(
+   *      new Requirement (array('bonus => Bonus::QUEST_SUCCESS, 'value' => 0.05, 'for' => 'Quest->'.Quest::TYPE_BOSS)),
+   *    );
+   */
+  public function __encode_enhancements ($list) {
+    if (empty($list)) return '';
+    $items = array();
+
+    // Loop through the list and encode it.
+    foreach ($list as $enhancement) {
+      // Skip any item without a bonus name.
+      if (empty($enhancement->bonus)) continue;
+      $items[] = $enhancement->encode();
+    }
+
+    return implode('|', $items);
+  }
+
+  /**
+   * Format for the string-version of the list of requirements:
+   *
+   * $value -> "MOD,VALUE|MOD,VALUE,FOR"   (item separator = "|", divider between mod name, value, and for = ",")
+   *    MOD -> Bonus types (example: Bonus::TRAVEL_SPEED)
+   *    VALUE -> Bonus value (example: 5, 0.15, -1.05)
+   *    FOR -> Specificity of what the bonus applies to (example: Bonus::FOR_DEFAULT or "Quest->".Quest::TYPE_BOSS)
+   *
+   * Examples:
+   *    increase travel speed by 5% -->  "_travel_speed,-0.05"
+   *    increase Boss quest success by 5% -->  "_quest_success,0.05,Quest->boss"
+   */
+  public function __decode_enhancements ($enhancements) {
+    $list = array();
+    if ($enhancements == '') return $list;
+    
+    // Bust up the enhancements by the primary separator.
+    $enhancements = explode('|', $enhancements);
+
+    // Sub-divide each requirement to find the bonus name and value.
+    foreach ($enhancements as $value) {
+      $list[] = Enhancement::from($value);
+    }
+
+    return $list;
+  }
+
 
 
   /* =================================

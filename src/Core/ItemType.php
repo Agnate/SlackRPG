@@ -8,11 +8,16 @@ class ItemType {
   const REVIVAL = 'revival';
   const KIT = 'kit';
 
-  public static function ALL () {
-    return array(
+  public static function ALL ($include_store = true) {
+    $all = array(
       ItemType::POWERSTONE, ItemType::ORE, ItemType::ANIMAL, ItemType::HERB, ItemType::REVIVAL,
-      ItemType::KIT
     );
+
+    if ($include_store) {
+      $all[] = ItemType::KIT;
+    }
+
+    return $all;
   }
 
   public static function PROBABILITIES () {
@@ -25,5 +30,18 @@ class ItemType {
     $types[ItemType::KIT] = 0;
 
     return $types;
+  }
+
+  public static function get_type_name ($type) {
+    switch ($type) {
+      case ItemType::POWERSTONE: return 'Powerstones';
+      case ItemType::ORE: return 'Ore';
+      case ItemType::ANIMAL: return 'Animals';
+      case ItemType::HERB: return 'Herbs';
+      case ItemType::REVIVAL: return 'Revival items';
+      case ItemType::KIT: return 'Kits';
+    }
+
+    return $type;
   }
 }

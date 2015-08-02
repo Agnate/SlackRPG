@@ -1941,6 +1941,39 @@ class RPGSession {
     if (!($player = $this->load_current_player())) return;
 
 
+
+    // Test enhancing an adventurer.
+    $adventurer = Adventurer::load(array('name' => 'Auberon Cullen'));
+    // $enhs = $adventurer->get_enhancements();
+    // $enhancement = Bonus::QUEST_SUCCESS.',0.05,Quest->'.Quest::TYPE_BOSS;
+    // $enh = Enhancement::from($enhancement);
+    // $enhancement2 = Bonus::QUEST_SUCCESS.',0.10';
+    // $enh2 = Enhancement::from($enhancement2);
+    // $adventurer->add_enhancement($enh);
+    // d($adventurer);
+    // $adventurer->add_enhancement($enh2);
+    // d($adventurer);
+    $adventurer->set_level(9, true);
+    d($adventurer);
+    // $adventurer->save();
+    // $adventurer->set_level(20);
+    // d($adventurer);
+
+
+    // Test Enhancement encoding and decoding.
+    // $enhancement = Bonus::QUEST_SUCCESS.',-0.05,Quest->'.Quest::TYPE_BOSS;
+    // $enhancement = Bonus::QUEST_SUCCESS.',-0.05';
+    // d($enhancement);
+    // $from = Enhancement::from($enhancement);
+    // d($from);
+    // $new = new Enhancement ();
+    // $new->decode($enhancement);
+    // d($new);
+    // $encoded = $new->encode();
+    // d($encoded);
+
+
+
     // Generate a quest based on a location.
     // $json = Quest::load_quest_names_list();
     // $original_json = Quest::load_quest_names_list(true);
@@ -1951,6 +1984,8 @@ class RPGSession {
     // d($json);
 
 
+
+
     // $lined = SpriteSheet::add_grid_to_sheet('/terrain.png', true);
     // $this->respond('<img class="map" src="'.$lined['debug'].'">');
 
@@ -1958,15 +1993,17 @@ class RPGSession {
     // $this->respond('<img class="map" src="'.$lined['debug'].'">');
 
 
-    // Create the sprite sheet.
-    $spritesheet = SpriteSheet::generate(true);
-    $this->respond('<img class="map" src="'.$spritesheet['debug'].'">');
 
-    // Create the Map image.
-    $season = Season::load(array('active' => true));
-    $map = Map::load(array('season' => $season->sid));
-    $mapimage = MapImage::generate_image($map);
-    $this->respond('<img class="map" src="'.$mapimage->url.'">');
+
+    // Create the sprite sheet.
+    // $spritesheet = SpriteSheet::generate(true);
+    // $this->respond('<img class="map" src="'.$spritesheet['debug'].'">');
+
+    // // Create the Map image.
+    // $season = Season::load(array('active' => true));
+    // $map = Map::load(array('season' => $season->sid));
+    // $mapimage = MapImage::generate_image($map);
+    // $this->respond('<img class="map" src="'.$mapimage->url.'">');
 
 
 
@@ -2424,6 +2461,15 @@ class RPGSession {
     //$response[] = '*Popularity*: '.$adventurer->popularity;
     $response[] = '*Experience*: '.$adventurer->exp;
     $response[] = '*Experience to Next Level*: '.$adventurer->exp_tnl;
+    
+    $enhancements = $adventurer->get_enhancements();
+    if (count($enhancements) > 0) {
+      $response[] = '*Enhancements*:';
+      foreach ($enhancements as $enhancement) {
+        $response[] = $enhancement->get_display_name();
+      }
+    }
+
     return implode("\n", $response);
   }
 

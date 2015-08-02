@@ -1246,6 +1246,26 @@ class SpriteSheet {
       ),
     );
 
+    $sprite_locations['arch'] = array(
+      'image' => 'arch.png',
+      'tiles' => array(
+        'cave' => array(
+          array(
+            array('x' => 12, 'y' => 11),
+            array('x' => 13, 'y' => 11),
+            array('x' => 12, 'y' => 12),
+            array('x' => 13, 'y' => 12),
+          ),
+        ),
+        'stone' => array(
+          array(
+            array('x' => 3, 'y' => 3),
+            array('x' => 3, 'y' => 4),
+          ),
+        ),
+      ),
+    );
+
     return $sprite_locations;
   }
 

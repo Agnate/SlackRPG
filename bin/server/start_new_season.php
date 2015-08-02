@@ -38,6 +38,16 @@ function start_new_season ($output_information = false) {
   $hours = 60 * 60;
   $days = $hours * 24;
 
+  // Clear out the queue.
+  if ($output_information) print "Deleting all active queues (if there are any)...";
+  $queues = Queue::load_multiple(array());
+  if (!empty($queues)) {
+    foreach ($queues as $queue) {
+      $queue->delete();
+    }
+  }
+  if ($output_information) print " Done.\n";
+
   // Disable any currently-active seasons.
   if ($output_information) print "Disabling old seasons (if there are any)...";
   $old_seasons = Season::load_multiple(array('active' => true));
@@ -45,6 +55,17 @@ function start_new_season ($output_information = false) {
     foreach ($old_seasons as $old_season) {
       $old_season->active = false;
       $old_season->save();
+    }
+  }
+  if ($output_information) print " Done.\n";
+
+  // Set any adventurers that are in the tavern to unavailable.
+  if ($output_information) print "Disabling adventurers in the tavern (if there are any)...";
+  $adventurers = Adventurer::load_multiple(array('available' => true));
+  if (!empty($adventurers)) {
+    foreach ($adventurers as $adventurer) {
+      $adventurer->available = false;
+      $adventurer->save();
     }
   }
   if ($output_information) print " Done.\n";

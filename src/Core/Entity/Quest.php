@@ -729,4 +729,17 @@ class Quest extends RPGEntitySaveable {
     return $json;
   }
 
+  public static function get_type_name ($type) {
+    switch ($type) {
+      case Quest::TYPE_EXPLORE: return 'exploring';
+      case Quest::TYPE_INVESTIGATE: return 'an investigation quest';
+      case Quest::TYPE_AID: return 'an aiding quest';
+      case Quest::TYPE_FIGHT: return 'a fighting quest';
+      case Quest::TYPE_BOSS: return 'a boss quest';
+      case Quest::TYPE_SPECIAL: return 'a special quest';
+    }
+
+    return $type;
+  }
+
 }
