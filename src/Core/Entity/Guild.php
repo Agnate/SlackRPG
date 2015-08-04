@@ -51,8 +51,8 @@ class Guild extends RPGEntitySaveable {
     $this->__apply_upgrade_bonuses();
   }
 
-  public function get_display_name ($bold = true) {
-    return $this->icon.' '.($bold ? '*' : '').$this->name.($bold ? '*' : '');
+  public function get_display_name ($bold = true, $display_icon = true) {
+    return ($display_icon ? $this->icon.' ' : '').($bold ? '*' : '').$this->name.($bold ? '*' : '');
   }
 
   protected function __apply_upgrade_bonuses () {

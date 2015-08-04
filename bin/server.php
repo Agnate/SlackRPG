@@ -12,6 +12,7 @@ require_once(RPG_SERVER_ROOT.'/src/RPGSession.php');
 // Load in any extra resources we need.
 require_once(RPG_SERVER_ROOT.'/bin/server/timer_refresh_tavern.php');
 require_once(RPG_SERVER_ROOT.'/bin/server/timer_refresh_quests.php');
+require_once(RPG_SERVER_ROOT.'/bin/server/timer_leaderboard_standings.php');
 
 // Create API call to start websocket connection.
 use Frlnc\Slack\Http\SlackResponseFactory;
@@ -27,11 +28,14 @@ use Frlnc\Slack\Core\Commander;
                                     
 ===================================== */
 
-$tavern_refresh_time = '23:59:59';
+$tavern_refresh_time = '4:00:00';
 $next_tavern_refresh = strtotime(date('Y-m-d').' '.$tavern_refresh_time);
 
-$quest_refresh_time = '23:59:59';
+$quest_refresh_time = '2:00:00';
 $next_quest_refresh = strtotime(date('Y-m-d').' '.$quest_refresh_time);
+
+$leaderboard_standings_time = '16:11:00';
+$next_leaderboard_standings = strtotime(date('Y-m-d').' '.$leaderboard_standings_time);
 
 /**
  * Remove available Adventurers from tavern and create new ones.
@@ -76,6 +80,27 @@ function timer_refresh_quests () {
     generate_new_quests();
 
     $logger->notice("Quests refreshed! Next Quest Refresh: ".$next_quest_refresh);
+  }
+}
+
+/**
+ * Remove available Quests and create new ones.
+ */
+function timer_leaderboard_standings () {
+  global $logger, $next_leaderboard_standings;
+
+  //$logger->notice("Next Leaderboard Standings: ".$next_leaderboard_standings." -- Time: ".time());
+
+  // If we need to refresh the quests, do so now.
+  if (time() >= $next_leaderboard_standings) {
+    // Set the next quest refresh time.
+    $next_leaderboard_standings = strtotime('+1 day', $next_leaderboard_standings);
+    
+    // Show leaderboard standings.
+    $message = show_leaderboard_standings();
+    send_message($message);
+
+    $logger->notice("Leaderboard shown! Next Leaderboard Standings: ".$next_leaderboard_standings);
   }
 }
 
@@ -225,9 +250,10 @@ $loop = \React\EventLoop\Factory::create();
 
 
 // Add any timers necessary.
-$loop->addPeriodicTimer(5, 'timer_process_queue');
-$loop->addPeriodicTimer(5, 'timer_refresh_tavern');
-$loop->addPeriodicTimer(5, 'timer_refresh_quests');
+$loop->addPeriodicTimer(2, 'timer_process_queue');
+$loop->addPeriodicTimer(31, 'timer_refresh_tavern');
+$loop->addPeriodicTimer(32, 'timer_refresh_quests');
+$loop->addPeriodicTimer(33, 'timer_leaderboard_standings');
 
 
 

@@ -35,15 +35,16 @@ function remove_available_quests ($output_information = false) {
  * Generate new quests and make them available to players.
  */
 function generate_new_quests ($output_information = false, $num_quests = 0) {
-  // Load up the list of quest names.
-  //$json = Quest::load_quest_names_list();
-
   // Get the current season.
   $season = Season::current();
   if (empty($season)) {
     if ($output_information) print "Could not find an active season.\n";
     return FALSE;
   }
+
+  // Load up the list of quest names.
+  $json = Quest::load_quest_names_list();
+  $original_json = Quest::load_quest_names_list(true);
 
   // Get current map.
   $map = Map::load(array('season' => $season->sid));
@@ -62,7 +63,7 @@ function generate_new_quests ($output_information = false, $num_quests = 0) {
     $num_quests = !empty($guilds) ? min($num_guilds, $num_locations) : $num_locations;
   }
 
-  print 'Generating '.$num_quests." quest".($num_quests == 1 ? '' : 's')."...\n";
+  if ($output_information) print 'Generating '.$num_quests." quest".($num_quests == 1 ? '' : 's')."...\n";
   
   // Generate some quests.
   $time = time();
@@ -72,12 +73,12 @@ function generate_new_quests ($output_information = false, $num_quests = 0) {
     if (empty($locations)) $locations = $original_locations;
     $location = array_splice($locations, array_rand($locations), 1);
     $location = array_pop($location);
-    $gen_quests = Quest::generate_quests($location, 1, true);
+    $gen_quests = Quest::generate_quests($location, 1, $json, $original_json, true);
     if (!empty($gen_quests)) $quests = array_merge($quests, $gen_quests);
   }
 
   // Write out the JSON file to prevent names from being reused.
-  //Quest::save_quest_names_list($json);
+  Quest::save_quest_names_list($json);
 
   // Output the adventurers that were created.
   if ($output_information) {

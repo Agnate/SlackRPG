@@ -89,3 +89,42 @@ $challenge_texts['break'] = array(
     ),
   ),
 );
+
+
+/*
+IDEAS:
+
+$PC stabs at $foe, but $foe parries.
+Dude cites the 21 shinigami prayers consisting of 105 different lines each to power up his righteous slash of righteousness but Dude2 blocks
+but $foe ducks out of the way
+but it is only glances off $foe’s armor
+Dude1 screams so loud that Dude2's head implodes.
+bring down $his axe
+Swings $his axe
+slashes with $his axe
+Shoryuken! But $foe blocks at the other edge of the map.
+cleaves with $his axe
+DudeA calms his/her chaotic thoughts and unleashes a torrent of evil spirits. DudeB dodges
+DudeA steadies his/her aim and unleashes a bolt. DudeB ducks
+DudeA steadies his/her aim and unleashes a bolt. DudeB catches it and throws it back! DudeA ded
+DudeA seeks deep within him/herself and finds the ancient wisdom handed down from his/her ancestors... offers to discuss differences in a civilized manner. DudeB chops DudeA's head off
+DudeA points his crossbow at his/her own head and fires! This summons a Persona that casts Zio towards DudeB
+DudeA steadies his/her aim and unleashes a bolt. DudeB tries to catch it, fumbles, and stands there looking awkward and mildly injured.
+DudeB tries to catch it. The arrow buries itself in DudeB’s hand. Good catch!
+DudeA mutters under his/her breath. DudeB begins to feel faint and raises his/her blade to his/her own neck and slashes!
+DudeA motocop photoshops at DudeB who eats him/her like a damn panini.
+DudeA throws a fireball. DubeB’s eyebrows are lightly singed as DudeB dodges.
+DudeA throws a fireball. DudeB’s armour begins to smoke. 
+DudeA throws a fireball. DudeB is gravely injured.
+DudeA thrusts his pelvis suggestively. DudeB becomes confused
+DudeA slashes. Tyler, far away in the land of Canada, is injured for no comprehensible reason.
+DudeA SHWINGS. DudeB feels violated
+DudeA shanks DudeB. DudeB is regretting his life of crime.
+DudeB had 3 days left on their sentence. DudeB's old lady hires a hit on DudeA. On his/her deathbed, DudeA reveals that DudeB is still alive after all.
+DudeA reaches $his hand out into the air, as though to choke DudeB. DudeB is confused! DudeB sticks its head in a turkey/a barrel/a bucket/a latrine.
+DudeA eats a creamy tomato soup. He turns around, drops trow, and erupts an effluvious acid that covers DudeB. DudeB counterattacks with vomit!
+DudeA yells "CATCH!" and throws his hammer towards DudeB. DudeB tries to catch but is unaware that the hammer is actually Mjolnir. DudeB is not worthy and is crushed instantly.
+DudeA shouts his move name "DIE ONE THOUSAND DEATHS". Unfortunately for him, DudeB is master of one thousand deaths and counters with a perfect defence.
+DudeA pulls out his gat and goes BLAT BLAT BLAT. DudeB gets wounded, but starts a successful rap career after attaining street cred.
+
+*/

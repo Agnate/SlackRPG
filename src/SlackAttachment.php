@@ -22,6 +22,7 @@ class SlackAttachment {
 
   const COLOR_RED = '#D50200';
   const COLOR_GREEN = '#2FA44F';
+  const COLOR_BLUE = '#1F87BC';
 
   function __construct ($data = array()) {
     // Save values to object.

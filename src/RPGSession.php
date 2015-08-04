@@ -244,8 +244,9 @@ class RPGSession {
 
     // Check if they want to find the status of another guild.
     if (!empty($args) && !empty($args[0])) {
+      $season = Season::current();
       $guild_name = implode(' ', $args);
-      $guild = Guild::load(array('name' => $guild_name), true);
+      $guild = Guild::load(array('name' => $guild_name, 'season' => $season->sid), true);
       if (empty($guild)) {
         $this->respond('There is no guild by the name of "'.$guild_name.'".');
         return FALSE;
@@ -584,6 +585,7 @@ class RPGSession {
     }
 
     // Check if there is an optional modifier item ID available.
+    $kit = null;
     if (substr($args[0], 0, 1) == 'i') {
       $iid = substr(array_shift($args), 1);
       $kit = Item::load(array('iid' => $iid, 'gid' => $player->gid));
@@ -639,7 +641,7 @@ class RPGSession {
     }
 
     // Check if the success rate is above 0%.
-    $success_rate = $quest->get_success_rate($player, $adventurers);
+    $success_rate = $quest->get_success_rate($player, $adventurers, $kit);
     if ($success_rate <= 0) {
       $response[] = 'Your adventuring party has no chance of completing this quest. Please choose stronger adventurers.';
       $response[] = '';
@@ -661,8 +663,8 @@ class RPGSession {
       $confirmation = false;
     }
 
-    $duration = $quest->get_duration($player, $adventurers);
-    $death_rate = $quest->get_death_rate($player, $adventurers);
+    $duration = $quest->get_duration($player, $adventurers, $kit);
+    $death_rate = $quest->get_death_rate($player, $adventurers, $kit);
 
     // Display the confirmation message and code.
     if (empty($confirmation)) {
@@ -765,10 +767,15 @@ class RPGSession {
       return false;
     }
 
+    // Load the Map.
+    $season = Season::current();
+    $map = Map::load(array('season' => $season->sid));
+
     // Load the Location.
     $location = Location::load(array(
       'row' => $row,
       'col' => Location::get_number($col),
+      'mapid' => $map->mapid,
     ));
     // Check if the Location exists.
     if (empty($location)) {
@@ -782,7 +789,7 @@ class RPGSession {
     // Check if the Location is already revealed.
     if ($location->revealed) {
       // Load up the Guild that revealed this location.
-      $guild = Guild::load(array('gid' => $location->gid));
+      $guild = Guild::load(array('gid' => $location->gid, 'season' => $season->sid));
       $revealed_text = empty($guild) ? '' : ' by '.$guild->get_display_name();
       if ($guild->gid == $player->gid) $revealed_text = ' by you';
       $this->respond('Location '.$coord.' was already explored'.$revealed_text.'.');
@@ -1094,7 +1101,8 @@ class RPGSession {
     $response[] = ($max > 0 ? 'Top '.$max.' ' : '') .'Guild Ranking:';
 
     // Load all Guilds.
-    $guilds = Guild::load_multiple(array());
+    $season = Season::current();
+    $guilds = Guild::load_multiple(array('season' => $season->sid));
     if (empty($guilds)) {
       $this->respond('There are no Guilds? Go talk to Paul because that seems like an error.');
       return FALSE;
@@ -1504,8 +1512,21 @@ class RPGSession {
 
       // Show help message.
       $response[] = 'To challenge another Guild, type:';
-      $response[] = '`challenge [FAME WAGER] [GUILD NAME] [5 CHALLENGE MOVES + 1 TIE-BREAKER MOVE (comma-separated)]`';
-      $response[] = 'Example: `challenge 15 The Aristocats attack,attack,defend,break,attack,defend`';
+      $response[] = '`challenge [FAME WAGER] [GUILD NAME] [6 CHALLENGE MOVES (comma-separated)]`';
+      $response[] = 'Example: `challenge 15 The Aristocats a,a,d,b,a,d`';
+      $response[] = '';
+      $response[] = 'Moves:';
+      $response[] = '`attack` (or `a`) Attack wins against Break, but loses against Defend.';
+      $response[] = '`defend` (or `d`) Defend wins against Attack, but loses against Break.';
+      $response[] = '`break` (or `b`) Break wins against Defend, but loses against Attack.';
+      $this->respond($response);
+      return TRUE;
+    }
+
+    // For more help, show the help.
+    $help = implode(' ', $args);
+    if (strtolower($help) == 'help') {
+      $response[] = '*Colosseum Challenge*';
       $response[] = '';
       $response[] = 'Moves:';
       $response[] = '`attack` Attack wins against Break, but loses against Defend.';
@@ -1518,6 +1539,10 @@ class RPGSession {
       $response[] = 'Each round consists of both Champions using the chosen move. If both Champions choose the same move, the round is considered a tie and neither Champion receives points. If the Champions choose a different move, whichever move has higher priority wins and the Champion receives 1 point.';
       $response[] = '';
       $response[] = 'Where this differs from Rock-Paper-Scissors is that Champions also have a chance to Miss and Crit. If Champions vary in level, the lower-level Champion has an increased chance of Missing their successful move (receiving 0 points instead of 1) and the higher-level Champion has an increased chance of Criting their successful move (receiving 2 points instead of 1).';
+      $response[] = '';
+      $response[] = 'To challenge another Guild, type:';
+      $response[] = '`challenge [FAME WAGER] [GUILD NAME] [6 CHALLENGE MOVES (comma-separated)]`';
+      $response[] = 'Example: `challenge 15 The Aristocats attack,attack,defend,break,attack,defend`';
       $this->respond($response);
       return TRUE;
     }
@@ -1537,7 +1562,7 @@ class RPGSession {
 
     // Get the wager.
     $wager = intval(array_shift($args));
-    if ($wager == 0) {
+    if ($wager <= 0) {
       $this->respond("Please choose an amount of Fame to wager.\n(Example: `challenge 15 The Aristocats attack,attack,defend,break,attack,defend`)".$this->get_typed($cmd_word, $orig_args));
       return FALSE;
     }
@@ -1572,14 +1597,23 @@ class RPGSession {
     $moves = trim($moves);
 
     // Get the name of the Guild they want to challenge.
-    $opponent = Guild::load(array('name' => $name), true);
+    $season = Season::current();
+    $opponent = Guild::load(array('name' => $name, 'season' => $season->sid), true);
     if (empty($opponent)) {
       $this->respond("Your opponent \"".$name."\" does not exist.".$this->get_typed($cmd_word, $orig_args));
       return FALSE;
     }
 
-    // Check if there is an existing Challenge between the two. If so, confirm the wager they typed equals the same amount.
+    // Check if there is an existing Challenge between the two.
+    $challenge = Challenge::load(array('challenger_id' => $player->gid, 'opponent_id' => $opponent->gid, 'confirmed' => false));
+    // Confirm that they are not trying to re-challenge the same Guild.
+    if (!empty($challenge) && $challenge->challenger_id == $player->gid) {
+      $this->respond("You have already challenged ".$opponent->get_display_name().". Please choose a different Guild to challenge.".$this->get_typed($cmd_word, $orig_args));
+      return FALSE;
+    }
+    // Check if there is an existing Challenge between the two.
     $challenge = Challenge::load(array('challenger_id' => $opponent->gid, 'opponent_id' => $player->gid, 'confirmed' => false));
+    // Confirm the wager they typed equals the same amount.
     if (!empty($challenge) && $challenge->wager != $wager) {
       $this->respond("Your opponent wagered ".Display::get_fame($challenge->wager).". To accept their challenge, you need to match the wager and you only wagered ".Display::get_fame($wager).".".$this->get_typed($cmd_word, $orig_args));
       return FALSE;
@@ -1588,7 +1622,11 @@ class RPGSession {
     // Check if the moves are valid.
     $move_list = explode(',', $moves);
     foreach ($move_list as $key => &$move) {
-      $move = trim($move);
+      $move = strtolower(trim($move));
+      // Convert short forms to long forms.
+      if ($move == 'a') $move = Challenge::MOVE_ATTACK;
+      else if ($move == 'd') $move = Challenge::MOVE_DEFEND;
+      else if ($move == 'b') $move = Challenge::MOVE_BREAK;
       if (!Challenge::valid_move($move)) {
         $this->respond("The move \"".$move."\" is not valid. Please choose one of the following: `".implode('`,`', Challenge::moves())."`".$this->get_typed($cmd_word, $orig_args));
         return FALSE;
@@ -1620,6 +1658,12 @@ class RPGSession {
       $response[] = '*Opponent*: '.$opponent->get_display_name();
       $response[] = '*Wager*: '.Display::get_fame($wager);
       $response[] = '*Your Champion*: '.$champion->get_display_name();
+      $response[] = '*Your Moves*: ';
+      $mcount = 0;
+      foreach ($move_list as $move) {
+        $mcount++;
+        $response[] = '_'. ($mcount <= 5 ? Display::addOrdinalNumberSuffix($mcount) .': ' : 'Tie-breaker: '). ucwords($move) .'_ ';
+      }
       $response[] = '';
       $response[] = $this->get_confirm($cmd_word, $orig_args);
       $this->respond($response);
@@ -1628,7 +1672,7 @@ class RPGSession {
 
 
     // Delay before starting challenge in seconds.
-    $duration = 30; // (60 * 30) = 30 minutes
+    $duration = 10; // (60 * 30) = 30 minutes
     $new_challenge = empty($challenge);
 
     // If there's no existing challenge, create a new one.
@@ -1642,15 +1686,14 @@ class RPGSession {
       );
       $challenge = new Challenge ($challenge_data);
       $challenge->set_challenger_moves($move_list);
-      // $challenge->save();
-      d($challenge);
+      $challenge->save();
     }
 
     // Send the player's Champion off to prepare for battle.
     $ag_data = array(
       'gid' => $player->gid,
       'created' => time(),
-      'task_id' => $challenge->qid,
+      'task_id' => $challenge->chid,
       'task_type' => 'Challenge',
       'task_eta' => $duration,
       'completed' => false,
@@ -1661,7 +1704,6 @@ class RPGSession {
       $this->respond('There was a problem saving the adventuring group. Please talk to Paul.');
       return FALSE;
     }
-    d($advgroup);
 
     // Assign the Champion to the new group.
     $champion->agid = $advgroup->agid;
@@ -1685,8 +1727,7 @@ class RPGSession {
       $challenge->set_opponent_moves($move_list);
       $challenge->reward = ($wager * 2);
       $challenge->confirmed = true;
-      // $challenge->save();
-      d($challenge);
+      $challenge->save();
 
       // Create the queue.
       $queue = $challenge->queue( $duration );
@@ -1694,7 +1735,6 @@ class RPGSession {
         $this->respond('There was a problem adding the challenge to the queue. Please talk to Paul.');
         return FALSE;
       }
-      d($queue);
 
       // Notify everyone.
       $this->respond("You have accepted the Colosseum challenge from ".$opponent->get_display_name().". The fight will finish in ".Display::get_duration_as_hours($duration).".");
@@ -1704,7 +1744,7 @@ class RPGSession {
 
     // Notify everyone.
     $this->respond("You just wagered ".Display::get_fame($wager)." that your Champion can beat ".$opponent->get_display_name()." in the Colosseum! Please wait for them to confirm.");
-    $this->respond($player->get_display_name()." has wagered ".Display::get_fame($wager)." that their Champion can beat yours in a match in the Colosseum! Please confirm your Champion and match the wager to agree to this challenge (type: `challenge ".$wager." ".$player->name." [MOVE LIST (comma-separated)]`).", RPGSession::PERSONAL, $opponent);
+    $this->respond($player->get_display_name()." has wagered ".Display::get_fame($wager)." that their Champion can beat yours in a match in the Colosseum! Please confirm your Champion and match the wager to agree to this challenge (type: `challenge ".$wager." ".$player->name." [6 CHALLENGE MOVES (comma-separated)]`).", RPGSession::PERSONAL, $opponent);
   }
 
 
@@ -1941,9 +1981,18 @@ class RPGSession {
     if (!($player = $this->load_current_player())) return;
 
 
+    // Give all guilds some fame.
+    // $season = Season::load(array('active' => true));
+    // $guilds = Guild::load_multiple(array('season' => $season->sid));
+    // foreach ($guilds as $guild) {
+    //   $guild->fame += 20;
+    //   $guild->save();
+    // }
+
+
 
     // Test enhancing an adventurer.
-    $adventurer = Adventurer::load(array('name' => 'Auberon Cullen'));
+    // $adventurer = Adventurer::load(array('name' => 'Auberon Cullen'));
     // $enhs = $adventurer->get_enhancements();
     // $enhancement = Bonus::QUEST_SUCCESS.',0.05,Quest->'.Quest::TYPE_BOSS;
     // $enh = Enhancement::from($enhancement);
@@ -1953,8 +2002,8 @@ class RPGSession {
     // d($adventurer);
     // $adventurer->add_enhancement($enh2);
     // d($adventurer);
-    $adventurer->set_level(9, true);
-    d($adventurer);
+    // $adventurer->set_level(9, true);
+    // d($adventurer);
     // $adventurer->save();
     // $adventurer->set_level(20);
     // d($adventurer);
@@ -2062,33 +2111,33 @@ class RPGSession {
 
     
     // Test creating a Challenge and processing it.
-    // $guilds = Guild::load_multiple(array('season' => $player->season));
+    $guilds = Guild::load_multiple(array('season' => $player->season));
 
-    // // Create a challenge using the first 2 found.
-    // $challenger = array_pop($guilds);
-    // $opponent = array_pop($guilds);
-    // $challenger_champ = $challenger->get_champion();
-    // $opponent_champ = $opponent->get_champion();
+    // Create a challenge using the first 2 found.
+    $challenger = array_pop($guilds);
+    $opponent = array_pop($guilds);
+    $challenger_champ = $challenger->get_champion();
+    $opponent_champ = $opponent->get_champion();
 
-    // // Create a new challenge.
-    // $challenge_data = array(
-    //   'challenger_id' => $challenger->gid,
-    //   'challenger_champ' => $challenger_champ->aid,
-    //   'challenger_moves' => 'attack,attack,attack,attack,attack,break', //'attack,attack,break,attack,attack,attack',
-    //   'opponent_id' => $opponent->gid,
-    //   'opponent_champ' => $opponent_champ->aid,
-    //   'opponent_moves' => 'defend,defend,defend,defend,defend,defend', //'attack,defend,break,attack,defend,break',
-    //   'created' => time(),
-    //   'wager' => 5,
-    //   'confirmed' => TRUE,
-    //   'winner' => '',
-    //   'reward' => 10,
-    // );
-    // $challenge = new Challenge ($challenge_data);
-    // d($challenge);
+    // Create a new challenge.
+    $challenge_data = array(
+      'challenger_id' => $challenger->gid,
+      'challenger_champ' => $challenger_champ->aid,
+      'challenger_moves' => 'attack,attack,attack,attack,attack,break', //'attack,attack,break,attack,attack,attack',
+      'opponent_id' => $opponent->gid,
+      'opponent_champ' => $opponent_champ->aid,
+      'opponent_moves' => 'defend,defend,defend,defend,defend,defend', //'attack,defend,break,attack,defend,break',
+      'created' => time(),
+      'wager' => 5,
+      'confirmed' => TRUE,
+      'winner' => '',
+      'reward' => 10,
+    );
+    $challenge = new Challenge ($challenge_data);
+    d($challenge);
 
-    // // Process the challenge.
-    // d($challenge->queue_process());
+    // Process the challenge.
+    d($challenge->queue_process());
 
 
 
@@ -2609,7 +2658,6 @@ class RPGSession {
       if (!empty($color)) $this->response['personal'][$player->slack_user_id]->add_attachment($attachment);
       // Otherwise add the text to the message.
       else $this->response['personal'][$player->slack_user_id]->text .= $text;
-
     }
 
     // If this is debug mode through the browser, just spit it out.
@@ -2618,7 +2666,7 @@ class RPGSession {
         $this->response['added_debug_head'] = true;
         echo '<head><link rel="stylesheet" type="text/css" href="debug/css/debug.css"></head>';
       }
-      echo '<u>CHANNEL: '. $location .'</u><br><br>';
+      echo '<u>CHANNEL: '. $location .($player != null ? ' ('.$player->username.')' : '').'</u><br><br>';
       if (!empty($text)) echo '<div class="channel-'.$location.'">'.$this->_convert_to_markup($text).'</div><br><br>';
       return;
     }

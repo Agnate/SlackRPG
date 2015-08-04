@@ -60,6 +60,9 @@ class Challenge extends RPGEntitySaveable {
   public function get_challenger_moves () {
     return Challenge::convert_moves_to_list($this->challenger_moves);
   }
+  public function set_challenger_moves ($list) {
+    $this->challenger_moves = Challenge::convert_list_to_moves($list);
+  }
 
   public function load_opponent () {
     $this->_opponent = Guild::load(array('gid' => $this->opponent_id));
@@ -70,6 +73,9 @@ class Challenge extends RPGEntitySaveable {
   }
   public function get_opponent_moves () {
     return Challenge::convert_moves_to_list($this->opponent_moves);
+  }
+  public function set_opponent_moves ($list) {
+    $this->opponent_moves = Challenge::convert_list_to_moves($list);
   }
 
   public function queue_process ($queue = null) {
@@ -107,9 +113,11 @@ class Challenge extends RPGEntitySaveable {
       'rounds' => 0,
     );
 
-    $message[] = $challenger->get_display_name() .' challenges '. $opponent->get_display_name() .' to a fight in the Colosseum.';
-    $message[] = $challenger->get_display_name() .' has chosen '. $cchamp->get_display_name() .' to be their Champion.';
-    $message[] = $opponent->get_display_name() .' has chosen '. $ochamp->get_display_name() .' to be their Champion.';
+    // $message[] = $challenger->get_display_name() .' challenges '. $opponent->get_display_name() .' to a fight in the Colosseum.';
+    $message[] = '';
+    $message[] = $challenger->get_display_name() .' has chosen their Champion: '. $cchamp->get_display_name();
+    $message[] = $opponent->get_display_name() .' has chosen their Champion: '. $ochamp->get_display_name();
+    $message[] = '';
     $message[] = 'Let the fight begin!';
     $message[] = '';
 
@@ -128,7 +136,7 @@ class Challenge extends RPGEntitySaveable {
       $loss_by_one_as_tie = $cchamp->get_bonus()->get_mod(Bonus::LOSS_BY_ONE_AS_TIE, Bonus::FOR_DEFAULT, Bonus::MOD_HUNDREDS);
       if ($loss_by_one_as_tie > 0 && rand(1, 100) <= $loss_by_one_as_tie) {
         $info['challenger_points']++;
-        $message[] = $cchamp->get_display_name() .' cheats and convinces the referee that it was a tie.';
+        $message[] = '*'. $cchamp->get_display_name(false, false, true, false, false) .'* cheats and convinces the referee that it was a tie.';
       }
     }
 
@@ -137,7 +145,7 @@ class Challenge extends RPGEntitySaveable {
       $loss_by_one_as_tie = $ochamp->get_bonus()->get_mod(Bonus::LOSS_BY_ONE_AS_TIE, Bonus::FOR_DEFAULT, Bonus::MOD_HUNDREDS);
       if ($loss_by_one_as_tie > 0 && rand(1, 100) <= $loss_by_one_as_tie) {
         $info['opponent_points']++;
-        $message[] = $ochamp->get_display_name() .' cheats and convinces the referee that it was a tie.';
+        $message[] = '*'. $ochamp->get_display_name(false, false, true, false, false) .'* cheats and convinces the referee that it was a tie.';
       }
     }
 
@@ -174,7 +182,8 @@ class Challenge extends RPGEntitySaveable {
     }
 
     $message[] = '';
-    $message[] = $winner->get_display_name().' wins and receives '.Display::get_fame($this->reward).'!';
+    $message[] = 'And the winner is: '.$winner->get_display_name().'!';
+    $message[] = 'They receive '.Display::get_fame($this->reward).'.';
 
     // Save the winner information.
     $this->winner = $winner->gid;
@@ -184,7 +193,24 @@ class Challenge extends RPGEntitySaveable {
     $winner->fame += $this->reward;
     $winner->save();
 
-    return implode("\n", $message);
+
+    $attachment = new SlackAttachment ();
+    $attachment->text = implode("\n", $message);
+    $attachment->color = SlackAttachment::COLOR_BLUE;
+    $attachment->fallback = $winner->get_display_name().' wins the Colosseum fight against '.$loser->get_display_name().' and receives '.Display::get_fame($this->reward).'.';
+    $attachment->title = $challenger->get_display_name(false, false).' vs '.$opponent->get_display_name(false, false);
+
+    // $field = new SlackAttachmentField ();
+    // $field->title = 'Fame';
+    // $field->value = Display::get_fame($this->reward);
+    // $field->short = 'true';
+    // $attachment->add_field($field);
+
+    $message = new SlackMessage ();
+    $message->text = 'Colosseum fight between '.$challenger->get_display_name() .' and '. $opponent->get_display_name() .' on '. date('M j, Y \a\t H:i:s') .'.';
+    $message->add_attachment($attachment);
+
+    return array('messages' => array($message));
   }
 
   protected function __compare_moves (&$info, &$json, &$orig_json, $cmove, $omove) {
@@ -206,7 +232,7 @@ class Challenge extends RPGEntitySaveable {
         $oracle = $info['opponent_champ'];
         $other = $info['challenger_champ'];
       }
-      else if ($status == Challenge::STATUS_OPPONENT_WON && $this->__check_tie_breaker_on_fail($omove, $info['challenger_champ'])) {
+      else if ($status == Challenge::STATUS_OPPONENT_WON && $this->__check_tie_breaker_on_fail($cmove, $info['challenger_champ'])) {
         $tie_breaker_move = $info['challenger_moves'][count($info['challenger_moves']) - 1];
         $original_move = $cmove;
         $cmove = $tie_breaker_move;
@@ -219,11 +245,11 @@ class Challenge extends RPGEntitySaveable {
       if ($oracled) {
         // If the move is the same, it's the equivalent of the Oracle move "failing".
         if ($original_move == $tie_breaker_move) {
-          $message[] = $oracle->get_display_name().' attempted to foresee '.$other->get_display_name().$other->get_possessive().' move but failed.';
+          $message[] = '*'.$oracle->get_display_name(false, false, true, false, false).'* attempted to foresee *'.$other->get_display_name(false, false, true, false, false).$other->get_possessive().'* move but failed.';
         }
         else {
           $status = $this->__get_move_status($cmove, $omove);
-          $message[] = $oracle->get_display_name().' foresaw '.$other->get_display_name().$other->get_possessive().' move and switched '.$oracle->get_possessive_pronoun().' move to '.$tie_breaker_move.'.';
+          $message[] = '*'.$oracle->get_display_name(false, false, true, false, false).'* foresaw *'.$other->get_display_name(false, false, true, false, false).$other->get_possessive().'* move and switched '.$oracle->get_possessive_pronoun().' move to '.$tie_breaker_move.'.';
         }
       }
     }
@@ -269,7 +295,7 @@ class Challenge extends RPGEntitySaveable {
         $winner_move = $omove;
         $loser_move = $cmove;
       }
-      
+
       // Check for loss on success.
       if ($this->__check_for_loss_on($winner_move, $winner)) {
         $message[] = $round . $this->__get_move_text($info, $json, $orig_json, $winner_move, $loser_move, Challenge::RESULT_MISS, $winner, $loser);
@@ -417,17 +443,17 @@ class Challenge extends RPGEntitySaveable {
     array_splice($json[$winner_move][$loser_move][$move_result], $index, 1);
     
     // Replace the tokens with the appropriate text.
-    $winner_name = $winner_champ->get_display_name();
-    $loser_name = $winner_champ->get_display_name();
+    $winner_name = $winner_champ->get_display_name(false, false, true, false, false);
+    $loser_name = $loser_champ->get_display_name(false, false, true, false, false);
     $tokens = array(
-      "!wchamp" => $winner_name,
-      "!wchamp's" => $winner_name . $winner_champ->get_possessive(),
+      "!wchamp's" => '*'. $winner_name . $winner_champ->get_possessive() .'*',
+      "!wchamp" => '*'. $winner_name .'*',
       "!wgender" => $winner_champ->get_gender(),
       "!wpronoun" => $winner_champ->get_pronoun(),
       "!wposspronoun" => $winner_champ->get_possessive_pronoun(),
       "!wotherpronoun" => $winner_champ->get_other_pronoun(),
-      "!lchamp" => $loser_name,
-      "!lchamp's" => $loser_name . $loser_champ->get_possessive(),
+      "!lchamp's" => '*'. $loser_name . $loser_champ->get_possessive() .'*',
+      "!lchamp" => '*'. $loser_name .'*',
       "!lgender" => $loser_champ->get_gender(),
       "!lpronoun" => $loser_champ->get_pronoun(),
       "!lposspronoun" => $loser_champ->get_possessive_pronoun(),
@@ -459,6 +485,11 @@ class Challenge extends RPGEntitySaveable {
   public static function convert_moves_to_list ($moves) {
     if (empty($moves) || !is_string($moves)) return array();
     return explode(',', $moves);
+  }
+
+  public static function convert_list_to_moves ($list) {
+    if (!is_array($list) || empty($list)) return '';
+    return implode(',', $list);
   }
 
   /**
