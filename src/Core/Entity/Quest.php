@@ -276,6 +276,11 @@ class Quest extends RPGEntitySaveable {
       $location->gid = $guild->gid;
       $location->save();
 
+      // Regenerate the map now that a new location is revealed.
+      $season = Season::current();
+      $map = Map::load(array('season' => $season->sid));
+      MapImage::generate_image($map);
+
       // Generate new Quests for the revealed location.
       // $quests = Quest::generate_quests($location);
 

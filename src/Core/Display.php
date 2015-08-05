@@ -3,7 +3,7 @@
 class Display {
   
   public static function get_currency ($amount) {
-    return ':moneybag: '.number_format($amount).' gp';
+    return number_format($amount).':rpg-coin:';
   }
 
   public static function get_duration_as_hours ($duration) {
@@ -17,7 +17,7 @@ class Display {
   }
 
   public static function get_fame ($fame) {
-    return ':trophy: '.number_format($fame);
+    return number_format($fame).':beginner:';
   }
 
   public static function get_stars ($stars, $max = 5) {
@@ -54,5 +54,9 @@ class Display {
       }
     }
     return $num.'th';
+  }
+
+  public static function show_adventurer_count ($count) {
+    return $count .':rpg-misc-adv:';
   }
 }

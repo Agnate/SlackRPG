@@ -46,6 +46,7 @@ class SpriteSheet {
     $col = 0;
     foreach ($all as $type => $tile_group) {
       if (!isset($json['tiles'][$type])) $json['tiles'][$type] = array();
+      $count = 0;
 
       foreach ($tile_group as $tiles) {
         $group = array();
@@ -80,7 +81,9 @@ class SpriteSheet {
           }
         }
 
-        $json['tiles'][$type][] = $group;
+        // Set a key which is the groupid for the icon.
+        $json['tiles'][$type][''.$type.$count] = $group;
+        $count++;
       }
     }
 
@@ -221,6 +224,36 @@ class SpriteSheet {
           ),
           array(
             array('x' => 15, 'y' => 7),
+          ),
+        ),
+        'swamp' => array(
+          array(
+            array('x' => 12, 'y' => 5),
+            array('x' => 13, 'y' => 5),
+            array('x' => 13, 'y' => 4),
+            array('x' => 14, 'y' => 5),
+          ),
+        ),
+        'desert' => array(
+          array(
+            array('x' => 1, 'y' => 12),
+            array('x' => 1, 'y' => 12),
+            array('x' => 1, 'y' => 12),
+            array('x' => 1, 'y' => 12),
+          ),
+        ),
+        'field' => array(
+          array(
+            array('x' => 1, 'y' => 26),
+            array('x' => 2, 'y' => 26),
+            array('x' => 1, 'y' => 27),
+            array('x' => 2, 'y' => 27),
+          ),
+          array(
+            array('x' => 1, 'y' => 20),
+            array('x' => 2, 'y' => 20),
+            array('x' => 1, 'y' => 21),
+            array('x' => 2, 'y' => 21),
           ),
         ),
       ),
@@ -840,6 +873,11 @@ class SpriteSheet {
             array('x' => 8, 'y' => 9),
           ),
         ),
+        'hut' => array(
+          array(
+            array('x' => 0, 'y' => 1),
+          ),
+        ),
       ),
     );
 
@@ -865,6 +903,11 @@ class SpriteSheet {
         'graveyard' => array(
           array(
             array('x' => 7, 'y' => 9),
+          ),
+        ),
+        'canyon' => array(
+          array(
+            array('x' => 9, 'y' => 2),
           ),
         ),
       ),
@@ -1184,6 +1227,14 @@ class SpriteSheet {
             array('x' => 5, 'y' => 11),
           ),
         ),
+        'tundra' => array(
+          array(
+            array('x' => 4, 'y' => 0),
+            array('x' => 4, 'y' => 0),
+            array('x' => 4, 'y' => 0),
+            array('x' => 4, 'y' => 0),
+          ),
+        ),
       ),
     );
 
@@ -1218,6 +1269,14 @@ class SpriteSheet {
             array('x' => 13, 'y' => 15),
           ),
         ),
+        'hill' => array(
+          array(
+            array('x' => 2, 'y' => 8),
+            array('x' => 3, 'y' => 8),
+            array('x' => 2, 'y' => 11),
+            array('x' => 3, 'y' => 11),
+          ),
+        ),
       ),
     );
 
@@ -1243,6 +1302,11 @@ class SpriteSheet {
             array('x' => 5, 'y' => 8),
           ),
         ),
+        'hill' => array(
+          array(
+            array('x' => 2, 'y' => 6),
+          ),
+        ),
       ),
     );
 
@@ -1261,6 +1325,135 @@ class SpriteSheet {
           array(
             array('x' => 3, 'y' => 3),
             array('x' => 3, 'y' => 4),
+          ),
+        ),
+      ),
+    );
+
+    $sprite_locations['forest'] = array(
+      'image' => 'forest.png',
+      'tiles' => array(
+        'jungle' => array(
+          array(
+            array('x' => 8, 'y' => 4),
+            array('x' => 9, 'y' => 4),
+            array('x' => 8, 'y' => 5),
+            array('x' => 9, 'y' => 5),
+          ),
+        ),
+      ),
+    );
+
+    $sprite_locations['mountains'] = array(
+      'image' => 'mountains.png',
+      'tiles' => array(
+        'hut' => array(
+          array(
+            array('x' => 16, 'y' => 1),
+          ),
+        ),
+      ),
+    );
+
+    $sprite_locations['merged'] = array(
+      'image' => 'merged.png',
+      'tiles' => array(
+        'throne' => array(
+          array(
+            array('x' => 0, 'y' => 0),
+            array('x' => 1, 'y' => 0),
+            array('x' => 0, 'y' => 1),
+            array('x' => 1, 'y' => 1),
+          ),
+          array(
+            array('x' => 3, 'y' => 0),
+            array('x' => 4, 'y' => 0),
+            array('x' => 3, 'y' => 1),
+            array('x' => 4, 'y' => 1),
+          ),
+        ),
+        'moai' => array(
+          array(
+            array('x' => 2, 'y' => 0),
+            array('x' => 2, 'y' => 1),
+          ),
+        ),
+        'portal' => array(
+          array(
+            array('x' => 5, 'y' => 0),
+            array('x' => 6, 'y' => 0),
+            array('x' => 5, 'y' => 1),
+            array('x' => 6, 'y' => 1),
+          ),
+          array(
+            array('x' => 2, 'y' => 2),
+          ),
+          array(
+            array('x' => 2, 'y' => 3),
+          ),
+        ),
+        'vault' => array(
+          array(
+            array('x' => 7, 'y' => 0),
+            array('x' => 8, 'y' => 0),
+            array('x' => 7, 'y' => 1),
+            array('x' => 8, 'y' => 1),
+          ),
+          array(
+            array('x' => 8, 'y' => 2),
+            array('x' => 9, 'y' => 2),
+            array('x' => 8, 'y' => 3),
+            array('x' => 9, 'y' => 3),
+          ),
+        ),
+        'mine' => array(
+          array(
+            array('x' => 9, 'y' => 0),
+            array('x' => 10, 'y' => 0),
+            array('x' => 9, 'y' => 1),
+            array('x' => 10, 'y' => 1),
+          ),
+          array(
+            array('x' => 0, 'y' => 2),
+            array('x' => 1, 'y' => 2),
+            array('x' => 0, 'y' => 3),
+            array('x' => 1, 'y' => 3),
+          ),
+          array(
+            array('x' => 10, 'y' => 2),
+            array('x' => 11, 'y' => 2),
+            array('x' => 10, 'y' => 3),
+            array('x' => 11, 'y' => 3),
+          ),
+        ),
+        'obelisk' => array(
+          array(
+            array('x' => 3, 'y' => 2),
+            array('x' => 3, 'y' => 3),
+          ),
+          array(
+            array('x' => 4, 'y' => 2),
+            array('x' => 4, 'y' => 3),
+          ),
+          array(
+            array('x' => 5, 'y' => 2),
+            array('x' => 5, 'y' => 3),
+          ),
+        ),
+        'arch' => array(
+          array(
+            array('x' => 6, 'y' => 2),
+            array('x' => 7, 'y' => 2),
+            array('x' => 6, 'y' => 3),
+            array('x' => 7, 'y' => 3),
+          ),
+        ),
+        'maze' => array(
+          array(
+            array('x' => 0, 'y' => 4),
+            array('x' => 1, 'y' => 4),
+            array('x' => 0, 'y' => 5),
+            array('x' => 1, 'y' => 5),
           ),
         ),
       ),

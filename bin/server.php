@@ -28,13 +28,13 @@ use Frlnc\Slack\Core\Commander;
                                     
 ===================================== */
 
-$tavern_refresh_time = '4:00:00';
+$tavern_refresh_time = '23:59:59'; // '4:00:00';
 $next_tavern_refresh = strtotime(date('Y-m-d').' '.$tavern_refresh_time);
 
-$quest_refresh_time = '2:00:00';
+$quest_refresh_time = '23:59:59'; // '2:00:00';
 $next_quest_refresh = strtotime(date('Y-m-d').' '.$quest_refresh_time);
 
-$leaderboard_standings_time = '16:11:00';
+$leaderboard_standings_time = '23:59:59'; // '8:30:00';
 $next_leaderboard_standings = strtotime(date('Y-m-d').' '.$leaderboard_standings_time);
 
 /**

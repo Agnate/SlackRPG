@@ -2,6 +2,7 @@
 
 // General information.
 define('RPG_SERVER_ROOT', '/your/root/folder');
+define('RPG_SERVER_PUBLIC_URL', 'http://your.domain');
 
 // Slack Webhook.
 define('SLACK_WEBHOOK', "https://hooks.slack.com/services/XXXXXXXX");

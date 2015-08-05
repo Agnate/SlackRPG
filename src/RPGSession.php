@@ -528,8 +528,8 @@ class RPGSession {
       }
 
       $response = array();
-      $response[] = Display::get_difficulty_legend();
-      $response[] = '';
+      // $response[] = Display::get_difficulty_legend();
+      // $response[] = '';
       $response[] = 'To embark on a Quest, type: `quest [QUEST ID] [MODIFIER ITEM ID (optional)] [ADVENTURER NAMES (comma-separated)]` (example: `quest q23 `)';
       $response[] = '';
       $response[] = '*Quests available*:';
@@ -538,7 +538,8 @@ class RPGSession {
         $best_adventurers = $player->get_best_adventurers($quest->party_size_max);
         $success_rate = $quest->get_success_rate($player, $best_adventurers, NULL);
         $death_rate = $quest->death_rate;
-        $response[] = '`q'.$quest->qid.'` '. Display::get_difficulty($success_rate) .' '.($death_rate > 0 ? ':skull: ' : ''). ' '.$quest->name.' (adventurers required: '.$quest->get_party_size().') '.Display::get_stars($quest->stars);
+        // $response[] = '`q'.$quest->qid.'` '. Display::get_difficulty($success_rate) .' '.($death_rate > 0 ? ':skull: ' : ''). ' '.$quest->name.' (adventurers required: '.Display::show_adventurer_count($quest->get_party_size()).') '.Display::get_stars($quest->stars);
+        $response[] = '`q'.$quest->qid.'` '. Display::get_stars($quest->stars) . ($death_rate > 0 ? ' — :skull:' : ''). ' — '. Display::show_adventurer_count($quest->get_party_size()) .' — '. $quest->name;
       }
 
       // Also show the list of available item modifiers.
@@ -613,7 +614,7 @@ class RPGSession {
     $success = $this->check_for_valid_adventurers($player, $list);
     if (!$success['success']) {
       $success['msg'][] = $this->get_typed($cmd_word, $orig_args);
-      $this->respond(implode("\n", $success['msg']));
+      $this->respond($success['msg']);
       return FALSE;
     }
     // Get the list of adventurers.
@@ -742,6 +743,23 @@ class RPGSession {
 
 
   /**
+   * View the map.
+   */
+  protected function cmd_map ($args = array()) {
+    // Load the player and fail out if they have not created a Guild.
+    if (!($player = $this->load_current_player())) return;
+
+    $response = array();
+    $response[] = 'To explore a location on the map, type: `explore`';
+
+    $attachment = $this->get_map_attachment();
+
+    $this->respond($response, RPGSession::PERSONAL, null, $attachment);
+  }
+
+
+
+  /**
    * Go explore the map.
    */
   protected function cmd_explore ($args = array()) {
@@ -751,10 +769,45 @@ class RPGSession {
     // Load the player and fail out if they have not created a Guild.
     if (!($player = $this->load_current_player())) return;
 
+    // Load the Map.
+    $season = Season::current();
+    $map = Map::load(array('season' => $season->sid));
+
     // If there's no coordinates entered, show the map.
     if (empty($args) || empty($args[0])) {
-      $this->respond($this->cmd_map($args));
-      return;
+      $response = array();
+      $response[] = 'To explore a location on the map, type: `explore [LETTER][NUMBER] [MODIFIER ITEM ID (optional)] [ADVENTURER NAMES (comma-separated)]`';
+
+      // Also show the list of available adventurers.
+      $response[] = '';
+      $response[] = '*Adventurers available for exploring*:';
+      foreach ($player->get_adventurers() as $adventurer) {
+        if (!empty($adventurer->agid)) continue;
+        $response[] = $adventurer->get_display_name(false);
+      }
+
+      // Also show the list of available item modifiers.
+      $response[] = '';
+      $response[] = '*Modifier Items*:';
+      // Compact same-name items.
+      $items = $player->get_items();
+      $compact_items = $this->compact_items($items);
+      foreach ($compact_items as $citemid => $citems) {
+        $count = count($citems);
+        if ($count <= 0) continue;
+        if ($citems[0]->type != ItemType::KIT) continue;
+        $kits[] = $citems[0];
+        $response[] = '`i'.$citems[0]->iid.'` '. ($count > 1 ? $count.'x ' : ''). $citems[0]->get_display_name(false);
+      }
+      if (empty($kits)) $response[] = '_None_';
+
+      $response[] = '';
+      $response[] = 'See the map below for coordinates:';
+
+      $attachment = $this->get_map_attachment();
+    
+      $this->respond($response, RPGSession::PERSONAL, null, $attachment);
+      return true;
     }
 
     // Get the coordinates: ex. A4.
@@ -766,10 +819,6 @@ class RPGSession {
       $this->respond('Please enter the coordinates without any spaces. Example: `explore A4 [ADVENTURER NAMES (comma-separated)]`');
       return false;
     }
-
-    // Load the Map.
-    $season = Season::current();
-    $map = Map::load(array('season' => $season->sid));
 
     // Load the Location.
     $location = Location::load(array(
@@ -834,7 +883,7 @@ class RPGSession {
     $success = $this->check_for_valid_adventurers($player, $list);
     if (!$success['success']) {
       $success['msg'][] = $this->get_typed($cmd_word, $orig_args);
-      $this->respond(implode("\n", $success['msg']));
+      $this->respond($success['msg']);
       return FALSE;
     }
     // Get the list of adventurers.
@@ -962,57 +1011,6 @@ class RPGSession {
 
     $this->respond($names.' set'.($name_count == 1 ? 's' : '').' off to explore '.$location->get_coord_name().' returning in '.Display::get_duration_as_hours($duration).'.');
   }
-
-
-
-  /**
-   * View the map.
-   */
-  protected function cmd_map ($args = array()) {
-    // Load the player and fail out if they have not created a Guild.
-    if (!($player = $this->load_current_player())) return;
-
-    $map = Map::load(array('season' => $player->season));
-    $locations = Location::load_multiple(array('mapid' => $map->mapid));
-
-    $response = array();
-    $response[] = 'To explore a location on the map, type: `explore [LETTER][NUMBER] [MODIFIER ITEM ID (optional)] [ADVENTURER NAMES (comma-separated)]` (ex: `explore A4 i10 Morgan, Gareth`).';
-    $response[] = '';
-    $response[] = '[MAP GOES HERE]';
-
-    $response[] = '';
-    $response[] = '*Temp Locations for testing*:';
-    foreach ($locations as $location) {
-      if ($location->revealed) continue;
-      $response[] = $location->get_display_name();
-    }
-
-    // Also show the list of available item modifiers.
-    $response[] = '';
-    $response[] = '*Modifier Items*:';
-    // Compact same-name items.
-    $items = $player->get_items();
-    $compact_items = $this->compact_items($items);
-    foreach ($compact_items as $citemid => $citems) {
-      $count = count($citems);
-      if ($count <= 0) continue;
-      if ($citems[0]->type != ItemType::KIT) continue;
-      $kits[] = $citems[0];
-      $response[] = '`i'.$citems[0]->iid.'` '. ($count > 1 ? $count.'x ' : ''). $citems[0]->get_display_name(false);
-    }
-    if (empty($kits)) $response[] = '_None_';
-
-    // Also show the list of available adventurers.
-    $response[] = '';
-    $response[] = '*Adventurers available for exploring*:';
-    foreach ($player->get_adventurers() as $adventurer) {
-      if (!empty($adventurer->agid)) continue;
-      $response[] = $adventurer->get_display_name(false);
-    }
-
-    return $response;
-  }
-
 
 
 
@@ -1513,7 +1511,7 @@ class RPGSession {
       // Show help message.
       $response[] = 'To challenge another Guild, type:';
       $response[] = '`challenge [FAME WAGER] [GUILD NAME] [6 CHALLENGE MOVES (comma-separated)]`';
-      $response[] = 'Example: `challenge 15 The Aristocats a,a,d,b,a,d`';
+      $response[] = '*Need help?* `challenge help`';
       $response[] = '';
       $response[] = 'Moves:';
       $response[] = '`attack` (or `a`) Attack wins against Break, but loses against Defend.';
@@ -2048,11 +2046,12 @@ class RPGSession {
     // $spritesheet = SpriteSheet::generate(true);
     // $this->respond('<img class="map" src="'.$spritesheet['debug'].'">');
 
-    // // Create the Map image.
-    // $season = Season::load(array('active' => true));
-    // $map = Map::load(array('season' => $season->sid));
-    // $mapimage = MapImage::generate_image($map);
-    // $this->respond('<img class="map" src="'.$mapimage->url.'">');
+    // Create the Map image.
+    $season = Season::load(array('active' => true));
+    $map = Map::load(array('season' => $season->sid));
+    $mapimage = MapImage::generate_image($map);
+    $this->respond('<img class="map" src="'.$mapimage->url.'">');
+    return false;
 
 
 
@@ -2134,7 +2133,36 @@ class RPGSession {
       'reward' => 10,
     );
     $challenge = new Challenge ($challenge_data);
+    $challenge->save();
     d($challenge);
+
+
+    $c_ag_data = array(
+      'gid' => $challenger->gid,
+      'created' => time(),
+      'task_id' => $challenge->chid,
+      'task_type' => 'Challenge',
+      'task_eta' => 10,
+      'completed' => false,
+    );
+    $c_advgroup = new AdventuringGroup ($c_ag_data);
+    $c_advgroup->save();
+    $challenger_champ->agid = $c_advgroup->agid;
+    $challenger_champ->save();
+
+
+    $o_ag_data = array(
+      'gid' => $opponent->gid,
+      'created' => time(),
+      'task_id' => $challenge->chid,
+      'task_type' => 'Challenge',
+      'task_eta' => 10,
+      'completed' => false,
+    );
+    $o_advgroup = new AdventuringGroup ($o_ag_data);
+    $o_advgroup->save();
+    $opponent_champ->agid = $o_advgroup->agid;
+    $opponent_champ->save();
 
     // Process the challenge.
     d($challenge->queue_process());
@@ -2557,6 +2585,15 @@ class RPGSession {
     return implode("\n", $response);
   }
 
+  protected function get_map_attachment () {
+    $attachment = new SlackAttachment ();
+    $attachment->title = 'World Map';
+    $attachment->image_url = RPG_SERVER_PUBLIC_URL . MapImage::DEFAULT_IMAGE_URL . '?timestamp=' . time();
+    $attachment->title_link = $attachment->image_url;
+
+    return $attachment;
+  }
+
 
   /* =============================================================================
       _   ______  _   __      __________  __  _____  ______    _   ______  _____
@@ -2621,21 +2658,32 @@ class RPGSession {
     return preg_replace(array_keys($info), array_values($info), $string);
   }
 
-  public function respond ($text = null, $location = RPGSession::PERSONAL, $player = null, $color = null) {
+  /**
+   * $text -> The text that RPG bot will respond with.
+   * $location -> The type of message (private IM or public channel).
+   * $player -> If set to PERSONAL, this is the player it should go to (default is the player typing the command).
+   * $attachment -> A SlackAttachment object containing any attachment info that should be sent.
+   *                See -- https://api.slack.com/docs/attachments
+   */
+  public function respond ($text = null, $location = RPGSession::PERSONAL, $player = null, $attachment = null) {
     if (is_array($text)) $text = implode("\n", $text);
     else if (!is_string($text)) $text = '';
-
-    // Create the attachment and message.
-    $data = compact('text');
-    if (!empty($color)) $data['color'] = $color;
-    $attachment = new SlackAttachment ($data);
 
     // Operate on the channel message.
     if ($location == RPGSession::CHANNEL) {
       // Create a message if we don't have one.
       if (!isset($this->response['channel'])) $this->response['channel'] = new SlackMessage ();
+
+      // All messages to the public channel are attachments, so create one for the text if need be.
+      if (!empty($text)) {
+        $data = compact('text');
+        $text_attachment = new SlackAttachment ($data);
+        // Add the attachment to the message.
+        $this->response['channel']->add_attachment($attachment);
+      }
+
       // Add the attachment to the message.
-      $this->response['channel']->add_attachment($attachment);
+      if (!empty($attachment)) $this->response['channel']->add_attachment($attachment);
     }
     // Operate on the personal message.
     else if ($location == RPGSession::PERSONAL) {
@@ -2654,10 +2702,11 @@ class RPGSession {
       // Set up the message for this player if we haven't already.
       if (!isset($this->response['personal'][$player->slack_user_id])) $this->response['personal'][$player->slack_user_id] = new SlackMessage (array('player' => $player));
 
-      // If we added a colour, create an attachment.
-      if (!empty($color)) $this->response['personal'][$player->slack_user_id]->add_attachment($attachment);
-      // Otherwise add the text to the message.
-      else $this->response['personal'][$player->slack_user_id]->text .= $text;
+      // If we added some attachment properties, create an attachment.
+      if (!empty($attachment)) $this->response['personal'][$player->slack_user_id]->add_attachment($attachment);
+
+      // Add the text to the message.
+      if (!empty($text)) $this->response['personal'][$player->slack_user_id]->text .= $text;
     }
 
     // If this is debug mode through the browser, just spit it out.
@@ -2668,6 +2717,7 @@ class RPGSession {
       }
       echo '<u>CHANNEL: '. $location .($player != null ? ' ('.$player->username.')' : '').'</u><br><br>';
       if (!empty($text)) echo '<div class="channel-'.$location.'">'.$this->_convert_to_markup($text).'</div><br><br>';
+      if (!empty($attachment) && !empty($attachment->image_url)) echo '<img class="map" src="'.$attachment->image_url.'" />';
       return;
     }
   }

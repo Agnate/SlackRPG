@@ -193,7 +193,18 @@ class Challenge extends RPGEntitySaveable {
     $winner->fame += $this->reward;
     $winner->save();
 
+    // Remove the adventuring groups and free up the champions.
+    $cgroup = AdventuringGroup::load(array('agid' => $cchamp->agid, 'gid' => $challenger->gid, 'task_id' => $this->chid));
+    if (!empty($cgroup)) $cgroup->delete();
+    $cchamp->agid = 0;
+    $cchamp->save();
 
+    $ogroup = AdventuringGroup::load(array('agid' => $ochamp->agid, 'gid' => $opponent->gid, 'task_id' => $this->chid));
+    if (!empty($ogroup)) $ogroup->delete();
+    $ochamp->agid = 0;
+    $ochamp->save();
+
+    // Create results attachment.
     $attachment = new SlackAttachment ();
     $attachment->text = implode("\n", $message);
     $attachment->color = SlackAttachment::COLOR_BLUE;
@@ -209,6 +220,9 @@ class Challenge extends RPGEntitySaveable {
     $message = new SlackMessage ();
     $message->text = 'Colosseum fight between '.$challenger->get_display_name() .' and '. $opponent->get_display_name() .' on '. date('M j, Y \a\t H:i:s') .'.';
     $message->add_attachment($attachment);
+
+    // Delete this challenge.
+    $this->delete();
 
     return array('messages' => array($message));
   }

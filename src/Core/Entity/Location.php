@@ -14,6 +14,7 @@ class Location extends RPGEntitySaveable {
   public $star_min;
   public $star_max;
   public $keywords;
+  public $map_icon;
 
   // Protected
   protected $_map;
@@ -287,10 +288,10 @@ class Location extends RPGEntitySaveable {
   }
 
   protected static function __encode_keywords ($list) {
-    return is_array($list) ? implode('|', $list) : array();
+    return is_array($list) ? implode('|', $list) : '';
   }
 
   protected static function __decode_keywords ($string) {
-    return empty($string) ? '' : explode('|', $string);
+    return empty($string) ? array() : explode('|', $string);
   }
 }

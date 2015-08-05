@@ -55,7 +55,7 @@ class MapImage {
       for ($c = 1; $c <= $num_cols; $c++) {
         $x = $r * $cell_size;
         $y = $c * $cell_size;
-        MapImage::create_random_cells($image, $icon_size, $spritesheet, $sheet['tiles']['grass'][0], $x, $y);
+        MapImage::create_random_cells($image, $icon_size, $spritesheet, reset($sheet['tiles']['grass']), $x, $y);
       }
     }
 
@@ -73,21 +73,27 @@ class MapImage {
       $y = $location->row * $cell_size;
 
       // Fancy icon.
-      if ($location->revealed) {
+      if ($location->revealed && $location->type != Location::TYPE_EMPTY) {
         $icon = MapImage::generalize_icon($location->get_map_icon());
         // Check if we have an icon for this.
         if (isset($sheet['tiles'][$icon])) {
-          $fancy_tiles = $sheet['tiles'][$icon][array_rand($sheet['tiles'][$icon])];
+          // If there's never been an icon generated, pick one and save it.
+          if (empty($location->map_icon)) {
+            $location->map_icon = array_rand($sheet['tiles'][$icon]);
+            $location->save();
+          }
+          // Get the tile we're rendering out.
+          $fancy_tiles = $sheet['tiles'][$icon][$location->map_icon];
           MapImage::create_random_cells($image, $icon_size, $spritesheet, $fancy_tiles, $x, $y, 100, false);
         }
         else {
-          $fancy_tiles = $sheet['tiles']['unknown'][0];
+          $fancy_tiles = reset($sheet['tiles']['unknown']);
           MapImage::create_random_cells($image, $icon_size, $spritesheet, $fancy_tiles, $x, $y);
         }
       }
       // Fog of war.
-      else {
-        MapImage::create_random_cells($image, $icon_size, $spritesheet, $sheet['tiles']['fog'][0], $x, $y, 75);
+      else if ($location->revealed != true) {
+        MapImage::create_random_cells($image, $icon_size, $spritesheet, reset($sheet['tiles']['fog']), $x, $y, 75);
       }
     }
 
@@ -104,7 +110,7 @@ class MapImage {
     // Render the capital.
     $x = $capital_info['col'] * $cell_size;
     $y = $capital_info['row'] * $cell_size;
-    MapImage::create_cell($image, $icon_size, $spritesheet, $sheet['tiles']['capital'][0], $x, $y);
+    MapImage::create_cell($image, $icon_size, $spritesheet, reset($sheet['tiles']['capital']), $x, $y);
 
     // Draw grid lines and letters/numbers.
     for ($r = 1; $r <= $num_rows; $r++) {
@@ -133,7 +139,7 @@ class MapImage {
 
   protected static function generalize_icon ($icon) {
     $list = array();
-    // $list['arch'] = array('arch');
+    $list['arch'] = array('arch');
     $list['beanstalk'] = array('beanstalk');
     $list['bridge'] = array('bridge');
     $list['canyon'] = array('canyon', 'gulch', 'gorge', 'ravine', 'crevice', 'chasm', 'ridge', 'glen', 'cleft', 'crag', 'bluff', 'abyss');
@@ -143,43 +149,43 @@ class MapImage {
     $list['city'] = array('city', 'metropolis');
     $list['crater'] = array('crater', 'pits', 'pit', 'comet');
     $list['crystal'] = array('crystal', 'mineral');
-    // $list['desert'] = array('desert', 'flatland', 'savanna', 'wasteland', 'barrens', 'expanse', 'dunes');
+    $list['desert'] = array('desert', 'flatland', 'savanna', 'wasteland', 'barrens', 'expanse', 'dunes');
     $list['estate'] = array('ranch', 'estate', 'quarters', 'mansion');
     $list['farm'] = array('farm');
-    // $list['field'] = array('field', 'meadow', 'lowland', 'grassland', 'valley', 'vale', 'moor', 'heath', 'prairie', 'steppes');
-    // $list['flowers'] = array('flower', 'flowers', 'flower field');
+    $list['field'] = array('field', 'meadow', 'lowland', 'grassland', 'valley', 'vale', 'moor', 'heath', 'prairie', 'steppes');
+    $list['flowers'] = array('flower', 'flowers', 'flower field');
     $list['forest'] = array('forest', 'thicket', 'brier', 'weald', 'dell', 'grove', 'coppice', 'glade', 'orchard', 'wilds');
     $list['fossils'] = array('fossils', 'bones', 'remains');
     $list['graveyard'] = array('graveyard', 'barrow', 'tomb', 'cemetery');
-    // $list['hill'] = array('hill', 'knoll', 'hillock', 'foothills');
-    // $list['hut'] = array('hut', 'witch hut');
-    // $list['jungle'] = array('jungle');
+    $list['hill'] = array('hill', 'knoll', 'hillock', 'foothills');
+    $list['hut'] = array('hut', 'witch hut');
+    $list['jungle'] = array('jungle');
     $list['lake'] = array('lake', 'river', 'stream', 'brook', 'creek', 'rill', 'basin', 'spring', 'loch', 'shallows', 'strand', 'cove', 'fjord', 'waterfall');
     $list['lava'] = array('lava lake', 'magma pool');
     $list['outpost'] = array('outpost', 'frontier', 'garrison');
     $list['mausoleum'] = array('crypt', 'mausoleum', 'sepulcher', 'catacomb', 'necropolis', 'cairn', 'dolmen');
-    // $list['maze'] = array('maze', 'labyrinth');
+    $list['maze'] = array('maze', 'labyrinth');
     $list['mesa'] = array('mesa');
-    // $list['mine'] = array('mine', 'abandoned mine');
-    // $list['moai'] = array('moai');
+    $list['mine'] = array('mine', 'abandoned mine');
+    $list['moai'] = array('moai');
     $list['mountain'] = array('mountain', 'summit', 'pass', 'point', 'tor');
     $list['oasis'] = array('oasis');
-    // $list['obelisk'] = array('obelisk');
+    $list['obelisk'] = array('obelisk');
     $list['pillar'] = array('pillar', 'spire', 'monolith');
-    // $list['portal'] = array('portal', 'gateway');
+    $list['portal'] = array('portal', 'gateway');
     $list['prison'] = array('bastille', 'prison');
     $list['pyramid'] = array('pyramid');
     $list['ruin'] = array('ruin', 'ruins', 'castle ruins', 'fortress ruins');
     $list['shrine'] = array('shrine', 'dias');
     $list['stone'] = array('standing', 'stones', 'stone', 'menhir', 'rock');
     $list['statue'] = array('statue', 'statues');
-    // $list['swamp'] = array('swamp', 'quagmire', 'mire', 'fen', 'bog', 'marsh', 'wetland', 'lagoon');
-    // $list['throne'] = array('throne');
+    $list['swamp'] = array('swamp', 'quagmire', 'mire', 'fen', 'bog', 'marsh', 'wetland', 'lagoon');
+    $list['throne'] = array('throne');
     $list['tree'] = array('tree', 'hollow tree');
-    // $list['tundra'] = array('tundra', 'taiga');
+    $list['tundra'] = array('tundra', 'taiga');
     $list['tower'] = array('tower', 'lookout');
     $list['town'] = array('town', 'village', 'enclave', 'borough');
-    // $list['vault'] = array('vault');
+    $list['vault'] = array('vault');
     $list['volcano'] = array('volcano');
     $list['wall'] = array('wall', 'walls');
 
