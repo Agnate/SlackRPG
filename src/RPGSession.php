@@ -539,7 +539,7 @@ class RPGSession {
         $success_rate = $quest->get_success_rate($player, $best_adventurers, NULL);
         $death_rate = $quest->death_rate;
         // $response[] = '`q'.$quest->qid.'` '. Display::get_difficulty($success_rate) .' '.($death_rate > 0 ? ':skull: ' : ''). ' '.$quest->name.' (adventurers required: '.Display::show_adventurer_count($quest->get_party_size()).') '.Display::get_stars($quest->stars);
-        $response[] = '`q'.$quest->qid.'` '. Display::get_stars($quest->stars) . ($death_rate > 0 ? ' — :skull:' : ''). ' — '. Display::show_adventurer_count($quest->get_party_size()) .' — '. $quest->name;
+        $response[] = '`q'.$quest->qid.'` — '. Display::get_difficulty_stars($quest->stars, $success_rate) . ($death_rate > 0 ? ' — :skull:' : ''). ' — '. Display::show_adventurer_count($quest->get_party_size()) .' — '. $quest->name;
       }
 
       // Also show the list of available item modifiers.
@@ -1977,6 +1977,67 @@ class RPGSession {
 
     // Load the player and fail out if they have not created a Guild.
     if (!($player = $this->load_current_player())) return;
+
+
+
+    // Generate a bunch of quests to balance gold and exp.
+    $season = Season::current();
+    $map = Map::load(array('season' => $season->sid));
+    $location = Location::load(array('mapid' => $map->mapid, 'row' => 12, 'col' => 10));
+
+    // Overwrite star rating.
+    $location->star_min = 3;
+    $location->star_max = 3;
+
+    $json = Quest::load_quest_names_list();
+    $original_json = Quest::load_quest_names_list(true);
+    $num_quests = 20;
+    $quests = Quest::generate_quests($location, $num_quests, $json, $original_json, false);
+
+    $total_gold = 0;
+    $total_exp = 0;
+
+    $response = array();
+    foreach ($quests as $quest) {
+      $response[] = $quest->stars .' stars -- '. Display::get_currency($quest->reward_gold) .' -- Exp: '. $quest->reward_exp .' -- Party size: '. $quest->party_size_min .($quest->party_size_min != $quest->party_size_max ? '-'.$quest->party_size_max : '');
+      $total_gold += $quest->reward_gold;
+      $total_exp += $quest->reward_exp;
+    }
+
+    $response[] = '';
+    $response[] = '*Average Gold*: '. Display::get_currency(floor($total_gold / $num_quests));
+    $response[] = '*Average Exp*: '. floor($total_exp / $num_quests);
+    $this->respond($response);
+
+    return false;
+
+
+    // Test distance formula.
+    // $season = Season::current();
+    // $map = Map::load(array('season' => $season->sid));
+    
+    // $locations = $map->get_locations();
+    // foreach ($locations as $location) {
+    //   if ($location->type == Location::TYPE_EMPTY) continue;
+    //   $dist = $location->get_distance();
+    //   // 0-2.5 = 1-star
+    //   // 2.6-5 = 2-star
+    //   // 5.1-7.5 = 3-star
+    //   // 7.6-10 = 4-star
+    //   // 10+ = 5-star
+    //   if ($dist <= 2.5) $location->star_max = 1;
+    //   else if ($dist <= 5) $location->star_max = 2;
+    //   else if ($dist <= 7.5) $location->star_max = 3;
+    //   else if ($dist <= 10) $location->star_max = 4;
+    //   else $location->star_max = 5;
+
+    //   if ($location->star_max > 1) $location->star_min = $location->star_max - rand(0, 1);
+    //   else $location->star_min = $location->star_max;
+
+    //   $location->save();
+    // }
+
+    // return false;
 
 
     // Give all guilds some fame.

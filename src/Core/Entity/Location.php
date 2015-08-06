@@ -59,14 +59,18 @@ class Location extends RPGEntitySaveable {
   }
 
   public function get_duration ($guild, $adventurers, $kit) {
-    // Get the map so we can find the town location.
-    $map = $this->get_map();
-    // Get the capital in the map.
-    $capital = $map->get_capital();
     // Calculate the raw distance and multiply by a time constant.
     $travel_speed_modifier = $this->calculate_travel_speed_modifier($guild, $adventurers, $kit);
     $travel_per_tile = Location::TRAVEL_BASE * $travel_speed_modifier;
-    return ceil(sqrt(pow(($capital->row - $this->row), 2) + pow(($capital->col - $this->col), 2)) * $travel_per_tile);
+    return ceil($this->get_distance() * $travel_per_tile);
+  }
+
+  public function get_distance () {
+     // Get the map so we can find the town location.
+    $map = $this->get_map();
+    // Get the capital in the map.
+    $capital = $map->get_capital();
+    return sqrt(pow(($capital->row - $this->row), 2) + pow(($capital->col - $this->col), 2));
   }
 
   public function calculate_travel_speed_modifier ($guild, $adventurers, $kit) {
@@ -200,6 +204,24 @@ class Location extends RPGEntitySaveable {
     );
 
     $location = new Location ($location_data);
+
+    // Assign star rating based on proximity to the Capital.
+    if ($type != Location::TYPE_EMPTY) {
+      $dist = $location->get_distance();
+      // 0-2.5 = 1-star
+      // 2.6-5 = 2-star
+      // 5.1-7.5 = 3-star
+      // 7.6-10 = 4-star
+      // 10+ = 5-star
+      if ($dist <= 2.5) $location->star_max = 1;
+      else if ($dist <= 5) $location->star_max = 2;
+      else if ($dist <= 7.5) $location->star_max = 3;
+      else if ($dist <= 10) $location->star_max = 4;
+      else $location->star_max = 5;
+
+      if ($location->star_max > 1) $location->star_min = $location->star_max - rand(0, 1);
+      else $location->star_min = $location->star_max;
+    }
 
     if ($save) $location->save();
 

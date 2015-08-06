@@ -448,7 +448,7 @@ class Quest extends RPGEntitySaveable {
     $save_json = empty($json);
     if (empty($json)) $json = Quest::load_quest_names_list();
     if (empty($original_json)) $original_json = Quest::load_quest_names_list(true);
-
+    
     $quests = array();
     if ($num_quests <= 0) $num_quests = rand(1, 3) + 1;
     // For now, generate a number of quests = star rating.
@@ -456,7 +456,7 @@ class Quest extends RPGEntitySaveable {
       // Determine the type.
       $type = Quest::randomize_quest_types($location->type);
       // Generate the quest.
-      $quest = Quest::generate_quest_type($location, $type, $save);
+      $quest = Quest::generate_quest_type($location, $type, $json, $original_json, $save);
       $quests[] = $quest;
     }
 

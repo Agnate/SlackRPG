@@ -212,12 +212,12 @@ function update_version_0_0_0 ($forced = false) {
   // }
 
   // Add some Quests.
-  $quests = array();
-  $quests[] = array(':name' => 'Permanent Quest', ':icon' => ':pushpin:', ':type' => 'standard', ':locid' => 3, ':stars' => 1, ':created' => $time, ':active' => true, ':permanent' => true, ':reward_gold' => 100, ':reward_exp' => 150, ':reward_fame' => 0, ':duration' => 20, ':cooldown' => 10, ':party_size_min' => 1, ':party_size_max' => 1, ':level' => 5, ':success_rate' => 100, ':death_rate' => 0);
-  $quests[] = array(':name' => 'Fancy Quest', ':icon' => ':pushpin:', ':type' => 'standard', ':locid' => 2, ':stars' => 4, ':created' => $time, ':active' => true, ':permanent' => false, ':reward_gold' => 500, ':reward_exp' => 450, ':reward_fame' => 10, ':duration' => 50, ':cooldown' => 60, ':party_size_min' => 1, ':party_size_max' => 3, ':level' => 30, ':success_rate' => 80, ':death_rate' => 5);
-  //$quests[] = array(':name' => '', ':icon' => '', ':type' => '', ':locid' => 0, ':stars' => 0, ':created' => $time, ':active' => false, ':permanent' => false, ':reward_gold' => 0, ':reward_exp' => 0, ':duration' => 0, ':cooldown' => 0, ':party_size_min' => 1, ':party_size_max' => 0, ':level' => 1, ':success_rate' => 100, ':death_rate' => 0);
-  foreach ($quests as $quest) {
-    add_update_query("INSERT INTO quests (name, icon, type, locid, stars, created, active, permanent, reward_gold, reward_exp, reward_fame, duration, cooldown, party_size_min, party_size_max, level, success_rate, death_rate) VALUES (:name, :icon, :type, :locid, :stars, :created, :active, :permanent, :reward_gold, :reward_exp, :reward_fame, :duration, :cooldown, :party_size_min, :party_size_max, :level, :success_rate, :death_rate)", $quest);
+  // $quests = array();
+  // $quests[] = array(':name' => 'Permanent Quest', ':icon' => ':pushpin:', ':type' => 'standard', ':locid' => 3, ':stars' => 1, ':created' => $time, ':active' => true, ':permanent' => true, ':reward_gold' => 100, ':reward_exp' => 150, ':reward_fame' => 0, ':duration' => 20, ':cooldown' => 10, ':party_size_min' => 1, ':party_size_max' => 1, ':level' => 5, ':success_rate' => 100, ':death_rate' => 0);
+  // $quests[] = array(':name' => 'Fancy Quest', ':icon' => ':pushpin:', ':type' => 'standard', ':locid' => 2, ':stars' => 4, ':created' => $time, ':active' => true, ':permanent' => false, ':reward_gold' => 500, ':reward_exp' => 450, ':reward_fame' => 10, ':duration' => 50, ':cooldown' => 60, ':party_size_min' => 1, ':party_size_max' => 3, ':level' => 30, ':success_rate' => 80, ':death_rate' => 5);
+  // //$quests[] = array(':name' => '', ':icon' => '', ':type' => '', ':locid' => 0, ':stars' => 0, ':created' => $time, ':active' => false, ':permanent' => false, ':reward_gold' => 0, ':reward_exp' => 0, ':duration' => 0, ':cooldown' => 0, ':party_size_min' => 1, ':party_size_max' => 0, ':level' => 1, ':success_rate' => 100, ':death_rate' => 0);
+  // foreach ($quests as $quest) {
+  //   add_update_query("INSERT INTO quests (name, icon, type, locid, stars, created, active, permanent, reward_gold, reward_exp, reward_fame, duration, cooldown, party_size_min, party_size_max, level, success_rate, death_rate) VALUES (:name, :icon, :type, :locid, :stars, :created, :active, :permanent, :reward_gold, :reward_exp, :reward_fame, :duration, :cooldown, :party_size_min, :party_size_max, :level, :success_rate, :death_rate)", $quest);
   }
 
   // Add a Season.
@@ -246,12 +246,12 @@ function update_version_0_0_0 ($forced = false) {
     add_update_query("INSERT INTO locations (mapid, gid, name, row, col, type, created, revealed) VALUES (:mapid, :gid, :name, :row, :col, :type, :created, :revealed)", $location);
   }*/
 
-  // TEMP: change hours to seconds so it can be easily tested.
+  // TEMP: change hours to seconds so it can be easily tested. (Comment the line below to set back to proper value)
   $hours = 0.5;
 
   // Add some Upgrades.
   $upgrades = array();
-  $upgrades[] = array(':name_id' => "dorm1", ':name' => "Dormitory 1", ':description' => "increase max to 5 adventurers", ':cost' => 7500, ':duration' => (24 * $hours), ':requires' => '');
+  $upgrades[] = array(':name_id' => "dorm1", ':name' => "Dormitory 1", ':description' => "increase max to 5 adventurers", ':cost' => 5000, ':duration' => (24 * $hours), ':requires' => '');
   $upgrades[] = array(':name_id' => "dorm2", ':name' => "Dormitory 2", ':description' => "increase max to 7 adventurers", ':cost' => 10000, ':duration' => (48 * $hours), ':requires' => 'upgrade,dorm1');
   $upgrades[] = array(':name_id' => "dorm3", ':name' => "Dormitory 3", ':description' => "increase max to 10 adventurers", ':cost' => 20000, ':duration' => (72 * $hours), ':requires' => 'upgrade,dorm2');
   $upgrades[] = array(':name_id' => "speed1", ':name' => "Transportation: Horse", ':description' => "increase speed by 5%", ':cost' => 5000, ':duration' => (24 * $hours), ':requires' => 'item,animal_horse,4');
@@ -259,14 +259,14 @@ function update_version_0_0_0 ($forced = false) {
   $upgrades[] = array(':name_id' => "speed3", ':name' => "Transportation: Airship", ':description' => "increase speed by 10%", ':cost' => 30000, ':duration' => (72 * $hours), ':requires' => 'upgrade,speed2|item,ore_steel,10|item,ore_iron,10|item,ore_adamantine,3|item,ore_crystal');
   $upgrades[] = array(':name_id' => "equip1", ':name' => "Equipment: Iron", ':description' => "increase quest success rate by 2%", ':cost' => 3000, ':duration' => (24 * $hours), ':requires' => 'item,ore_iron,3');
   $upgrades[] = array(':name_id' => "equip2", ':name' => "Equipment: Steel", ':description' => "increase quest success rate by 2%", ':cost' => 5000, ':duration' => (24 * $hours), ':requires' => 'upgrade,equip1|item,ore_steel,3');
-  $upgrades[] = array(':name_id' => "equip3", ':name' => "Equipment: Mithril ", ':description' => "increase quest success rate by 2%", ':cost' => 10000, ':duration' => (36 * $hours), ':requires' => 'upgrade,equip2|item,ore_mithril,3');
-  $upgrades[] = array(':name_id' => "equip4", ':name' => "Equipment: Inlaid Crystal", ':description' => "increase quest success rate by 2%", ':cost' => 15000, ':duration' => (36 * $hours), ':requires' => 'upgrade,equip3|item,ore_crystal,3');
-  $upgrades[] = array(':name_id' => "equip5", ':name' => "Equipment: Diamond-edged", ':description' => "increase quest success rate by 2%", ':cost' => 20000, ':duration' => (48 * $hours), ':requires' => 'upgrade,equip4|item,ore_diamond,3');
-  $upgrades[] = array(':name_id' => "equip6", ':name' => "Equipment: Adamantine", ':description' => "increase quest success rate by 2%", ':cost' => 30000, ':duration' => (48 * $hours), ':requires' => 'upgrade,equip5|item,ore_adamantine,3');
-  $upgrades[] = array(':name_id' => "equip7", ':name' => "Equipment: Demonsteel", ':description' => "increase quest success rate by 2%", ':cost' => 50000, ':duration' => (72 * $hours), ':requires' => 'upgrade,equip6|item,ore_demonite,3');
-  $upgrades[] = array(':name_id' => "equip8", ':name' => "Equipment: Godsteel", ':description' => "increase quest success rate by 2%", ':cost' => 75000, ':duration' => (72 * $hours), ':requires' => 'upgrade,equip7|item,ore_godstone,3');
-  $upgrades[] = array(':name_id' => "heal1", ':name' => "Healer's Garden", ':description' => "reduce death rate by 2%", ':cost' => 25000, ':duration' => (48 * $hours), ':requires' => 'item,herb_green,5');
-  $upgrades[] = array(':name_id' => "heal2", ':name' => "Apothecary", ':description' => "reduce death rate by 2%", ':cost' => 50000, ':duration' => (72 * $hours), ':requires' => 'upgrade,heal1|item,herb_red,5');
+  $upgrades[] = array(':name_id' => "equip3", ':name' => "Equipment: Mithril ", ':description' => "increase quest success rate by 2%", ':cost' => 7000, ':duration' => (36 * $hours), ':requires' => 'upgrade,equip2|item,ore_mithril,3');
+  $upgrades[] = array(':name_id' => "equip4", ':name' => "Equipment: Inlaid Crystal", ':description' => "increase quest success rate by 2%", ':cost' => 10000, ':duration' => (36 * $hours), ':requires' => 'upgrade,equip3|item,ore_crystal,3');
+  $upgrades[] = array(':name_id' => "equip5", ':name' => "Equipment: Diamond-edged", ':description' => "increase quest success rate by 2%", ':cost' => 10000, ':duration' => (48 * $hours), ':requires' => 'upgrade,equip4|item,ore_diamond,3');
+  $upgrades[] = array(':name_id' => "equip6", ':name' => "Equipment: Adamantine", ':description' => "increase quest success rate by 2%", ':cost' => 10000, ':duration' => (48 * $hours), ':requires' => 'upgrade,equip5|item,ore_adamantine,3');
+  $upgrades[] = array(':name_id' => "equip7", ':name' => "Equipment: Demonsteel", ':description' => "increase quest success rate by 2%", ':cost' => 10000, ':duration' => (72 * $hours), ':requires' => 'upgrade,equip6|item,ore_demonite,3');
+  $upgrades[] = array(':name_id' => "equip8", ':name' => "Equipment: Godsteel", ':description' => "increase quest success rate by 2%", ':cost' => 10000, ':duration' => (72 * $hours), ':requires' => 'upgrade,equip7|item,ore_godstone,3');
+  $upgrades[] = array(':name_id' => "heal1", ':name' => "Healer's Garden", ':description' => "reduce death rate by 2%", ':cost' => 7500, ':duration' => (48 * $hours), ':requires' => 'item,herb_green,5');
+  $upgrades[] = array(':name_id' => "heal2", ':name' => "Apothecary", ':description' => "reduce death rate by 2%", ':cost' => 10000, ':duration' => (72 * $hours), ':requires' => 'upgrade,heal1|item,herb_red,5');
   //$upgrades[] = array(':name_id' => "", ':name' => "", ':description' => "", ':cost' => 0, ':duration' => 0, ':requires' => '');
   foreach ($upgrades as $upgrade) {
     add_update_query("INSERT INTO upgrades (name_id, name, description, cost, duration, requires) VALUES (:name_id, :name, :description, :cost, :duration, :requires)", $upgrade);

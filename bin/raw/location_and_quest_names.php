@@ -59,7 +59,7 @@ $first_names = array(
 $last_names = array('Anderson', 'Arbeiter', 'Auclair', 'Avila', 'Beaumont', 'Beauregard', 'Belgrave', 'Bishop', 'Blackwelder', 'Blythe', 'Bourdeau', 'Briarthorne', 'Crane', 'Crofton', 'Crystallance', 'Cullen', 'Delorisci', 'Delvecchio', 'Donovan', 'Dusk', 'Eckhardt', 'Eldred', 'Elwood', 'Emerson', 'Engles', 'Everstone', 'Everard', 'Fairhawk', 'Fentress', 'Ferdinand', 'Flamegazer', 'Gaines', 'Gallagher', 'Garfield', 'Godley', 'Goldblum', 'Goldboar', 'Goldstein', 'Grayson', 'Hawthorne', 'Haywood', 'Hemsley', 'Holcombe', 'Isenhour', 'Kaminski', 'Kingsley', 'Knights', 'Kraus', 'Laverne', 'LeClaire', 'Lighthammer', 'Lioncrusher', 'Livermore', 'Lockheart', 'Loh', 'Magner', 'Montague', 'Noble', 'Norwood', 'Oceanhunter', 'Orso', 'Payne', 'Pond', 'Quill', 'Rainborne', 'Rainhelm', 'Reaves', 'Rife', 'Rivers', 'Rosenfeld', 'Ruud', 'Runefall', 'Shadewalker', 'Shields', 'Shinra', 'Silvas', 'Silverwind', 'Sinclair', 'Steckel', 'Stormfury', 'Tatum', 'Tigerlily', 'Twomore', 'Vanslyke', 'Vass', 'von Alfheimr', 'Waddington', 'Wagner', 'Warsinger', 'Warwick', 'Winterhelm');
 
 
-$items = array('rare stone', 'emerald knife');
+$items = array('rare powerstone', 'emerald arrow', 'antique vase', 'crystal eye', 'ghost lantern', 'ivory horn', 'mammoth tusk', 'titanium knife', 'golden apple', 'mona lisa', 'Hermes\'s shoes', 'quicksilver mirror', 'levistone', 'portal keystone', 'dark matter', 'meteorite', 'diamond ring');
 $plants = array('vanilla', 'saffron', 'cardamom', 'cloves', 'cinnamon', 'turmeric', 'angelpetals');
 $gems = array('diamond', 'ruby', 'emerald', 'sapphire', 'opal', 'onyx', 'crystal', 'amethyst', 'alabaster', 'aquamarine', 'alexandrite', 'peridot', 'topaz', 'garnet', 'citrine', 'tanzanite');
 $nature_destroyable = array('the ozone layer', 'the planet\'s core', 'everything that is good', 'the forest', 'the desert', 'the ocean', 'an ancient tower');
@@ -177,7 +177,7 @@ $quest_names = array(
       'Escort !escortable to the !fullname',
       'Accompany !escortable to the !fullname',
       'Begin construction on a !gem mine at the !fullname',
-      'Provide train to !trainable at !fullname',
+      'Provide training to !trainable at !fullname',
       'Secure !securable at !fullname',
       'Dam a flooding river near !fullname',
     ),

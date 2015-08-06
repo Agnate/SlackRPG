@@ -40,6 +40,15 @@ class Display {
     return ':rpg-quest-diff4:';
   }
 
+  public static function get_difficulty_stars ($stars, $rate) {
+    if ($rate <= 0) return $stars.':rpg-star-black:'; // black
+    if ($rate <= 35) return $stars.':rpg-star-red:'; // red
+    if ($rate <= 50) return $stars.':rpg-star-orange:'; // orange
+    if ($rate <= 75) return $stars.':rpg-star-yellow:'; // yellow
+    
+    return $stars.':rpg-star-green:'; // green
+  }
+
   public static function get_difficulty_legend () {
     return "*Difficulty Legend*:\n:rpg-quest-diff0: Impossible, :rpg-quest-diff1: Risky, :rpg-quest-diff2: Difficult, :rpg-quest-diff3: Challenging, :rpg-quest-diff4: Recommended\n:skull: Adventurers can die";
   }
