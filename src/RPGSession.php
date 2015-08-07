@@ -539,7 +539,8 @@ class RPGSession {
         $success_rate = $quest->get_success_rate($player, $best_adventurers, NULL);
         $death_rate = $quest->death_rate;
         // $response[] = '`q'.$quest->qid.'` '. Display::get_difficulty($success_rate) .' '.($death_rate > 0 ? ':skull: ' : ''). ' '.$quest->name.' (adventurers required: '.Display::show_adventurer_count($quest->get_party_size()).') '.Display::get_stars($quest->stars);
-        $response[] = '`q'.$quest->qid.'` — '. Display::get_difficulty_stars($quest->stars, $success_rate) . ($death_rate > 0 ? ' — :skull:' : ''). ' — '. Display::show_adventurer_count($quest->get_party_size()) .' — '. $quest->name;
+        // $response[] = '`q'.$quest->qid.'` — '. Display::get_difficulty_stars($quest->stars, $success_rate) . ($death_rate > 0 ? ' — :skull:' : ''). ' — '. Display::show_adventurer_count($quest->get_party_size()) .' — '. $quest->name;
+        $response[] = '`q'.$quest->qid.'` _'. $quest->get_display_name(false) .'_ — '. Display::get_difficulty_stars($quest->stars, $success_rate) . ($death_rate > 0 ? ' — :skull:' : ''). ' — '. Display::show_adventurer_count($quest->get_party_size());
       }
 
       // Also show the list of available item modifiers.
@@ -1186,7 +1187,24 @@ class RPGSession {
 
       $upgrades = $player->get_available_upgrades();
       foreach ($upgrades as $upgrade) {
-        $response[] = $upgrade->get_display_name() .' `upgrade '.$upgrade->name_id.'`'; //' for '. Display::get_currency($upgrade->cost) .' and '. Display::get_duration_as_hours($upgrade->duration).' `upgrade '.$upgrade->name_id.'`';
+        $required_items = $upgrade->get_requires();
+        $item_names = array();
+        $upgrade_names = array();
+        foreach ($required_items as $item_requirement) {
+          if ($item_requirement->type == Requirement::TYPE_ITEM) {
+            $ritem = ItemTemplate::load(array('name_id' => $item_requirement->name_id));
+            if (empty($ritem)) continue;
+            $item_names[] = ($item_requirement->qty > 1 ? $item_requirement->qty.'x ' : '') . $ritem->get_display_name(false);
+          }
+          else if ($item_requirement->type == Requirement::TYPE_UPGRADE) {
+            $rupgrade = Upgrade::load(array('name_id' => $item_requirement->name_id));
+            if (empty($rupgrade)) continue;
+            $upgrade_names[] = $rupgrade->get_display_name(false, false);
+          }
+        }
+        $response[] = $upgrade->get_display_name() .' `upgrade '.$upgrade->name_id.'` — '. Display::get_currency($upgrade->cost)
+          .(count($item_names) > 0 ? ' — ' . implode(', ', $item_names) : '')
+          .(count($upgrade_names) > 0 ? ' — (requires: ' . implode(', ', $upgrade_names) .')' : '');
       }
 
       $this->respond($response);
@@ -1986,8 +2004,8 @@ class RPGSession {
     $location = Location::load(array('mapid' => $map->mapid, 'row' => 12, 'col' => 10));
 
     // Overwrite star rating.
-    $location->star_min = 3;
-    $location->star_max = 3;
+    $location->star_min = 1;
+    $location->star_max = 1;
 
     $json = Quest::load_quest_names_list();
     $original_json = Quest::load_quest_names_list(true);
@@ -1996,10 +2014,11 @@ class RPGSession {
 
     $total_gold = 0;
     $total_exp = 0;
+    $total_level = 0;
 
     $response = array();
     foreach ($quests as $quest) {
-      $response[] = $quest->stars .' stars -- '. Display::get_currency($quest->reward_gold) .' -- Exp: '. $quest->reward_exp .' -- Party size: '. $quest->party_size_min .($quest->party_size_min != $quest->party_size_max ? '-'.$quest->party_size_max : '');
+      $response[] = $quest->stars .' stars -- '. Display::get_currency($quest->reward_gold) .' -- Exp: '. $quest->reward_exp .' -- Party size: '. $quest->party_size_min .($quest->party_size_min != $quest->party_size_max ? '-'.$quest->party_size_max : '').' -- Qlevel: '. $quest->level;
       $total_gold += $quest->reward_gold;
       $total_exp += $quest->reward_exp;
     }

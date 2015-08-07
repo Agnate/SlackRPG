@@ -60,6 +60,10 @@ class Quest extends RPGEntitySaveable {
     if (empty($this->party_size_min)) $this->party_size_min = 1;
   }
 
+  public function get_display_name ($bold = true) {
+    return ($bold ? '*' : '') . $this->name . ($bold ? '*' : '');
+  }
+
   public function load_location () {
     $this->_location = Location::load(array('locid' => $this->locid));
   }

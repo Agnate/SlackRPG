@@ -134,10 +134,10 @@ class Adventurer extends RPGEntitySaveable {
     if (empty($level)) $level = $this->get_level(false) + 1;
     $level--;
     // Crude level numbers for now.
-    if ($level <= 5) return ($level * 500);
-    if ($level <= 10) return ($level * 1500);
-    if ($level <= 15) return ($level * 3000);
-    return ($level * 7500);
+    if ($level <= 5) return ($level * 100);
+    if ($level <= 10) return ($level * 500);
+    if ($level <= 15) return ($level * 1000);
+    return ($level * 2000);
   }
 
   public function has_adventurer_class () {
