@@ -218,7 +218,7 @@ function update_version_0_0_0 ($forced = false) {
   // //$quests[] = array(':name' => '', ':icon' => '', ':type' => '', ':locid' => 0, ':stars' => 0, ':created' => $time, ':active' => false, ':permanent' => false, ':reward_gold' => 0, ':reward_exp' => 0, ':duration' => 0, ':cooldown' => 0, ':party_size_min' => 1, ':party_size_max' => 0, ':level' => 1, ':success_rate' => 100, ':death_rate' => 0);
   // foreach ($quests as $quest) {
   //   add_update_query("INSERT INTO quests (name, icon, type, locid, stars, created, active, permanent, reward_gold, reward_exp, reward_fame, duration, cooldown, party_size_min, party_size_max, level, success_rate, death_rate) VALUES (:name, :icon, :type, :locid, :stars, :created, :active, :permanent, :reward_gold, :reward_exp, :reward_fame, :duration, :cooldown, :party_size_min, :party_size_max, :level, :success_rate, :death_rate)", $quest);
-  }
+  // }
 
   // Add a Season.
   /*$seasons = array();

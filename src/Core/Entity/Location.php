@@ -11,6 +11,7 @@ class Location extends RPGEntitySaveable {
   public $type;
   public $created;
   public $revealed;
+  public $open;
   public $star_min;
   public $star_max;
   public $keywords;
@@ -65,11 +66,17 @@ class Location extends RPGEntitySaveable {
     return ceil($this->get_distance() * $travel_per_tile);
   }
 
-  public function get_distance () {
-     // Get the map so we can find the town location.
-    $map = $this->get_map();
-    // Get the capital in the map.
-    $capital = $map->get_capital();
+  public function get_distance ($capital = null) {
+    if (empty($capital))  {
+      // Get the map so we can find the town location.
+      $map = $this->get_map();
+      // Get the capital in the map.
+      $capital = $map->get_capital();
+    }
+
+    // If we still don't have a capital, return 0.
+    if (empty($capital)) return 0;
+
     return sqrt(pow(($capital->row - $this->row), 2) + pow(($capital->col - $this->col), 2));
   }
 
@@ -147,6 +154,8 @@ class Location extends RPGEntitySaveable {
    * Extract what category of icon we want to use on the map based on the keywords.
    */
   public function get_map_icon () {
+    if ($this->type == Location::TYPE_CAPITAL) return 'capital';
+
     $keywords = $this->get_keywords();
 
     switch ($this->type) {
@@ -154,6 +163,74 @@ class Location extends RPGEntitySaveable {
         // Take the last keyword, split by space and take the first word of the group.
         $pieces = explode(' ', array_pop($keywords));
         return strtolower(array_shift($pieces));
+    }
+  }
+
+  public function get_adjacent_locations ($create_new = FALSE, &$json = NULL, $original_json = NULL, $save_new = TRUE) {
+    $row = $this->row;
+    $col = $this->col;
+    $locations = array();
+
+    if ($create_new) $map = $this->get_map();
+
+    // Get all locations to the NSEW of this one.
+    $coords = array(
+      array('row' => $row - 1, 'col' => $col),
+      array('row' => $row + 1, 'col' => $col),
+      array('row' => $row, 'col' => $col - 1),
+      array('row' => $row, 'col' => $col + 1),
+    );
+
+    foreach ($coords as $coord) {
+      $data = array(
+        'row' => $coord['row'],
+        'col' => $coord['col'],
+        'mapid' => $this->mapid,
+      );
+      $location = Location::load($data);
+
+      // If there's no location, create a new one or continue.
+      if (empty($location)) {
+        if (!$create_new) continue;
+        // Use Map density to decide if it's empty or not.
+        $type = Location::TYPE_EMPTY;
+        // Generate a random non-empty type if we randomize the density and get a non-empty location.
+        if (rand(0, 100) <= (Map::DENSITY * 100)) $type = NULL;
+        $location = Location::random_location($map, $data['row'], $data['col'], $type, $json, $original_json, $save_new);
+      }
+
+      $locations[] = $location;
+    }
+
+    return $locations;
+  }
+
+  public function is_adjacent ($row, $col) {
+    if (abs($this->row - $row) <= 1 && $this->col == $col) return true;
+    if (abs($this->col - $col) <= 1 && $this->row == $row) return true;
+    return false;
+  }
+
+  public function assign_star_rating ($capital = null) {
+    // Assign star rating based on proximity to the Capital.
+    if ($this->type != Location::TYPE_EMPTY) {
+      $dist = $this->get_distance($capital);
+      // If we can't calculate the distance (or it's the capital), star-rating should be zero.
+      if ($dist === 0) return;
+
+      // 0-2.5 = 1-star
+      // 2.6-5 = 2-star
+      // 5.1-7.5 = 3-star
+      // 7.6-10 = 4-star
+      // 10+ = 5-star
+      if ($dist <= 2.5) $this->star_max = 1;
+      else if ($dist <= 5) $this->star_max = 2;
+      else if ($dist <= 7.5) $this->star_max = 3;
+      else if ($dist <= 10) $this->star_max = 4;
+      else $this->star_max = 5;
+
+      if ($this->star_max > 1) $this->star_min = $this->star_max - rand(0, 1);
+      else $this->star_min = $this->star_max;
     }
   }
 
@@ -173,11 +250,32 @@ class Location extends RPGEntitySaveable {
   }
 
   public static function get_letter ($num) {
+    if ($num > 26) {
+      $first = floor($num / 26);
+      $second = $num % 26;
+      if ($second == 0) {
+        $first--;
+        $second = 26;
+      }
+      return chr(64 + $first) . chr(64 + $second);;
+    }
+
     return chr(64 + $num);
   }
 
   public static function get_number ($letter) {
-    return ord(strtoupper($letter)) - 64;
+    $letter = strtoupper($letter);
+    if (strlen($letter) > 1) {
+      // Separate letters.
+      $first = substr($letter, 0, 1);
+      $second = substr($letter, 1, 1);
+      // Convert to numbers.
+      $first = ord($first) - 64;
+      $second = ord($second) - 64;
+      // Reverse engineer.
+      return ($first * 26) + $second;
+    }
+    return ord($letter) - 64;
   }
 
   public static function random_location ($map, $row, $col, $type = NULL, &$json = NULL, $original_json = NULL, $save = TRUE) {
@@ -188,40 +286,32 @@ class Location extends RPGEntitySaveable {
     }
 
     // Get name and keywords.
-    $name_keywords = Location::generate_name($type, $json, $original_json);
+    $name = '';
+    $keywords = '';
+    if ($type != Location::TYPE_EMPTY) {
+      $name_keywords = Location::generate_name($type, $json, $original_json);
+      $name = $name_keywords['name'];
+      $keywords = Location::__encode_keywords($name_keywords['keywords']);
+    }
 
     // Create location.
     $location_data = array(
       'mapid' => $map->mapid,
       'gid' => 0,
-      'name' => $name_keywords['name'],
+      'name' => $name,
       'row' => $row,
       'col' => $col,
       'type' => $type,
       'created' => time(),
       'revealed' => false,
-      'keywords' => Location::__encode_keywords($name_keywords['keywords']),
+      'open' => false,
+      'keywords' => $keywords,
     );
 
     $location = new Location ($location_data);
 
     // Assign star rating based on proximity to the Capital.
-    if ($type != Location::TYPE_EMPTY) {
-      $dist = $location->get_distance();
-      // 0-2.5 = 1-star
-      // 2.6-5 = 2-star
-      // 5.1-7.5 = 3-star
-      // 7.6-10 = 4-star
-      // 10+ = 5-star
-      if ($dist <= 2.5) $location->star_max = 1;
-      else if ($dist <= 5) $location->star_max = 2;
-      else if ($dist <= 7.5) $location->star_max = 3;
-      else if ($dist <= 10) $location->star_max = 4;
-      else $location->star_max = 5;
-
-      if ($location->star_max > 1) $location->star_min = $location->star_max - rand(0, 1);
-      else $location->star_min = $location->star_max;
-    }
+    $location->assign_star_rating();
 
     if ($save) $location->save();
 

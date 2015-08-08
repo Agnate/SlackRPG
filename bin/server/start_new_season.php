@@ -100,6 +100,11 @@ function start_new_season ($output_information = false) {
   $season->save();
   if ($output_information) print " Done.\n";
 
+  // Generate the map image.
+  if ($output_information) print "Generating map image...";
+  $mapimage = MapImage::generate_image($map);
+  if ($output_information) print " Done.\n";
+
   // Refresh the Tavern to add new adventurers for hire.
   if ($output_information) print "Refreshing the Tavern...\n";
   generate_new_adventurers($output_information);

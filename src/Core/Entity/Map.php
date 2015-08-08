@@ -17,8 +17,10 @@ class Map extends RPGEntitySaveable {
   static $primary_key = 'mapid';
 
   const DENSITY = 0.15; // Percentage of Locations that are significant
-  const NUM_ROWS = 26;
-  const NUM_COLS = 26;
+  const CAPITAL_START_ROW = 100;
+  const CAPITAL_START_COL = 81;
+  const MIN_ROWS = 5; // 5
+  const MIN_COLS = 5; // 5
 
   
   function __construct($data = array()) {
@@ -59,26 +61,31 @@ class Map extends RPGEntitySaveable {
 
     $locations = array();
 
-    $num_rows = Map::NUM_ROWS;
-    $num_cols = Map::NUM_COLS; // Letter
+    $info = array(
+      'row_lo' => Map::CAPITAL_START_ROW - Map::MIN_ROWS,
+      'row_hi' => Map::CAPITAL_START_ROW + Map::MIN_ROWS,
+      'col_lo' => Map::CAPITAL_START_COL - Map::MIN_COLS,
+      'col_hi' => Map::CAPITAL_START_COL + Map::MIN_COLS,
+    );
+
+    $num_rows = ($info['row_hi'] - $info['row_lo'] + 1) + 1;
+    $num_cols = ($info['col_hi'] - $info['col_lo'] + 1) + 1; // Letter
     $total = $num_rows * $num_cols;
 
     // Initialize the grid.
     $grid = array();
     $open = array();
-    for ($r = 1; $r <= $num_rows; $r++) {
+    for ($r = $info['row_lo']; $r <= $info['row_hi']; $r++) {
       $grid[$r] = array();
-      for ($c = 1; $c <= $num_cols; $c++) {
+      for ($c = $info['col_lo']; $c <= $info['col_hi']; $c++) {
         $grid[$r][$c] = NULL;
         $open[$r.'-'.$c] = array('row' => $r, 'col' => $c);
       }
     }
 
     // Create Capital somewhere in the middle.
-    $middle_row = floor($num_rows / 2);
-    $capital_row = rand($middle_row - 3, $middle_row + 3);
-    $middle_col = floor($num_cols / 2);
-    $capital_col = rand($middle_col - 3, $middle_col + 3);
+    $capital_row = Map::CAPITAL_START_ROW;
+    $capital_col = Map::CAPITAL_START_COL;
 
     $capital_data = array(
       'mapid' => $this->mapid,
@@ -89,12 +96,14 @@ class Map extends RPGEntitySaveable {
       'type' => Location::TYPE_CAPITAL,
       'created' => time(),
       'revealed' => true,
+      'open' => true,
     );
     $capital = new Location ($capital_data);
     if ($save_locations) $capital->save();
     $grid[$capital_row][$capital_col] = $capital;
     $locations[] = $capital;
     unset($open[$capital_row.'-'.$capital_col]);
+    $adjacents = array();
 
     // Loop through and create the rest of the Locations.
     $num_locs = ceil($total * Map::DENSITY);
@@ -104,10 +113,14 @@ class Map extends RPGEntitySaveable {
       $coord = $open[$open_index];
       unset($open[$open_index]);
       // Generate the location.
-      $location = Location::random_location($this, $coord['row'], $coord['col'], NULL, $json, $original_json, $save_locations);
-      // if ($save_locations) $location->save();
+      $location = Location::random_location($this, $coord['row'], $coord['col'], NULL, $json, $original_json, false);
+      // If we're not saving the location, it means we need to manually assign the star rating (so we can pass in the unsaved Capital).
+      $location->assign_star_rating($capital);
+      if ($save_locations) $location->save();
       $grid[$coord['row']][$coord['col']] = $location;
       $locations[] = $location;
+      // Hold onto locations adjacent to the capital.
+      if ($capital->is_adjacent($location->row, $location->col)) $adjacents[] = $location;
     }
 
     // Fill the rest of the map with empty locations.
@@ -117,6 +130,14 @@ class Map extends RPGEntitySaveable {
       // if ($save_locations) $location->save();
       $grid[$coord['row']][$coord['col']] = $location;
       $locations[] = $location;
+      // Hold onto locations adjacent to the capital.
+      if ($capital->is_adjacent($location->row, $location->col)) $adjacents[] = $location;
+    }
+
+    // Mark the locations adjacent to the capital as open.
+    foreach ($adjacents as $adjacent) {
+      $adjacent->open = true;
+      if ($save_locations) $adjacent->save();
     }
 
     return $locations;

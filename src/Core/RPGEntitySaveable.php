@@ -67,6 +67,11 @@ abstract class RPGEntitySaveable extends RPGEntity {
       $query = "INSERT INTO ". static::$db_table ." (". implode(', ', array_keys($tokens)) .") VALUES (". implode(", ", array_values($tokens)) .")";
       $query = pdo_prepare($query);
       $success = $query->execute($new_data);
+
+      // if (!$success) {
+      //   d("INSERT INTO ". static::$db_table ." (". implode(', ', array_keys($tokens)) .") VALUES (". implode(", ", array_values($tokens)) .")");
+      //   d($query->errorInfo());
+      // }
       
       // Save the $primary_key.
       $this->{static::$primary_key} = get_pdo()->lastInsertId(static::$primary_key);

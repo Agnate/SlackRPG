@@ -280,6 +280,17 @@ class Quest extends RPGEntitySaveable {
       $location->gid = $guild->gid;
       $location->save();
 
+      // After revealing a location, set all adjacent locations to open.
+      $loc_json = Location::load_location_names_list();
+      $loc_original_json = Location::load_location_names_list(true);
+      $adjacents = $location->get_adjacent_locations(TRUE, $loc_json, $loc_original_json, FALSE);
+      // Set them all to open.
+      foreach ($adjacents as $adjacent) {
+        $adjacent->open = true;
+        $adjacent->save();
+      }
+      Location::save_location_names_list($loc_json);
+
       // Regenerate the map now that a new location is revealed.
       $season = Season::current();
       $map = Map::load(array('season' => $season->sid));

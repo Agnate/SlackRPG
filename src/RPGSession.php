@@ -778,6 +778,7 @@ class RPGSession {
     if (empty($args) || empty($args[0])) {
       $response = array();
       $response[] = 'To explore a location on the map, type: `explore [LETTER][NUMBER] [MODIFIER ITEM ID (optional)] [ADVENTURER NAMES (comma-separated)]`';
+      $response[] = '_*Note:* Black tiles cannot be explored until an adjacent tile is explored._';
 
       // Also show the list of available adventurers.
       $response[] = '';
@@ -827,15 +828,18 @@ class RPGSession {
       'col' => Location::get_number($col),
       'mapid' => $map->mapid,
     ));
-    // Check if the Location exists.
-    if (empty($location)) {
+
+    // Check if the Location exists or can actually be explored.
+    if (empty($location) || $location->open == false) {
       $response = array();
-      $response[] = 'Location '.$coord.' is not on the map.';
+      $response[] = 'Location '.$coord.' cannot be explored until an adjacent tile has been explored.';
       $response[] = '';
-      $response[] = implode("\n", $this->cmd_map($args));
-      $this->respond($response);
+      $response[] = 'See the map below for coordinates (hint: choose non-black tiles):';
+      $attachment = $this->get_map_attachment();
+      $this->respond($response, RPGSession::PERSONAL, null, $attachment);
       return;
     }
+
     // Check if the Location is already revealed.
     if ($location->revealed) {
       // Load up the Guild that revealed this location.
@@ -843,6 +847,10 @@ class RPGSession {
       $revealed_text = empty($guild) ? '' : ' by '.$guild->get_display_name();
       if ($guild->gid == $player->gid) $revealed_text = ' by you';
       $this->respond('Location '.$coord.' was already explored'.$revealed_text.'.');
+      $response[] = '';
+      $response[] = 'See the map below for coordinates (hint: choose non-black tiles):';
+      $attachment = $this->get_map_attachment();
+      $this->respond($response, RPGSession::PERSONAL, null, $attachment);
       return false;
     }
 
@@ -1997,38 +2005,37 @@ class RPGSession {
     if (!($player = $this->load_current_player())) return;
 
 
-
     // Generate a bunch of quests to balance gold and exp.
-    $season = Season::current();
-    $map = Map::load(array('season' => $season->sid));
-    $location = Location::load(array('mapid' => $map->mapid, 'row' => 12, 'col' => 10));
+    // $season = Season::current();
+    // $map = Map::load(array('season' => $season->sid));
+    // $location = Location::load(array('mapid' => $map->mapid, 'row' => 12, 'col' => 10));
 
-    // Overwrite star rating.
-    $location->star_min = 1;
-    $location->star_max = 1;
+    // // Overwrite star rating.
+    // $location->star_min = 1;
+    // $location->star_max = 1;
 
-    $json = Quest::load_quest_names_list();
-    $original_json = Quest::load_quest_names_list(true);
-    $num_quests = 20;
-    $quests = Quest::generate_quests($location, $num_quests, $json, $original_json, false);
+    // $json = Quest::load_quest_names_list();
+    // $original_json = Quest::load_quest_names_list(true);
+    // $num_quests = 20;
+    // $quests = Quest::generate_quests($location, $num_quests, $json, $original_json, false);
 
-    $total_gold = 0;
-    $total_exp = 0;
-    $total_level = 0;
+    // $total_gold = 0;
+    // $total_exp = 0;
+    // $total_level = 0;
 
-    $response = array();
-    foreach ($quests as $quest) {
-      $response[] = $quest->stars .' stars -- '. Display::get_currency($quest->reward_gold) .' -- Exp: '. $quest->reward_exp .' -- Party size: '. $quest->party_size_min .($quest->party_size_min != $quest->party_size_max ? '-'.$quest->party_size_max : '').' -- Qlevel: '. $quest->level;
-      $total_gold += $quest->reward_gold;
-      $total_exp += $quest->reward_exp;
-    }
+    // $response = array();
+    // foreach ($quests as $quest) {
+    //   $response[] = $quest->stars .' stars -- '. Display::get_currency($quest->reward_gold) .' -- Exp: '. $quest->reward_exp .' -- Party size: '. $quest->party_size_min .($quest->party_size_min != $quest->party_size_max ? '-'.$quest->party_size_max : '').' -- Qlevel: '. $quest->level;
+    //   $total_gold += $quest->reward_gold;
+    //   $total_exp += $quest->reward_exp;
+    // }
 
-    $response[] = '';
-    $response[] = '*Average Gold*: '. Display::get_currency(floor($total_gold / $num_quests));
-    $response[] = '*Average Exp*: '. floor($total_exp / $num_quests);
-    $this->respond($response);
+    // $response[] = '';
+    // $response[] = '*Average Gold*: '. Display::get_currency(floor($total_gold / $num_quests));
+    // $response[] = '*Average Exp*: '. floor($total_exp / $num_quests);
+    // $this->respond($response);
 
-    return false;
+    // return false;
 
 
     // Test distance formula.
@@ -2120,6 +2127,92 @@ class RPGSession {
     // $this->respond('<img class="map" src="'.$lined['debug'].'">');
 
 
+    // Make the capital.
+    // $season = Season::load(array('sid' => 1));
+    // $map = Map::load(array('season' => $season->sid));
+
+    // // Create Capital somewhere in the middle.
+    // $capital_row = 50;
+    // $capital_col = 50;
+
+    // $capital_data = array(
+    //   'mapid' => $map->mapid,
+    //   'gid' => 0,
+    //   'name' => 'The Capital',
+    //   'row' => $capital_row,
+    //   'col' => $capital_col,
+    //   'type' => Location::TYPE_CAPITAL,
+    //   'created' => time(),
+    //   'revealed' => true,
+    //   'open' => true,
+    // );
+    // $capital = new Location ($capital_data);
+    // $success = $capital->save();
+
+    // d($capital);
+    // d($success);
+
+    // return false;
+
+    // Set all locations adjacent to revealed locations to visible.
+    $season = Season::current();
+    $map = Map::load(array('season' => $season->sid));
+
+    /*$loc_json = Location::load_location_names_list();
+    $loc_original_json = Location::load_location_names_list(true);
+
+    $locations = Location::load_multiple(array('mapid' => $map->mapid, 'revealed' => true));
+    $all = array();
+    $new = array();
+    foreach ($locations as $location) {
+      $location->open = true;
+      $location->save();
+      $all[] = $location;
+
+      // Get all adjacent locations and set them to open.
+      $adjacents = $location->get_adjacent_locations(TRUE, $loc_json, $loc_original_json, FALSE);
+      // Set them all to open.
+      foreach ($adjacents as $adjacent) {
+        $is_new = false;
+        if (empty($adjacent->locid)) {
+          $is_new = true;
+          $new[] = $adjacent;
+        }
+        $adjacent->open = true;
+        $adjacent->save();
+        $all[] = $adjacent;
+      }
+    }
+
+    Location::save_location_names_list($loc_json);
+
+    d($new);*/
+
+    // Test generating initial locations.
+    /*$locations = $map->generate_locations(false);
+    d($locations);
+    return false;*/
+
+    // Generate the new map.
+    $mapimage = MapImage::generate_image($map);
+    $this->respond('<img class="map" src="'.$mapimage->url.'">');
+
+    return false;
+
+
+    // Test location adjacents.
+    // $season = Season::load(array('active' => true));
+    // $map = Map::load(array('season' => $season->sid));
+    // $location = Location::load(array('mapid' => $map->mapid, 'row' => 15, 'col' => 26));
+
+    // $loc_json = Location::load_location_names_list();
+    // $loc_original_json = Location::load_location_names_list(true);
+
+    // $adjacents = $location->get_adjacent_locations(TRUE, $loc_json, $loc_original_json, FALSE);
+    
+    // d($adjacents);
+
+    // return false;
 
 
     // Create the sprite sheet.
@@ -2127,11 +2220,11 @@ class RPGSession {
     // $this->respond('<img class="map" src="'.$spritesheet['debug'].'">');
 
     // Create the Map image.
-    $season = Season::load(array('active' => true));
-    $map = Map::load(array('season' => $season->sid));
-    $mapimage = MapImage::generate_image($map);
-    $this->respond('<img class="map" src="'.$mapimage->url.'">');
-    return false;
+    // $season = Season::load(array('active' => true));
+    // $map = Map::load(array('season' => $season->sid));
+    // $mapimage = MapImage::generate_image($map);
+    // $this->respond('<img class="map" src="'.$mapimage->url.'">');
+    // return false;
 
 
 

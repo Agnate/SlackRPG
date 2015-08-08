@@ -8,6 +8,7 @@ class MapImage {
   const DEFAULT_IMAGE_URL = '/images/map.png';
   const DEFAULT_ICON_URL = '/icons';
   
+  
   function __construct($data = array()) {
     // Save values to object.
     if (count($data)) foreach ($data as $key => $value) if (property_exists($this, $key)) $this->{$key} = $value;
@@ -26,9 +27,39 @@ class MapImage {
   ==================================== */
 
   public static function generate_image ($map) {
+    // Get all locations for this map.
+    $locations = $map->get_locations();
+    $loc_coords = array();
+
+    // Figure out the row and col info.
+    $info = array(
+      'row_lo' => Map::CAPITAL_START_ROW - Map::MIN_ROWS,
+      'row_hi' => Map::CAPITAL_START_ROW + Map::MIN_ROWS,
+      'col_lo' => Map::CAPITAL_START_COL - Map::MIN_COLS,
+      'col_hi' => Map::CAPITAL_START_COL + Map::MIN_COLS,
+    );
+
+    foreach ($locations as $location) {
+      if ($location->row > $info['row_hi']) $info['row_hi'] = $location->row;
+      if ($location->row < $info['row_lo']) $info['row_lo'] = $location->row;
+      if ($location->col > $info['col_hi']) $info['col_hi'] = $location->col;
+      if ($location->col < $info['col_lo']) $info['col_lo'] = $location->col;
+      // Save the location to coordinate map.
+      if (!isset($loc_coords[$location->row])) $loc_coords[$location->row] = array();
+      $loc_coords[$location->row][$location->col] = $location;
+    }
+
+    // Fill in the blanks in the loc_coords.
+    for ($r = $info['row_lo']; $r <= $info['row_hi']; $r++) {
+      for ($c = $info['col_lo']; $c <= $info['col_hi']; $c++) {
+        if (!isset($loc_coords[$r])) $loc_coords[$r] = array();
+        if (!isset($loc_coords[$r][$c])) $loc_coords[$r][$c] = true;
+      }
+    }
+
     // Create base image with extra row and col for letters and numbers.
-    $num_rows = Map::NUM_ROWS + 1;
-    $num_cols = Map::NUM_COLS + 1;
+    $num_rows = ($info['row_hi'] - $info['row_lo'] + 1) + 1;
+    $num_cols = ($info['col_hi'] - $info['col_lo'] + 1) + 1;
 
     $icon_size = 32;
     $cell_size = $icon_size * 2;
@@ -59,73 +90,57 @@ class MapImage {
       }
     }
 
-    // Generate the custom icons and fog of war.
-    $locations = $map->get_locations();
-    $capitals = array();
-    foreach ($locations as $location) {
-      // If these are the capitals, store them and do this after (complicated).
-      if ($location->type == Location::TYPE_CAPITAL) {
-        $capitals[] = $location;
-        continue;
-      }
+    foreach ($loc_coords as $row => $cols) {
+      foreach ($cols as $col => $location) {
+        $x = ($col - $info['col_lo'] + 1) * $cell_size;
+        $y = ($row - $info['row_lo'] + 1) * $cell_size;
 
-      $x = $location->col * $cell_size;
-      $y = $location->row * $cell_size;
-
-      // Fancy icon.
-      if ($location->revealed && $location->type != Location::TYPE_EMPTY) {
-        $icon = MapImage::generalize_icon($location->get_map_icon());
-        // Check if we have an icon for this.
-        if (isset($sheet['tiles'][$icon])) {
-          // If there's never been an icon generated, pick one and save it.
-          if (empty($location->map_icon)) {
-            $location->map_icon = array_rand($sheet['tiles'][$icon]);
-            $location->save();
+        // If there's no location (or we can't go to the location), do Fog of war.
+        if ($location === true || ($location->revealed == false && $location->open == false)) {
+          MapImage::create_random_cells($image, $icon_size, $spritesheet, reset($sheet['tiles']['fog']), $x, $y, 90);
+        }
+        // Lite fog of war.
+        else if ($location->revealed == false && $location->open) {
+          MapImage::create_random_cells($image, $icon_size, $spritesheet, reset($sheet['tiles']['fog']), $x, $y, 60);
+        }
+        // Fancy icon.
+        else if ($location->revealed && $location->type != Location::TYPE_EMPTY) {
+          $icon = MapImage::generalize_icon($location->get_map_icon());
+          // Check if we have an icon for this.
+          if (isset($sheet['tiles'][$icon])) {
+            // If there's never been an icon generated, pick one and save it.
+            if (empty($location->map_icon)) {
+              $location->map_icon = array_rand($sheet['tiles'][$icon]);
+              $location->save();
+            }
+            // Get the tile we're rendering out.
+            $fancy_tiles = $sheet['tiles'][$icon][$location->map_icon];
+            MapImage::create_random_cells($image, $icon_size, $spritesheet, $fancy_tiles, $x, $y, 100, false);
           }
-          // Get the tile we're rendering out.
-          $fancy_tiles = $sheet['tiles'][$icon][$location->map_icon];
-          MapImage::create_random_cells($image, $icon_size, $spritesheet, $fancy_tiles, $x, $y, 100, false);
-        }
-        else {
-          $fancy_tiles = reset($sheet['tiles']['unknown']);
-          MapImage::create_random_cells($image, $icon_size, $spritesheet, $fancy_tiles, $x, $y);
+          else {
+            $fancy_tiles = reset($sheet['tiles']['unknown']);
+            MapImage::create_random_cells($image, $icon_size, $spritesheet, $fancy_tiles, $x, $y);
+          }
         }
       }
-      // Fog of war.
-      else if ($location->revealed != true) {
-        MapImage::create_random_cells($image, $icon_size, $spritesheet, reset($sheet['tiles']['fog']), $x, $y, 75);
-      }
     }
-
-    // Organize and render the capital.
-    $capital_info = array(
-      'row' => 9999999,
-      'col' => 9999999,
-    );
-    // Get the row and col closest to origin.
-    foreach ($capitals as $location) {
-      if ($location->row < $capital_info['row']) $capital_info['row'] = $location->row;
-      if ($location->col < $capital_info['col']) $capital_info['col'] = $location->col;
-    }
-    // Render the capital.
-    $x = $capital_info['col'] * $cell_size;
-    $y = $capital_info['row'] * $cell_size;
-    MapImage::create_cell($image, $icon_size, $spritesheet, reset($sheet['tiles']['capital']), $x, $y);
 
     // Draw grid lines and letters/numbers.
     for ($r = 1; $r <= $num_rows; $r++) {
       $y = $r * $cell_size;
       imageline($image, ($cell_size / 4) * 3, $y, $width, $y, $gray);
       // Numbers
-      $x = ($r < 10) ? 27 : 2;
-      imagettftext($image, 30, 0, $x, $y + $cell_size - 16, $black, RPG_SERVER_ROOT.'/icons/RobotoMono-Regular.ttf', $r);
+      $row_num = $info['row_lo'] + $r - 1;
+      $x = ($row_num < 10) ? 41 : (($row_num < 100) ? 22 : 0);
+      imagettftext($image, 26, 0, $x, $y + $cell_size - 16, $black, RPG_SERVER_ROOT.'/icons/RobotoMono-Regular.ttf', $row_num);
     }
 
     for ($c = 1; $c <= $num_cols; $c++) {
       $x = $c * $cell_size;
       imageline($image, $x, ($cell_size / 4) * 3, $x, $height, $gray);
       // Letters
-      imagettftext($image, 30, 0, $x + 20, $cell_size - 10, $black, RPG_SERVER_ROOT.'/icons/RobotoMono-Regular.ttf', Location::get_letter($c));
+      $col_num = $info['col_lo'] + $c - 1;
+      imagettftext($image, 30, 0, $x + 10, $cell_size - 10, $black, RPG_SERVER_ROOT.'/icons/RobotoMono-Regular.ttf', Location::get_letter($col_num));
     }
 
     // Output the image.
@@ -143,6 +158,7 @@ class MapImage {
     $list['beanstalk'] = array('beanstalk');
     $list['bridge'] = array('bridge');
     $list['canyon'] = array('canyon', 'gulch', 'gorge', 'ravine', 'crevice', 'chasm', 'ridge', 'glen', 'cleft', 'crag', 'bluff', 'abyss');
+    $list['capital'] = array('capital');
     $list['castle'] = array('castle', 'fort', 'palace', 'fortress', 'stronghold', 'keep', 'citadel', 'empire', 'kingdom');
     $list['cave'] = array('dungeon', 'cave', 'lair', 'cavern', 'hollow', 'den', 'hole', 'tunnels', 'hideout', 'grotto');
     $list['church'] = array('cathedral', 'church', 'sanctuary', 'library');
