@@ -12,7 +12,7 @@ class Quest extends RPGEntitySaveable {
   public $stars;
   public $created;
   public $active;
-  public $permanent; // Always available.
+  public $completed;
   public $reward_gold;
   public $reward_exp;
   public $reward_fame;
@@ -25,13 +25,14 @@ class Quest extends RPGEntitySaveable {
   public $success_rate;
   public $death_rate;
   public $kit_id; // ID of the Kit item being used on the quest.
+  public $guild_limit;
   
   // Protected
   protected $_location;
   protected $_kit;
 
   // Private vars
-  static $fields_int = array('stars', 'created', 'reward_gold', 'reward_exp', 'reward_fame', 'duration', 'cooldown', 'party_size_min', 'party_size_max', 'level', 'success_rate', 'death_rate');
+  static $fields_int = array('stars', 'created', 'reward_gold', 'reward_exp', 'reward_fame', 'duration', 'cooldown', 'party_size_min', 'party_size_max', 'level', 'success_rate', 'death_rate', 'guild_limit');
   static $db_table = 'quests';
   static $default_class = 'Quest';
   static $primary_key = 'qid';
@@ -39,6 +40,8 @@ class Quest extends RPGEntitySaveable {
   // Constants
   const FILENAME_QUEST_NAMES_ORIGINAL = '/bin/json/original/quest_names.json';
   const FILENAME_QUEST_NAMES = '/bin/json/quest_names.json';
+
+  const MAX_COUNT = 6;
 
   const TYPE_EXPLORE = 'explore';
   const TYPE_TRAIN = 'train';
@@ -241,6 +244,8 @@ class Quest extends RPGEntitySaveable {
     $channel_data = array('text' => array());
     
     if ($success) {
+      // Mark the quest as completed.
+      $this->completed = true;
       $quest_data['success_msg'] = 'SUCCESS!';
       $quest_data['text'][] = $this->name .' was completed.';
       $reward_gold = $this->get_reward_gold($guild, $adventurers, $kit);
@@ -296,9 +301,7 @@ class Quest extends RPGEntitySaveable {
       $map = Map::load(array('season' => $season->sid));
       MapImage::generate_image($map);
 
-      // Generate new Quests for the revealed location.
-      // $quests = Quest::generate_quests($location);
-
+      // If the location has a name, we found a non-empty spot.
       if (!empty($location->name)) {
         $quest_data['text'][] = "You discovered ".$location->get_display_name().".";
         $quest_data['text'][] = '';
@@ -327,24 +330,30 @@ class Quest extends RPGEntitySaveable {
     // Consume the kit item.
     if (!empty($kit)) $kit->delete();
 
-    // Check if we need to reactivate this quest.
-    $this->agid = 0;
-    $this->gid = 0;
-    $cooldown = 0;
-    // Reactive if the quest is permanent or if the guild failed to complete it.
-    if ($this->permanent || !$success) {
-      // Create a temporary cooldown if it was a failed quest attempt.
-      if (!$success) $cooldown = (60 * 60) * ($this->stars * rand(3, 6));
-      // If it needs a cooldown before activation, remember it.
-      else if (!empty($this->cooldown)) $cooldown = $this->cooldown;
-      // If there's no cooldown, it's instantly active.
-      if ($cooldown == 0) $this->active = true;
+    // If this is an exploration quest, we can delete it.
+    if ($this->type == Quest::TYPE_EXPLORE) {
+      $this->delete();
     }
-    $this->save();
+    // Check if we need to reactivate this quest.
+    else {
+      $this->agid = 0;
+      // $this->gid = 0;
+      $cooldown = 0;
+      
+      // Reactivate if the guild failed to complete it.
+      if (!$success) {
+        // Create a temporary cooldown if it was a failed quest attempt.
+        $cooldown = (60 * 60) * ($this->stars * rand(3, 6));
+        // If there's no cooldown, it's instantly active.
+        if ($cooldown == 0) $this->active = true;
+      }
 
-    // If a cooldown was set, we need to queue up the activation.
-    if (!empty($cooldown)) $this->queue( $cooldown );
+      // Save before implementing the cooldown.
+      $this->save();
 
+      // If a cooldown was set, we need to queue up the activation.
+      if (!empty($cooldown)) $this->queue( $cooldown );
+    }
 
     // Get attachment to display for Quest.
     $quest_message = $this->get_quest_result_as_message($quest_data);
@@ -466,6 +475,7 @@ class Quest extends RPGEntitySaveable {
     
     $quests = array();
     if ($num_quests <= 0) $num_quests = rand(1, 3) + 1;
+
     // For now, generate a number of quests = star rating.
     for ($i = 0; $i < $num_quests; $i++) {
       // Determine the type.
@@ -479,6 +489,29 @@ class Quest extends RPGEntitySaveable {
     if ($save_json) Quest::save_quest_names_list($json);
 
     return $quests;
+  }
+
+  public static function generate_personal_quest ($guild, $location, &$json = NULL, $original_json = NULL, $save = true) {
+    if (empty($location) || !is_a($location, 'Location')) return false;
+
+    $save_json = empty($json);
+    if (empty($json)) $json = Quest::load_quest_names_list();
+    if (empty($original_json)) $original_json = Quest::load_quest_names_list(true);
+    
+      // Determine the type.
+    $type = Quest::randomize_quest_types($location->type, array(Quest::TYPE_BOSS));
+
+    // Generate the quest.
+    $quest = Quest::generate_quest_type($location, $type, $json, $original_json, false);
+
+    // Assign the quest to the guild.
+    $quest->gid = $guild->gid;
+    if ($save) $quest->save();
+
+    // Save JSON file.
+    if ($save_json) Quest::save_quest_names_list($json);
+
+    return $quest;
   }
 
   public static function generate_quest_type ($location, $type, &$json = NULL, $original_json = NULL, $save = true) {
@@ -496,12 +529,13 @@ class Quest extends RPGEntitySaveable {
 
     $data = array(
       'locid' => $location->locid,
-      'permanent' => false,
+      'completed' => false,
       'stars' => $stars,
       'created' => time(),
       'type' => $type,
       'active' => true,
       'cooldown' => 0,
+      'guild_limit' => 1,
     );
 
     // Generate the name and icon.
@@ -559,6 +593,7 @@ class Quest extends RPGEntitySaveable {
         $data['reward_fame'] = ($data['reward_fame'] * 3) + 5;
         $data['duration'] = (rand(4, 7) * $stars) * (24*$hours);
         $data['success_rate'] = $data['success_rate'] - rand(8, 15);
+        $data['guild_limit'] = rand(2, 4);
         break;
 
       case Quest::TYPE_FIGHT:
@@ -634,7 +669,7 @@ class Quest extends RPGEntitySaveable {
     return $value;
   }
 
-  public static function randomize_quest_types ($loc_type) {
+  public static function randomize_quest_types ($loc_type, $exclude_types = array()) {
     // Set probabilities based on location type.
     $loc_types = Quest::quest_probabilities();
 
@@ -643,6 +678,8 @@ class Quest extends RPGEntitySaveable {
 
     // Populate a list full of the types based on the probability given.
     foreach ($loc_types[$loc_type] as $type => $prob) {
+      if (in_array($type, $exclude_types)) continue;
+
       $count = $prob * 1000;
       for ($i = 0; $i < $count; $i++) {
         $list[] = $type;

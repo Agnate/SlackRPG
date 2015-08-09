@@ -517,23 +517,26 @@ class RPGSession {
     // Load the player and fail out if they have not created a Guild.
     if (!($player = $this->load_current_player())) return;
 
+    $response = array();
+
     // If no Quest is selected, list the available ones.
     if (empty($args) || empty($args[0])) {
-      // Load up any active Quests.
-      $quests = Quest::load_multiple(array('active' => true));
+      // Load up all Global Quests.
+      // $quests = Quest::load_multiple(array('active' => true));
 
-      if (empty($quests)) {
-        $this->respond('There are no quests to undertake.');
-        return FALSE;
-      }
-
-      $response = array();
-      // $response[] = Display::get_difficulty_legend();
-      // $response[] = '';
+      // if (empty($quests)) {
+      //   $this->respond('There are no quests to undertake. To open up quests, new locations need to be discovered. Type `explore` to start exploring the map.');
+      //   return FALSE;
+      // }
+      
       $response[] = 'To embark on a Quest, type: `quest [QUEST ID] [MODIFIER ITEM ID (optional)] [ADVENTURER NAMES (comma-separated)]` (example: `quest q23 `)';
       $response[] = '';
       $response[] = '*Quests available*:';
-      foreach ($quests as $quest) {
+      $private_quests = $player->get_quests();
+      $private_active_quests = array();
+      foreach ($private_quests as $quest) {
+        if ($quest->active == false || !empty($quest->agid)) continue;
+        $private_active_quests[] = $quest;
         // Get the best adventurers available for questing.
         $best_adventurers = $player->get_best_adventurers($quest->party_size_max);
         $success_rate = $quest->get_success_rate($player, $best_adventurers, NULL);
@@ -542,6 +545,7 @@ class RPGSession {
         // $response[] = '`q'.$quest->qid.'` — '. Display::get_difficulty_stars($quest->stars, $success_rate) . ($death_rate > 0 ? ' — :skull:' : ''). ' — '. Display::show_adventurer_count($quest->get_party_size()) .' — '. $quest->name;
         $response[] = '`q'.$quest->qid.'` _'. $quest->get_display_name(false) .'_ — '. Display::get_difficulty_stars($quest->stars, $success_rate) . ($death_rate > 0 ? ' — :skull:' : ''). ' — '. Display::show_adventurer_count($quest->get_party_size());
       }
+      if (count($private_active_quests) <= 0) $response[] = '_None_';
 
       // Also show the list of available item modifiers.
       $response[] = '';
@@ -620,8 +624,6 @@ class RPGSession {
     }
     // Get the list of adventurers.
     $adventurers = $success['data']['adventurers'];
-
-    $response = array();
 
     // Check the party size requirement.
     $num_adventurers = count($adventurers);
@@ -2003,6 +2005,69 @@ class RPGSession {
 
     // Load the player and fail out if they have not created a Guild.
     if (!($player = $this->load_current_player())) return;
+
+
+
+    // Test generating personal quests.
+    // $output_information = true;
+    // $num_quests = 0;
+
+
+    // $season = Season::current();
+    // $map = $season->get_map();
+    
+    // // Load up the list of quest names.
+    // $json = Quest::load_quest_names_list();
+    // $original_json = Quest::load_quest_names_list(true);
+
+    // // Get list of all revealed locations.
+    // $types = Location::types();
+    // $locations = Location::load_multiple(array('mapid' => $map->mapid, 'type' => $types, 'revealed' => true));
+    // $original_locations = $locations;
+
+    // // If there are no revealed locations, we can't generate quests yet.
+    // if (empty($locations)) {
+    //   if ($output_information) print "No new quests were created because no locations have been revealed.\n";
+    //   return;
+    // }
+
+    // // Randomly choose a number of personal quests for all Guilds.
+    // if ($num_quests <= 0) $num_quests = rand(2, 4);
+
+    // // Get all the active Guilds this season.
+    // $time = time();
+    // $guilds = Guild::load_multiple(array('season' => $season->sid));
+
+    // // Generate quests for each Guild.
+    // foreach ($guilds as $guild) {
+    //   $quests = array();
+
+    //   // Check the number of current quests, as we do not want to exceed the max quest allowance.
+    //   $cur_quests = $guild->get_quests();
+    //   $quest_count = count($cur_quests);
+    //   $num_new_quests = min($num_quests, Quest::MAX_COUNT - $quest_count);
+    //   // If we've hit or exceeded the limit, do not create any quests.
+    //   if ($num_new_quests <= 0) {
+    //     if ($output_information) print $guild->name.' has hit or exceeded the quest limit ('.Quest::MAX_COUNT.').';
+    //     continue;
+    //   }
+
+    //   for ($i = 0; $i < $num_new_quests; $i++) {
+    //     // Choose a location to theme the quest with.
+    //     if (empty($locations)) $locations = $original_locations;
+    //     $location = array_splice($locations, array_rand($locations), 1);
+    //     $location = array_pop($location);
+    //     // If we still don't have a location, there's a problem so break out.
+    //     if (empty($location)) break;
+    //     // Generate the quest.
+    //     $gquest = Quest::generate_personal_quest($guild, $location, $json, $original_json, true);
+    //     if (!empty($gquest)) $quests[] = $gquest;
+    //   }
+
+    //   if ($output_information) print 'Generated '.count($quests).' quest(s) for '.$guild->name.'.';
+    // }
+
+    // return false;
 
 
     // Generate a bunch of quests to balance gold and exp.

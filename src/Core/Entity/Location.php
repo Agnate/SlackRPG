@@ -218,15 +218,15 @@ class Location extends RPGEntitySaveable {
       // If we can't calculate the distance (or it's the capital), star-rating should be zero.
       if ($dist === 0) return;
 
-      // 0-2.5 = 1-star
-      // 2.6-5 = 2-star
-      // 5.1-7.5 = 3-star
-      // 7.6-10 = 4-star
-      // 10+ = 5-star
-      if ($dist <= 2.5) $this->star_max = 1;
-      else if ($dist <= 5) $this->star_max = 2;
-      else if ($dist <= 7.5) $this->star_max = 3;
-      else if ($dist <= 10) $this->star_max = 4;
+      // 0-5 = 1-star
+      // 5.1-7.5 = 2-star
+      // 7.6-10 = 3-star
+      // 10-13 = 4-star
+      // 13+ = 5-star
+      if ($dist <= 5) $this->star_max = 1;
+      else if ($dist <= 7.5) $this->star_max = 2;
+      else if ($dist <= 10) $this->star_max = 3;
+      else if ($dist <= 13) $this->star_max = 4;
       else $this->star_max = 5;
 
       if ($this->star_max > 1) $this->star_min = $this->star_max - rand(0, 1);

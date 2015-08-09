@@ -76,6 +76,8 @@ $destroying = array('destroying', 'crushing', 'demolishing', 'decimating', 'obli
 $handle = array('Kill', 'Capture', 'Dispose of', 'Take care of', 'Eliminate', 'Destroy', 'Murder', 'Relocate', 'Stop', 'Restrain', 'Arrest', 'Hold off');
 $prevent = array('Prevent', 'Stop', 'Halt', 'Interrupt', 'Hamper', 'Hinder', 'Impede', 'Thwart');
 
+
+
 /* ===================================================================================
     __    ____  _________  ______________  _   __   _   _____    __  ______________
    / /   / __ \/ ____/   |/_  __/  _/ __ \/ | / /  / | / /   |  /  |/  / ____/ ___/
@@ -186,7 +188,7 @@ $quest_names = array(
     '!creature' => array('parts' => array($creature_adjectives, $creature_names)),
     'format' => array(
       'Eliminate the !creature',
-      'Collect a specimen of !creature for further study',
+      'Collect a specimen of !creature, last spotted near !fullname, for further study',
     ),
   ),
   'boss' => array(
@@ -199,7 +201,7 @@ $quest_names = array(
     '!destroying' => array('parts' => array($destroying)),
     'format' => array(
       '!handle the !boss that is !affecting !innocents near !fullname',
-      '!prevent the !boss from !destroying !nature_destroyable',
+      '!prevent the !boss from !destroying !nature_destroyable near !fullname',
     ),
   ),
   'special' => array(
@@ -213,60 +215,7 @@ $quest_names = array(
       'Sneak into the !fullname and steal the !item',
       'Close a magical portal found near !fullname',
       'Collect the bounty on !person who was spotted near !fullname',
-      'Negotiate a treaty with the !family Family',
+      'Negotiate a treaty with the !family Family for safe passage through !fullname',
     ),
   ),
 );
-
-
-
-
-
-// ICON OPTIONS
-// ===============
-// Structures:
-//
-// graveyard/tomb
-// portal/gateway
-// crystal/mineral
-// obelisk
-// standing stones/statues
-// throne/dias
-// bridge
-// castle ruins
-// shrine
-// pyramid
-// mines
-// moai
-
-// Landmarks:
-//
-// lake
-// oasis
-// giant tree
-// beanstalk
-// volcano
-// mountain
-// lava pool
-// magma crust
-// dunes
-// caves
-// waterfall
-// flower field
-// fossils
-
-// Domiciles:
-//
-// farm house
-// mansion
-// village
-// town
-// fort
-// castle
-// tower
-// library/archive
-// city-castle
-
-// Other/Special:
-//
-// floating island

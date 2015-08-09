@@ -22,6 +22,7 @@ class Guild extends RPGEntitySaveable {
   protected $_queued_upgrades;
   protected $_bonus;
   protected $_items;
+  protected $_quests;
 
   // Private vars
   static $fields_int = array('season', 'created', 'updated', 'gold', 'fame', 'adventurer_limit');
@@ -328,6 +329,15 @@ class Guild extends RPGEntitySaveable {
 
     // Save the item.
     return $item->save();
+  }
+
+  public function load_quests () {
+    $this->_quests = Quest::load_multiple(array('gid' => $this->gid, 'completed' => false));
+  }
+
+  public function get_quests () {
+    if (!is_array($this->_quests)) $this->load_quests();
+    return $this->_quests;
   }
 
   

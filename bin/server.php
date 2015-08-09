@@ -74,7 +74,7 @@ function timer_refresh_quests () {
     $next_quest_refresh = strtotime('+1 day', $next_quest_refresh);
     
     // Remove the available quests.
-    remove_available_quests();
+    // remove_available_quests();
 
     // Generate new quests.
     generate_new_quests();
