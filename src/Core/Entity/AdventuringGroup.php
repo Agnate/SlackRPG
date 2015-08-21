@@ -25,4 +25,20 @@ class AdventuringGroup extends RPGEntitySaveable {
     if (empty($this->created)) $this->created = time();
     if (empty($this->completed)) $this->completed = false;
   }
+
+  public function get_adventurers () {
+    $adventurers = Adventurer::load_multiple(array('agid' => $this->agid));
+    if (empty($adventurers)) return array();
+    return $adventurers;
+  }
+
+  public function get_guild () {
+    return Guild::load(array('gid' => $this->gid));
+  }
+
+  public function get_task () {
+    $class = $this->task_type;
+    $key = $class::$primary_key;
+    return $class::load(array($key => $this->task_id));
+  }
 }

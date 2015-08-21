@@ -52,6 +52,12 @@ function update_version_0_0_0 ($forced = false) {
   $adventurers_table[] = "champion TINYINT(1) NOT NULL";
   $adventurers_table[] = "dead TINYINT(1) NOT NULL";
   $adventurers_table[] = "gender VARCHAR(10) NOT NULL";
+  $adventurers_table[] = "enhancements VARCHAR(255) NOT NULL";
+  $adventurers_table[] = "undying TINYINT(1) NOT NULL";
+  $adventurers_table[] = "revivable TINYINT(1) NOT NULL";
+  $adventurers_table[] = "death_date INT(10) UNSIGNED NOT NULL";
+  $adventurers_table[] = "revivable TINYINT(1) NOT NULL";
+  $adventurers_table[] = "bossed TINYINT(1) NOT NULL";
   $adventurers_table[] = "PRIMARY KEY ( aid )";
   add_update_query( "CREATE TABLE IF NOT EXISTS adventurers (". implode(',', $adventurers_table) .")" );
 
@@ -67,7 +73,7 @@ function update_version_0_0_0 ($forced = false) {
   $quests_table[] = "stars INT(10) UNSIGNED NOT NULL";
   $quests_table[] = "created INT(10) UNSIGNED NOT NULL";
   $quests_table[] = "active TINYINT(1) NOT NULL";
-  $quests_table[] = "permanent TINYINT(1) NOT NULL";
+  $quests_table[] = "completed TINYINT(1) NOT NULL";
   $quests_table[] = "reward_gold INT(10) UNSIGNED NOT NULL";
   $quests_table[] = "reward_exp INT(10) UNSIGNED NOT NULL";
   $quests_table[] = "reward_fame INT(10) UNSIGNED NOT NULL";
@@ -80,6 +86,8 @@ function update_version_0_0_0 ($forced = false) {
   $quests_table[] = "success_rate INT(10) UNSIGNED NOT NULL";
   $quests_table[] = "death_rate INT(10) UNSIGNED NOT NULL";
   $quests_table[] = "kit_id INT(11) UNSIGNED NOT NULL";
+  $quests_table[] = "multiplayer TINYINT(1) NOT NULL";
+  $quests_table[] = "boss_aid INT(11) UNSIGNED NOT NULL";
   $quests_table[] = "PRIMARY KEY ( qid )";
   add_update_query( "CREATE TABLE IF NOT EXISTS quests (". implode(',', $quests_table) .")" );
 
@@ -126,6 +134,8 @@ function update_version_0_0_0 ($forced = false) {
   $location_table[] = "star_min INT(10) UNSIGNED NOT NULL";
   $location_table[] = "star_max INT(10) UNSIGNED NOT NULL";
   $location_table[] = "keywords VARCHAR(255) NOT NULL";
+  $location_table[] = "map_icon VARCHAR(255) NOT NULL";
+  $location_table[] = "open TINYINT(1) NOT NULL";
   $location_table[] = "PRIMARY KEY ( locid )";
   add_update_query( "CREATE TABLE IF NOT EXISTS locations (". implode(',', $location_table) .")" );
 
@@ -178,6 +188,8 @@ function update_version_0_0_0 ($forced = false) {
   $item_table[] = "rarity_hi INT(10) UNSIGNED NOT NULL";
   $item_table[] = "cost INT(10) UNSIGNED NOT NULL";
   $item_table[] = "for_sale TINYINT(1) NOT NULL";
+  $item_table[] = "on_hold TINYINT(1) NOT NULL";
+  $item_table[] = "extra_data VARCHAR(255) NOT NULL";
   $item_table[] = "PRIMARY KEY ( iid )";
   add_update_query( "CREATE TABLE IF NOT EXISTS items (". implode(',', $item_table) .")" );
 
@@ -285,6 +297,7 @@ function update_version_0_0_0 ($forced = false) {
   $adventurer_classes[] = array(':name_id' => "oracle", ':name' => "Oracle", ':icon' => "", ':class_name' => "");
   $adventurer_classes[] = array(':name_id' => "juggernaut", ':name' => "Juggernaut", ':icon' => "", ':class_name' => "");
   //$adventurer_classes[] = array(':name_id' => "artificer", ':name' => "Artificer", ':icon' => "", ':class_name' => "");
+  $adventurer_classes[] = array(':name_id' => "undead", ':name' => "Undead", ':icon' => "", ':class_name' => "");
   //$adventurer_classes[] = array(':name_id' => "", ':name' => "", ':icon' => "", ':class_name' => "");
   foreach ($adventurer_classes as $adventurer_class) {
     add_update_query("INSERT INTO adventurer_classes (name_id, name, icon, class_name) VALUES (:name_id, :name, :icon, :class_name)", $adventurer_class);
@@ -316,7 +329,7 @@ function update_version_0_0_0 ($forced = false) {
   $item_templates[] = array(':name_id' => 'herb_green', ':name' => 'Green Herb', ':icon' => '', ':type' => 'herb', ':rarity_lo' => 1, ':rarity_hi' => 2, ':cost' => 0, ':for_sale' => false);
   $item_templates[] = array(':name_id' => 'herb_red', ':name' => 'Red Herb', ':icon' => '', ':type' => 'herb', ':rarity_lo' => 3, ':rarity_hi' => 4, ':cost' => 0, ':for_sale' => false);
   
-  $item_templates[] = array(':name_id' => 'revival_fenixdown', ':name' => 'Fenix Down', ':icon' => '', ':type' => 'revival', ':rarity_lo' => 1, ':rarity_hi' => 5, ':cost' => 0, ':for_sale' => false);
+  $item_templates[] = array(':name_id' => 'revival_phoenixfeather', ':name' => 'Phoenix Feather', ':icon' => '', ':type' => 'revival', ':rarity_lo' => 1, ':rarity_hi' => 5, ':cost' => 0, ':for_sale' => false);
   
   $item_templates[] = array(':name_id' => 'kit_firstaid', ':name' => 'First Aid Kit', ':icon' => '', ':type' => 'kit', ':rarity_lo' => 0, ':rarity_hi' => 5, ':cost' => 500, ':for_sale' => true);
   $item_templates[] = array(':name_id' => 'kit_advsupplies', ':name' => 'Adventuring Supplies', ':icon' => '', ':type' => 'kit', ':rarity_lo' => 0, ':rarity_hi' => 5, ':cost' => 350, ':for_sale' => true);
@@ -326,6 +339,8 @@ function update_version_0_0_0 ($forced = false) {
   $item_templates[] = array(':name_id' => 'kit_apprentice', ':name' => 'Magus Apprentice', ':icon' => '', ':type' => 'kit', ':rarity_lo' => 0, ':rarity_hi' => 5, ':cost' => 1000, ':for_sale' => true);
   $item_templates[] = array(':name_id' => 'kit_herbalist', ':name' => 'Herbalist Assistant', ':icon' => '', ':type' => 'kit', ':rarity_lo' => 0, ':rarity_hi' => 5, ':cost' => 150, ':for_sale' => true);
   $item_templates[] = array(':name_id' => 'kit_shepherd', ':name' => 'Shepherd', ':icon' => '', ':type' => 'kit', ':rarity_lo' => 0, ':rarity_hi' => 5, ':cost' => 150, ':for_sale' => true);
+
+  $item_templates[] = array(':name_id' => 'relic_soulstone', ':name' => 'Soul Stone', ':icon' => '', ':type' => 'relic', ':rarity_lo' => 3, ':rarity_hi' => 5, ':cost' => 0, ':for_sale' => false);
 
   //$item_templates[] = array(':name_id' => '', ':name' => '', ':icon' => '', ':type' => '', ':rarity_lo' => 0, ':rarity_hi' => 5, ':cost' => 0, ':for_sale' => false);
   foreach ($item_templates as $item_template) {

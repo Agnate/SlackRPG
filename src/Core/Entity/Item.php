@@ -13,6 +13,8 @@ class Item extends RPGEntitySaveable {
   public $rarity_hi;
   public $cost;
   public $for_sale;
+  public $on_hold;
+  public $extra_data;
 
   // Protected
   protected $_description;
@@ -42,7 +44,7 @@ class Item extends RPGEntitySaveable {
     parent::__construct($data);
 
     // Load up the item description.
-    $this->_description = ItemDesc::get($this);
+    $this->_description = ItemDesc::get($this, $this->extra_data);
     if (empty($this->for_sale)) $this->for_sale = false;
 
     // Load up the bonus objects.
@@ -50,7 +52,8 @@ class Item extends RPGEntitySaveable {
   }
 
   public function get_display_name ($bold = true) {
-    return (!empty($this->icon) ? $this->icon.' ' : '').($bold ? '*' : '').$this->name.($bold ? '*' : '');
+    if ($this->name_id == 'relic_soulstone') $suffix = ' ('.$this->extra_data.')';
+    return (!empty($this->icon) ? $this->icon.' ' : '').($bold ? '*' : '').$this->name.(isset($suffix) ? $suffix : '').($bold ? '*' : '');
   }
 
   public function get_description () {
@@ -74,5 +77,42 @@ class Item extends RPGEntitySaveable {
 
     // Apply item modifiers.
     ItemBonus::apply_bonus($this);
+  }
+
+  /**
+   * This function runs when the Item is added to a Guild's inventory.
+   */
+  public function on_add_to_inventory ($guild) {
+    // For Soul Stones, add the Undead Adventurer to the Guild.
+    if ($this->name_id == 'relic_soulstone') {
+      // Check if this Undead Adventurer exists yet.
+      $adventurer_data = array('gid' => 0, 'name' => $this->extra_data, 'class' => AdventurerClass::UNDEAD);
+      $adventurer = Adventurer::load($adventurer_data);
+      // If we cannot find an adventurer by this name, make a new one.
+      if (empty($adventurer)) $adventurer = Adventurer::generate_undead_adventurer($this->extra_data, false);
+      // Assign the adventurer to this Guild.
+      $adventurer->gid = $guild->gid;
+      $adventurer->available = false;
+      $adventurer->dead = false;
+      $adventurer->undying = true;
+      $adventurer->set_adventurer_class(AdventurerClass::UNDEAD);
+      $adventurer->save();
+    }
+  }
+
+  /**
+   * This function runs when the Item is removed from a Guild's inventory.
+   */
+  public function on_remove_from_inventory ($guild) {
+    // For Soul Stones, remove the Undead Adventurer from the Guild.
+    if ($this->name_id == 'relic_soulstone') {
+      $adventurer_data = array('gid' => $guild->gid, 'name' => $this->extra_data, 'class' => AdventurerClass::UNDEAD);
+      $adventurer = Adventurer::load($adventurer_data);
+      // If we found the adventurer, remove them from the Guild.
+      if (!empty($adventurer)) {
+        $adventurer->gid = 0;
+        $adventurer->save();
+      }
+    }
   }
 }

@@ -24,15 +24,23 @@ $challenge_texts['attack'] = array(
   'attack' => array(
     'normal' => array(
       "!wchamp and !lchamp clash together with the steel of their weapons ringing loudly throughout the arena.",
+      "Both champions lunge at each other but both attacked empty air.",
+      "!wchamp flings a throwing dagger at !lchamp, but !lchamp brings !lposspronoun blade up while attempting to strike to deflect the dagger instead.",
+      "Both champions throw shurikens at each other, but the shurikens collide and clatter to the ground.",
     ),
     'crit' => array(
       "!wchamp and !lchamp clash together with the steel of their weapons ringing loudly throughout the arena, but !wchamp overpowers !lchamp.",
+      "Both champions lunge at each other. !lchamp attacks empty air as !wchamp slides !wposspronoun rapier through the opening that !lchamp left.",
+      "!wchamp flings a throwing dagger at !lchamp, but !lchamp can't bring !lposspronoun blade up fast enough to deflect the dagger.",
+      "Both champions throw shurikens at each other. !lchamp's shuriken almost knocks !wchamp's shuriken off course, but it still lodges itself in !lchamp's arm.",
     ),
   ),
   'defend' => array(
     'normal' => array(
       "!wchamp raises !wposspronoun shield just in time to deflect !lchamp's strike.",
       "!wchamp blocks !lchamp's thrust with the flat of !wposspronoun blade.",
+      "!lchamp swings !lposspronoun greataxe at !wchamp. !wchamp plants !wposspronoun halberd into the ground to brace against the mighty swing, grinding the greataxe to a halt.",
+      "!wchamp twirls !wposspronoun quarterstaff just in time to knock away the series of darts flying from !lchamp's position.",
     ),
     'miss' => array(
       "!wchamp raises !wposspronoun shield but !lchamp's strike slips past !wposspronoun defenses.",

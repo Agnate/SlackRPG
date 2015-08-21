@@ -1,7 +1,7 @@
 <?php
 
 class ItemDesc {
-  public static function get ($item) {
+  public static function get ($item, $extra_data = NULL) {
     switch ($item->name_id) {
       case 'powerstone_shaman': return 'The '.$item->name.' transforms one of your Adventurers into a Shaman. Shamans reduce your death rate on Quests.';
       case 'powerstone_brigand': return 'The '.$item->name.' transforms one of your Adventurers into a Brigand. Brigands increase the amount of gold and items you find.';
@@ -37,6 +37,8 @@ class ItemDesc {
       case 'kit_apprentice': return $item->name.' is a hired helper that increases the chances of finding Powerstones when Exploring and Questing (after which they will leave having fulfilled their duty).';
       case 'kit_herbalist': return $item->name.' is a hired helper that increases the chances of finding Herbs when Exploring and Questing (after which they will leave having fulfilled their duty).';
       case 'kit_shepherd': return $item->name.' is a hired helper that increases the chances of finding Animals when Exploring and Questing (after which they will leave having fulfilled their duty).';
+
+      case 'relic_soulstone': return $item->name.' contains the soul of '.(empty($extra_data) ? 'a fallen Adventurer' : $extra_data).' and is used to control their Undead body. This Adventurer can never die and does not count toward your Adventurer limit.';
     }
     return '';
   }

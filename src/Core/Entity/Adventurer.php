@@ -18,6 +18,10 @@ class Adventurer extends RPGEntitySaveable {
   public $dead;
   public $gender;
   public $enhancements;
+  public $undying;
+  public $death_date;
+  public $revivable;
+  public $bossed;
 
   // Protected
   protected $_bonus;
@@ -25,7 +29,7 @@ class Adventurer extends RPGEntitySaveable {
   protected $_enhancements;
 
   // Private vars
-  static $fields_int = array('created', 'level', 'popularity', 'exp', 'exp_tnl');
+  static $fields_int = array('created', 'level', 'popularity', 'exp', 'exp_tnl', 'death_date');
   static $db_table = 'adventurers';
   static $default_class = 'Adventurer';
   static $primary_key = 'aid';
@@ -48,6 +52,7 @@ class Adventurer extends RPGEntitySaveable {
     if (empty($this->available)) $this->available = false;
     if (empty($this->champion)) $this->champion = false;
     if (empty($this->exp_tnl)) $this->exp_tnl = $this->calculate_exp_tnl();
+    if (empty($this->revivable)) $this->revivable = false;
 
     // Load up the class and bonus objects.
     $this->calculate_bonus();
@@ -55,7 +60,7 @@ class Adventurer extends RPGEntitySaveable {
 
   public function get_display_name ($bold = true, $include_champion = true, $include_class = true, $include_gender = true, $include_icon = true) {
     $adventurer_class = $this->get_adventurer_class();
-    return ($include_champion && $this->champion ? ':crown:' : '').($include_icon ? $this->icon.' ' : '').($include_class && !empty($adventurer_class) ? $adventurer_class->get_display_name().' ' : '').($bold ? '*' : '').$this->name.($include_gender ? ($this->gender == Adventurer::GENDER_MALE ? ' ♂' : ' ♀') : '').($bold ? '*' : '');
+    return ($include_champion && $this->champion ? ':crown:' : '').($include_icon ? $this->icon.' ' : '').($include_class && !empty($adventurer_class) && $adventurer_class->name_id != AdventurerClass::UNDEAD ? $adventurer_class->get_display_name().' ' : '').($bold ? '*' : '').$this->name.($include_gender ? ($this->gender == Adventurer::GENDER_MALE ? ' ♂' : ' ♀') : '').($bold ? '*' : '');
   }
 
   public function get_pronoun ($capitalize = false) {
@@ -157,8 +162,14 @@ class Adventurer extends RPGEntitySaveable {
   public function set_adventurer_class ($class) {
     $class_name = is_string($class) ? $class : $class->name_id;
     $this->class = $class_name;
+    // Refresh the adventurer's icon.
+    $this->refresh_icon();
     // Sync up the adventurer class.
     $this->calculate_bonus();
+  }
+
+  public function refresh_icon () {
+    $this->icon = ':rpg-adv-'.$this->gender.(!empty($this->class) ? '-'.$this->class : '').':';
   }
 
   public function load_bonus () {
@@ -236,6 +247,7 @@ class Adventurer extends RPGEntitySaveable {
       array('bonus' => Bonus::QUEST_REWARD_FAME, 'value' => 0.01, 'random_quest' => TRUE),
       array('bonus' => Bonus::QUEST_REWARD_EXP, 'value' => 0.01, 'random_quest' => TRUE),
       array('bonus' => Bonus::QUEST_REWARD_ITEM, 'value' => 0.01, 'random_quest' => TRUE),
+      array('bonus' => Bonus::QUEST_REWARD_SPECIAL_ITEM, 'value' => 0.01, 'random_quest' => TRUE),
 
       array('bonus' => Bonus::ITEM_TYPE_FIND_RATE, 'value' => 0.01, 'random_item' => TRUE),
 
@@ -319,6 +331,13 @@ class Adventurer extends RPGEntitySaveable {
     return $list;
   }
 
+  public function get_name_parts () {
+    $name = explode(' ', $this->name);
+    $first = array_shift($name);
+    $last = implode(' ', $name);
+    return compact('first', 'last');
+  }
+
 
 
   /* =================================
@@ -330,16 +349,116 @@ class Adventurer extends RPGEntitySaveable {
                                      
   ==================================== */
 
-  public static function generate_new_adventurer ($allow_class = false, $save_adventurer = true, &$json = null) {
-    // Load up the list of adventurer names.
-    $save_json = empty($json);
-    if (empty($json)) $json = Adventurer::load_adventurer_names_list();
+  /**
+   * If no season is set, get all dead adventurers ever.
+   */
+  public static function get_all_dead_adventurers ($bossed = NULL, $season_id = NULL) {
+    $data = array('dead' => true, 'undying' => false, 'revivable' => false);
+    if ($bossed !== NULL) $data['bossed'] = (bool) $bossed;
+    $adventurers = Adventurer::load_multiple($data);
+    
+    if (empty($adventurers)) return array();
 
+    return $adventurers;
+  }
+
+  public static function generate_new_adventurer ($allow_class = false, $save_adventurer = true, &$json = null) {
     // Get list of adventurer classes.
     $class_ids = AdventurerClass::all_classes();
 
     // Determine the gender (needed for first name and icon).
     $gender = rand(1, 100) <= 50 ? Adventurer::GENDER_MALE : Adventurer::GENDER_FEMALE;
+
+    // Generate the Adventurer name.
+    $name_parts = Adventurer::generate_adventurer_name($gender, $json);
+    $name = $name_parts['first'] .' '. $name_parts['last'];
+
+    // Determine if they have a special class.
+    $adventurer_class_id = $allow_class ? $class_ids[rand(0, count($class_ids) - 1)] : '';
+
+    // Get the icon.
+    $icon = ':rpg-adv-'.$gender.':';
+    if (!empty($adventurer_class_id)) $icon = ':rpg-adv-'.$gender.'-'.$adventurer_class_id.':';
+    // $icon_i = rand(0, count($json['icons']) - 1);
+    // $icon = $json['icons'][$icon_i];
+    // unset($json['icons'][$icon_i]);
+    // $json['icons'] = array_values($json['icons']);
+
+    $adventurer_data = array(
+      'gender' => $gender,
+      'name' => $name,
+      'icon' => $icon,
+      'class' => $adventurer_class_id,
+      'created' => time(),
+      'available' => true,
+      'level' => 1,
+      'popularity' => 0,
+      'exp' => 0,
+    );
+    $adventurer = new Adventurer ($adventurer_data);
+    if ($save_adventurer) $adventurer->save();
+
+    return $adventurer;
+  }
+
+  public static function generate_undead_adventurer ($name = NULL, $save_adventurer = true, &$json = null) {
+    // If there's no name, randomly pick a gender and name.
+    if (empty($name)) {
+      $gender = rand(1, 100) <= 50 ? Adventurer::GENDER_MALE : Adventurer::GENDER_FEMALE;
+      $name_parts = Adventurer::generate_adventurer_name($gender, $json);
+      $name = $name_parts['first'] .' '. $name_parts['last'];
+    }
+    // Determine Gender from first name.
+    else {
+      // Load up the original JSON.
+      $orig_json = Adventurer::load_adventurer_names_list(true);
+      // Get the first name.
+      $names = explode(' ', $name);
+      $first = $names[0];
+
+      // Loop through the names lists to see where the name is found.
+      foreach ($orig_json['first_names'] as $a_gender => $list) {
+        foreach ($list as $f_name) {
+          // If the name matches, set the gender.
+          if ($f_name == $first) {
+            $gender = $a_gender;
+            break 2;
+          }
+        }
+      }
+
+      // If there's still no gender, randomly pick one.
+      if (!isset($gender)) $gender = rand(1, 100) <= 50 ? Adventurer::GENDER_MALE : Adventurer::GENDER_FEMALE;
+    }
+
+    $class = AdventurerClass::UNDEAD;
+    $icon = ':rpg-adv-'.$gender.'-'.$class.':';
+
+    $adventurer_data = array(
+      'gender' => $gender,
+      'name' => $name,
+      'icon' => $icon,
+      'class' => $class,
+      'created' => time(),
+      'undying' => true,
+      'available' => false,
+      'level' => 1,
+      'popularity' => 0,
+      'exp' => 0,
+    );
+
+    $adventurer = new Adventurer ($adventurer_data);
+    if ($save_adventurer) $adventurer->save();
+
+    return $adventurer;
+  }
+
+  public static function generate_adventurer_name ($gender = NULL, &$json = null) {
+    if ($gender === NULL) $gender = rand(1, 100) <= 50 ? Adventurer::GENDER_MALE : Adventurer::GENDER_FEMALE;
+
+    // Load up the list of adventurer names.
+    $save_json = empty($json);
+    if (empty($json)) $json = Adventurer::load_adventurer_names_list();
 
     // Check if there are enough first names and icons.
     $first_name_count = count($json['first_names'][$gender]);
@@ -364,35 +483,10 @@ class Adventurer extends RPGEntitySaveable {
     // unset($json['last_names'][$last_i]);
     // $json['last_names'] = array_values($json['last_names']);
 
-    // Determine if they have a special class.
-    $adventurer_class_id = $allow_class ? $class_ids[rand(0, count($class_ids) - 1)] : '';
-
-    // Get the icon.
-    $icon = ':rpg-adv-'.$gender.':';
-    if (!empty($adventurer_class_id)) $icon = ':rpg-adv-'.$gender.'-'.$adventurer_class_id.':';
-    // $icon_i = rand(0, count($json['icons']) - 1);
-    // $icon = $json['icons'][$icon_i];
-    // unset($json['icons'][$icon_i]);
-    // $json['icons'] = array_values($json['icons']);
-
-    $adventurer_data = array(
-      'gender' => $gender,
-      'name' => $first.' '.$last,
-      'icon' => $icon,
-      'class' => $adventurer_class_id,
-      'created' => time(),
-      'available' => true,
-      'level' => 1,
-      'popularity' => 0,
-      'exp' => 0,
-    );
-    $adventurer = new Adventurer ($adventurer_data);
-    if ($save_adventurer) $adventurer->save();
-
     // Add the names back to the JSON file.
     if ($save_json) Adventurer::save_adventurer_names_list($json);
 
-    return $adventurer;
+    return compact('first', 'last');
   }
 
   /**
@@ -407,13 +501,11 @@ class Adventurer extends RPGEntitySaveable {
     if (empty($json)) $json = Adventurer::load_adventurer_names_list();
 
     // Determine the first and last name.
-    $name = explode(' ', $adventurer->name);
-    $first_name = array_shift($name);
-    $last_name = implode(' ', $name);
-    if (!empty($first_name)) $json['first_names'][$adventurer->gender][] = $first_name;
+    $name_parts = $adventurer->get_name_parts();
+    if (!empty($name_parts['first'])) $json['first_names'][$adventurer->gender][] = $name_parts['first'];
 
     // Add last name to list. (Last names aren't currently deleted from the list, so no need to add the name back yet.)
-    //if (!empty($last_name)) $json['last_names'][] = $last_name;
+    //if (!empty($name_parts['last'])) $json['last_names'][] = $name_parts['last'];
 
     // Add icon back to the icons list.
     if (!empty($adventurer->icon)) $json['icons'][$adventurer->gender][] = $adventurer->icon;

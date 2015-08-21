@@ -10,19 +10,20 @@ class Bonus {
    *   5. Add bonus name to static function list.
    */
 
-  // 1. Fields
+  // 1. Fields - Keep the names as short as possible, as these are stored in the database.
   protected $_travel_speed;
   protected $_quest_speed;
   protected $_quest_success;
   protected $_death_rate;
-  protected $_quest_reward_gold;
-  protected $_quest_reward_fame;
-  protected $_quest_reward_exp;
-  protected $_quest_reward_item;
+  protected $_q_reward_gold;
+  protected $_q_reward_fame;
+  protected $_q_reward_exp;
+  protected $_q_reward_item;
+  protected $_q_reward_sp_item;
   protected $_miss_rate;
   protected $_crit_rate;
-  protected $_opponent_miss_rate;
-  protected $_opponent_crit_rate;
+  protected $_opp_miss_rate;
+  protected $_opp_crit_rate;
   protected $_attack_as_success;
   protected $_defend_as_success;
   protected $_break_as_success;
@@ -36,14 +37,15 @@ class Bonus {
   const QUEST_SPEED = '_quest_speed';
   const QUEST_SUCCESS = '_quest_success';
   const DEATH_RATE = '_death_rate';
-  const QUEST_REWARD_GOLD = '_quest_reward_gold';
-  const QUEST_REWARD_FAME = '_quest_reward_fame';
-  const QUEST_REWARD_EXP = '_quest_reward_exp';
-  const QUEST_REWARD_ITEM = '_quest_reward_item';
+  const QUEST_REWARD_GOLD = '_q_reward_gold';
+  const QUEST_REWARD_FAME = '_q_reward_fame';
+  const QUEST_REWARD_EXP = '_q_reward_exp';
+  const QUEST_REWARD_ITEM = '_q_reward_item';
+  const QUEST_REWARD_SPECIAL_ITEM = '_q_reward_sp_item';
   const MISS_RATE = '_miss_rate';
   const CRIT_RATE = '_crit_rate';
-  const OPPONENT_MISS_RATE = '_opponent_miss_rate';
-  const OPPONENT_CRIT_RATE = '_opponent_crit_rate';
+  const OPPONENT_MISS_RATE = '_opp_miss_rate';
+  const OPPONENT_CRIT_RATE = '_opp_crit_rate';
   const ATTACK_AS_SUCCESS = '_attack_as_success';
   const DEFEND_AS_SUCCESS = '_defend_as_success';
   const BREAK_AS_SUCCESS = '_break_as_success';
@@ -57,7 +59,7 @@ class Bonus {
     Bonus::QUEST_REWARD_GOLD, Bonus::QUEST_REWARD_FAME, Bonus::QUEST_REWARD_EXP, Bonus::QUEST_REWARD_ITEM,
     Bonus::MISS_RATE, Bonus::CRIT_RATE, Bonus::OPPONENT_MISS_RATE, Bonus::OPPONENT_CRIT_RATE, Bonus::ATTACK_AS_SUCCESS,
     Bonus::DEFEND_AS_SUCCESS, Bonus::BREAK_AS_SUCCESS, Bonus::LOSS_BY_ONE_AS_TIE, Bonus::LOSS_ON_SUCCESS,
-    Bonus::TIE_BREAKER_ON_FAIL, Bonus::ITEM_TYPE_FIND_RATE);
+    Bonus::TIE_BREAKER_ON_FAIL, Bonus::ITEM_TYPE_FIND_RATE, Bonus::QUEST_REWARD_SPECIAL_ITEM);
 
   // Change how the modifier is returned.
   const MOD_ORIGINAL = 'original'; // Get as decimal version (1.05) for +5%
@@ -65,6 +67,8 @@ class Bonus {
   const MOD_DIFF = 'diff'; // Get diff as decimal version (0.05) for +5%.
 
   const FOR_DEFAULT = 'default';
+
+  const DEFAULT_VALUE = 1;
 
   function __construct($data = array()) {
     // Save values to object.
@@ -109,6 +113,39 @@ class Bonus {
     return $this->$mod_name;
   }
 
+  /**
+   * Merge another bonus into this one (additive).
+   *
+   * $bonus -> Another Bonus object.
+   *
+   */
+  public function merge ($bonus, $exclude_mods = array()) {
+    if (get_class($bonus) != 'Bonus') return FALSE;
+
+    // Loop through the modifiers and add them together.
+    foreach (static::$all_modifiers as $mod_name) {
+      // Skip any excluded mods.
+      if (in_array($mod_name, $exclude_mods)) continue;
+
+      $mod = $bonus->$mod_name;
+      foreach ($mod as $for => $list_or_value) {
+        // If this is the default value, there's no list.
+        if ($for == Bonus::FOR_DEFAULT) {
+          $val = Bonus::adjust_modifier($list_or_value, Bonus::MOD_DIFF);
+          $this->add_mod($mod_name, $val, $for);
+          continue;
+        }
+
+        // Loop through the list of values to make sure they're copied over.
+        foreach ($list_or_value as $type => $value) {
+          $val = Bonus::adjust_modifier($value, Bonus::MOD_DIFF);
+          $this->add_mod($mod_name, $val, Bonus::compile_for($for, $type));
+        }
+      }
+    }
+
+    return TRUE;
+  }
 
   /**
    * $mod_name - Use the constants defined here in Bonus to retrieve the desired modifier (ex. Bonus::TRAVEL_SPEED).
@@ -216,6 +253,7 @@ class Bonus {
       case Bonus::QUEST_REWARD_FAME: $name = 'amount of fame received for completing !Quest'; break;
       case Bonus::QUEST_REWARD_EXP: $name = 'amount of experience points received for completing !Quest'; break;
       case Bonus::QUEST_REWARD_ITEM: $name = 'chance of finding an item when completing !Quest'; break;
+      case Bonus::QUEST_REWARD_SPECIAL_ITEM: 'chance of finding a special item when completing !Quest'; break;
       case Bonus::ITEM_TYPE_FIND_RATE: $name = 'chance of finding !ItemType when completing !Quest'; break;
 
       case Bonus::MISS_RATE: $name = 'miss rate in a Colosseum fight'; break;
@@ -275,6 +313,12 @@ class Bonus {
     if (isset($data[0])) $info['for'] = $data[0];
     if (isset($data[1])) $info['type'] = $data[1];
     return $info;
+  }
+
+  public static function compile_for ($for, $type = NULL) {
+    $list = array($for);
+    if (!empty($type)) $list[] = $type;
+    return implode('->', $list);
   }
 
   public static function adjust_modifier ($mod, $value_as) {

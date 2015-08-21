@@ -16,6 +16,16 @@ class AdventurerClass extends RPGEntitySaveable {
 
   static $_all_classes = array();
 
+  const SHAMAN = 'shaman';
+  const BRIGAND = 'brigand';
+  const JUDGE = 'judge';
+  const MAGUS = 'magus';
+  const DRAGOON = 'dragoon';
+  const STRIDER = 'strider';
+  const ORACLE = 'oracle';
+  const JUGGERNAUT = 'juggernaut';
+  const UNDEAD = 'undead';
+
   
   function __construct($data = array()) {
     // Perform regular constructor.
@@ -41,6 +51,7 @@ class AdventurerClass extends RPGEntitySaveable {
         // Questing/Exploring mods.
         $bonus->add_mod(Bonus::QUEST_REWARD_GOLD, 0.10);
         $bonus->add_mod(Bonus::QUEST_REWARD_ITEM, 0.03);
+        $bonus->add_mod(Bonus::QUEST_REWARD_SPECIAL_ITEM, 0.01);
         // Challenge mods.
         $bonus->add_mod(Bonus::LOSS_BY_ONE_AS_TIE, 0.05);
         break;
@@ -90,6 +101,9 @@ class AdventurerClass extends RPGEntitySaveable {
         $adventurer->level += 2;
         // Challenge mods.
         $bonus->add_mod(Bonus::DEFEND_AS_SUCCESS, 0.05, 'Challenge->'.Challenge::MOVE_DEFEND);
+        break;
+
+      case 'undead':
         break;
     }
   }

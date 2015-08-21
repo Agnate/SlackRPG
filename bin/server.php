@@ -231,7 +231,11 @@ $response = $commander->execute('rtm.start', array());
 $body = $response->getBody();
 // Check for an okay response and get url.
 if (isset($body['ok']) && $body['ok']) $url = $body['url'];
-
+else {
+  echo "Failed to initiate the rtm.start call:\n";
+  echo var_export($body, true)."\n";
+  exit;
+}
 
 // Create list of IMs.
 $im_channels = gather_im_channels($commander);

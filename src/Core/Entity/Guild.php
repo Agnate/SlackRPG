@@ -75,8 +75,14 @@ class Guild extends RPGEntitySaveable {
     return $this->_adventurers;
   }
 
-  public function get_adventurers_count () {
-    return count($this->get_adventurers());
+  public function get_adventurers_count ($include_undead = true) {
+    $adventurers = $this->get_adventurers();
+    $count = 0;
+    foreach ($adventurers as $adventurer) {
+      if (!$include_undead && $adventurer->class == AdventurerClass::UNDEAD) continue;
+      $count++;
+    }
+    return $count;
   }
 
   public function get_best_adventurers ($count, $only_available = true) {
@@ -225,11 +231,12 @@ class Guild extends RPGEntitySaveable {
     return $items;
   }
 
-  protected function compact_items ($items) {
+  protected function compact_items ($items, $exclude_on_hold = true) {
     $compact_items = array();
 
     // Compact same-name items.
     foreach ($items as &$item) {
+      if ($exclude_on_hold && $item->on_hold) continue;
       if (!isset($compact_items[$item->name_id])) $compact_items[$item->name_id] = array();
       $compact_items[$item->name_id][] = $item;
     }
@@ -292,7 +299,7 @@ class Guild extends RPGEntitySaveable {
     return $this->_items;
   }
 
-  public function add_item ($item_template) {
+  public function add_item ($item_template, $extra_data = NULL) {
     // Always "add" any ItemTemplate objects.
     if ($item_template instanceof ItemTemplate == false) return FALSE;
 
@@ -300,8 +307,13 @@ class Guild extends RPGEntitySaveable {
     $items = &$this->get_items();
 
     // Create the inventory item.
-    $item = new Item (array('gid' => $this->gid), $item_template);
+    $item_data = array('gid' => $this->gid);
+    if ($extra_data !== NULL) $item_data['extra_data'] = $extra_data;
+    $item = new Item ($item_data, $item_template);
     $success = $item->save();
+
+    // Before adding it to the inventory, run any Item-specific changes.
+    $item->on_add_to_inventory($this);
 
     // Add the item into the inventory.
     if ($success) $items[] = &$item;
@@ -309,21 +321,32 @@ class Guild extends RPGEntitySaveable {
     return $success ? $item : $success;
   }
 
-  public function remove_item ($item) {
+  public function remove_item ($item, $put_on_hold = false) {
     // Always "remove" any Item objects from an Inventory.
     if ($item instanceof Item == false) return FALSE;
 
+    // Lock the item away from the user.
+    if ($put_on_hold) {
+      $item->on_hold = true;
+    }
     // Remove item ownership.
-    $item->gid = 0;
+    else {
+      $item->gid = 0;
+    }
 
-    // Get the current items.
-    $items = &$this->get_items();
+    // Remove the item if it's not just on hold.
+    if (!$put_on_hold) {
+      // Before removing it from the inventory, run any Item-specific changes.
+      $item->on_remove_from_inventory($this);
 
-    // Remove from this player's inventory.
-    foreach ($items as $key => &$invitem) {
-      if ($invitem == $item) {
-        array_splice($items, $key, 1);
-        break;
+      // Get the current items.
+      $items = &$this->get_items();
+      // Remove from this player's inventory.
+      foreach ($items as $key => &$invitem) {
+        if ($invitem == $item) {
+          array_splice($items, $key, 1);
+          break;
+        }
       }
     }
 
@@ -331,8 +354,18 @@ class Guild extends RPGEntitySaveable {
     return $item->save();
   }
 
+  /**
+   * Return an item from being on hold.
+   */
+  public function return_item ($item) {
+    if ($item instanceof Item == false) return FALSE;
+
+    $item->on_hold = false;
+    return $item->save();
+  }
+
   public function load_quests () {
-    $this->_quests = Quest::load_multiple(array('gid' => $this->gid, 'completed' => false));
+    $this->_quests = Quest::load_multiple(array('gid' => $this->gid, 'completed' => false, 'multiplayer' => false));
   }
 
   public function get_quests () {

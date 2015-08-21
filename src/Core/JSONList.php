@@ -8,6 +8,7 @@ class JSONList {
     $info = array(
       'name' => '',
       'keywords' => array(),
+      'tokens' => $default_tokens,
     );
 
     // If it is format-based, pick a format and generate the pieces.
@@ -30,6 +31,7 @@ class JSONList {
       // Add format to the keywords after the name replacement.
       $keyword = str_replace($token_keys, '', $format);
       $info['keywords'][] = trim($keyword);
+      $info['tokens'] = $tokens;
     }
     // If it's just a series of parts, connect them.
     else if (isset($json_list['parts'])) {

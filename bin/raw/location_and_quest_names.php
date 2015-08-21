@@ -17,7 +17,7 @@ $adjectives = array('Lonely', 'Eerie', 'Ancient', 'Mossy', 'Pitted', 'Mystic', '
 $creature_adjectives = array('Dire', 'Giant', 'Great', 'Demonic', 'Fiery', 'Flaming', 'Snow', 'Icy', 'Polar', 'Hellish', 'Grotesque', 'Moist', 'Hulking', 'Radiant', 'Diabolic', 'Swarming', 'Raging', 'Vicious',
   'Man-eating', 'Killer', 'Voracious', 'Armoured', 'Vampiric', 'Ghastly', 'Ethereal', 'Undead', 'Mutant', 'Gruesome', 'Martial', 'Flying', 'Subterranean', 'Neon', 'Abyssal', 'Mythical', 'Legendary', 'Epic',
   'Gargantuan', 'Colossal', 'Explosive', 'Tyrannic', 'Radioactive', 'Poisonous', 'Venomous', 'Deranged', 'Twisted', 'Vile', 'Wretched', 'Decaying', 'Oozing', 'Enormous', 'Punk', 'Glowing', 'Nasty', 'Putrid', 'Ancient',
-  'Mystical', 'Plagued', 'Golden');
+  'Mystical', 'Plagued', 'Golden', 'Ashen', 'Lurking', 'Azure', 'Cloaked', 'Invisible', 'Dread', 'Blood', 'Skeletal');
 
 $creature_names = array('Angel', 'Banshee', 'Basilisk', 'Behemoth', 'Dragon', 'Centaur', 'Cerberus', 'Chimera', 'Cockatrice', 'Cyclops', 'Demon', 'Dragon', 'Echidna', 'Ghost', 'Ghoul', 'Golem', 'Gorgon',
   'Gremlin', 'Griffin', 'Hydra', 'Imp', 'Kraken', 'Leviathan', 'Python', 'Manticore', 'Medusa', 'Merfolk', 'Minotaur', 'Mummy', 'Naga', 'Necromancer', 'Ogre', 'Orc', 'Pegasus', 'Phoenix', 'Satyr', 'Siren',
@@ -27,7 +27,11 @@ $creature_names = array('Angel', 'Banshee', 'Basilisk', 'Behemoth', 'Dragon', 'C
   'Snake', 'Rattlesnake', 'Mosquito', 'Elephant', 'Alligator', 'Lion', 'Zebra', 'Gazelle', 'Whale', 'Platypus', 'Toad', 'Lemur', 'Leopard', 'Lizard', 'Sloth',
   'Caribou', 'Shark', 'Octopus', 'Space Narwhal', 'Alpaca', 'Hippopotamus', 'Rhinoceros', 'Hyena', 'Coyote', 'Mantis', 'Bat', 'Cobra', 'Gorilla', 'Falcon', 'Eel', 'Pug');
 
-$boss_adjectives = array('Giant', 'Great', 'Demonic', 'Fiery', 'Hellish', 'Grotesque', 'Hulking', 'Raging', 'Man-eating', 'Killer', 'Armoured', 'Vampiric', 'Ghastly', 'Ethereal', 'Undead', 'Mutant', 'Gruesome', 'Mythical', 'Legendary', 'Epic', 'Gargantuan', 'Colossal', 'Explosive', 'Tyrannic', 'Radioactive', 'Deranged', 'Twisted', 'Vile', 'Wretched', 'Decaying', 'Oozing', 'Enormous', 'Punk', 'Glowing', 'Nasty', 'Putrid', 'Ancient', 'Mystical', 'Plagued', 'Golden');
+// $boss_names = array('Emda', 'Klangg', 'Horntra', 'Sasky', 'Derkir', 'Myo', 'Bloodchlorus', 'Yu', 'Cytra', 'Rabreak', 'Raphrix', 'Lintryx', 'Blailan', 'Gon', 'Ceres', 'Raibalt', 'Monight', 'Cirtan', 'Rixwhis', 'Duskly', 'Silro', 'Sha-lys', 'Rasoul', 'Thravi', 'Lor', 'Riblood', 'Sofla', 'Riumo', 'Acau', 'Gloomlin', 'Codaz', 'Cashee', 'Tenro', 'Sabathiel', 'Raziel', 'Kalaziel', 'Osmadiel', 'Ambriel', 'Temlakos', 'Seraphiel', 'Sorath', 'Teriesh', 'Zerachiel', 'Amnayelth', 'Baglis', 'Appolyon', 'Cadriel', 'Mneventh', 'Lyrroth', 'Nessonth', 'Corinth', 'Culdreth', 'Sirath', 'Venia', 'Sorventh', 'Syrreth', 'Dammath', 'Nesenth', 'Cennuth', 'Wayke', 'Jidohr', 'Udis', 'Xoborh', 'Elenar', 'Imus', 'Lala', 'Fosyn', 'Ata', 'Rymis', 'Fysta', 'Soilbrood', 'Taintbug', 'Smoketaur', 'Wisphound', 'Stonemorph', 'Stenchfoot', 'Moldtooth', 'Gutseeker', 'Hellvine', 'Coffinseeker', 'Draghra', 'Gilabilo', 'Langas', 'Laro', 'Mero', 'Onyar', 'Seron', 'Ular', 'Vara', 'Mima', 'Piragor', 'Sarotese', 'Ttora', 'Vantiga', 'Yara', 'Ytera');
+
+$boss_suffix = array('the Unkillable', 'the Conqueror', 'the Giant', 'the Demon', 'the Vampire', 'the Spectre', 'the Mutant', 'the Gruesome', 'the Twisted', 'the Vile', 'the Wretched', 'the Putrid', 'the Ancient', 'the Plagued', 'the Righteous', 'the Monstrosity', 'the Lurker', 'the Flaming', 'the Frozen', 'the Hellraiser', 'the Devourer', 'the Diabolic', 'the Deranged', 'the Dreaded', 'the Skeleton', 'the Enchanted', 'the Necromancer', 'the Warlock', 'the Beast', 'the Angel', 'the Banshee', 'the Basilisk', 'the Behemoth', 'the Dragon', 'the Cerberus', 'the Chimera', 'the Cockatrice', 'the Cyclops', 'the Ghost', 'the Ghoul', 'the Iron Golem', 'the Hydra', 'the Kraken', 'the Leviathan', 'the Manticore', 'the Minotaur', 'the Mummy', 'the Naga', 'the Ogre', 'the Orc', 'the Phoenix', 'the Sphinx', 'the Wendigo', 'the Werewolf', 'the Wight', 'the Wraith', 'the Wyrm', 'the Wyvern', 'the Zombie', 'the Hellhound', 'the Troll', 'the Genie', 'the Goblin', 'the Hobgoblin', 'the Peryton', 'the Ent', 'the Lycan', 'the Slime', 'the Nightmare', 'the Wolf', 'the Crab', 'the Scorpion', 'the Spider', 'the Bear', 'the Possessed', 'the Cruel', 'the Wicked', 'the Trickster', 'the Titan', 'the Unholy', 'the Sinister', 'the Mad', 'the Crucible', 'the Anguished', 'the Tormentor', 'the Tortured', 'the Butcher', 'the Molten', 'the Violator', 'the Vindicator', 'the Zealous', 'the Insane', 'the Cryptic', 'the Liar', 'the Hurricane', 'the Tornado', 'the Furious', 'the Dictator', 'the Ruthless', 'the Mystical');
+
+$boss_adjectives = array('Giant', 'Great', 'Demonic', 'Fiery', 'Hellish', 'Grotesque', 'Hulking', 'Raging', 'Man-eating', 'Killer', 'Armoured', 'Vampiric', 'Ghastly', 'Ethereal', 'Undead', 'Mutant', 'Gruesome', 'Mythical', 'Legendary', 'Epic', 'Gargantuan', 'Colossal', 'Explosive', 'Tyrannic', 'Radioactive', 'Deranged', 'Twisted', 'Vile', 'Wretched', 'Decaying', 'Oozing', 'Enormous', 'Punk', 'Glowing', 'Nasty', 'Putrid', 'Ancient', 'Mystical', 'Plagued', 'Golden', 'Monstrous');
 
 $boss_creature_names = array('Angel', 'Banshee', 'Basilisk', 'Behemoth', 'Dragon', 'Cerberus', 'Chimera', 'Cockatrice', 'Cyclops', 'Demon', 'Dragon', 'Ghost', 'Ghoul', 'Golem', 'Gorgon', 'Hydra', 'Kraken', 'Leviathan', 'Manticore', 'Medusa', 'Minotaur', 'Mummy', 'Naga', 'Necromancer', 'Ogre', 'Orc', 'Phoenix', 'Skeleton', 'Sphinx', 'Succubus', 'Vampire', 'Wendigo', 'Werewolf', 'Wight', 'Wraith', 'Wyrm', 'Wyvern', 'Zombie', 'Hellhound','Troll', 'Genie', 'Goblin', 'Hobgoblin', 'Troglodyte', 'Firebird', 'Harpy', 'Peryton', 'Ent', 'Spectre', 'Assassin', 'Ninja', 'Bandit', 'Lycan', 'Slime', 'Nightmare', 'Wolf', 'Crab', 'Scorpion', 'Spider', 'Eagle', 'Bear', 'Rattlesnake', 'Mosquito', 'Elephant', 'Alligator', 'Lion', 'Whale', 'Octopus', 'Hippopotamus', 'Rhinoceros', 'Hyena', 'Mantis', 'Bat', 'Cobra', 'Gorilla');
 
@@ -74,7 +78,7 @@ $innocents = array('villagers', 'townsfolk', 'livestock', 'pilgrims', 'gypsies',
 $destroying = array('destroying', 'crushing', 'demolishing', 'decimating', 'obliterating');
 
 $handle = array('Kill', 'Capture', 'Dispose of', 'Take care of', 'Eliminate', 'Destroy', 'Murder', 'Relocate', 'Stop', 'Restrain', 'Arrest', 'Hold off');
-$prevent = array('Prevent', 'Stop', 'Halt', 'Interrupt', 'Hamper', 'Hinder', 'Impede', 'Thwart');
+$prevent = array('Prevent', 'Stop', 'Halt', 'Interrupt', 'Hinder', 'Impede', 'Thwart');
 
 
 
@@ -139,18 +143,8 @@ $location_names = array(
  *    !creaturefull -> The creature name including the adjective (only for Creature locations).
  *    !name -> The name of the domicile (only for Domicile locations).
  *    !dwelling -> The name of the dwelling/domicile (only for Domicile or Creature locations).
+ *    !boss_name -> The first name of an Adventurer turned into a boss (only for Boss quests, generally followed by a Boss Suffix token). Example: "!boss_name !boss_suffix"
  */
-
-
-// teach, guard 
-
-// infiltrate, fend off, defend against, tame
-
-// collect, gather, assemble, steal, plant (like planting evidence or a bomb)
-
-
-// 
-
 
 $quest_names = array(
   'investigate' => array(
@@ -192,7 +186,7 @@ $quest_names = array(
     ),
   ),
   'boss' => array(
-    '!boss' => array('parts' => array($boss_adjectives, $boss_creature_names)),
+    '!boss_suffix' => array('parts' => array($boss_suffix)),
     '!nature_destroyable' => array('parts' => array($nature_destroyable)),
     '!handle' => array('parts' => array($handle)),
     '!prevent' => array('parts' => array($prevent)),
@@ -200,8 +194,8 @@ $quest_names = array(
     '!innocents' => array('parts' => array($innocents)),
     '!destroying' => array('parts' => array($destroying)),
     'format' => array(
-      '!handle the !boss that is !affecting !innocents near !fullname',
-      '!prevent the !boss from !destroying !nature_destroyable near !fullname',
+      '!handle !boss_name !boss_suffix who is !affecting !innocents near !fullname',
+      '!prevent !boss_name !boss_suffix from !destroying !nature_destroyable near !fullname',
     ),
   ),
   'special' => array(
@@ -219,3 +213,8 @@ $quest_names = array(
     ),
   ),
 );
+
+
+// teach, guard 
+// infiltrate, fend off, defend against, tame
+// collect, gather, assemble, steal, plant (like planting evidence or a bomb)

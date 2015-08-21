@@ -25,14 +25,21 @@ class Quest extends RPGEntitySaveable {
   public $success_rate;
   public $death_rate;
   public $kit_id; // ID of the Kit item being used on the quest.
-  public $guild_limit;
+  public $multiplayer;
+  public $keywords;
+  public $boss_aid;
   
   // Protected
   protected $_location;
   protected $_kit;
+  protected $_adventurers;
+  protected $_adventuring_groups;
+  protected $_guilds;
+  protected $_bonus;
+  protected $_keywords;
 
   // Private vars
-  static $fields_int = array('stars', 'created', 'reward_gold', 'reward_exp', 'reward_fame', 'duration', 'cooldown', 'party_size_min', 'party_size_max', 'level', 'success_rate', 'death_rate', 'guild_limit');
+  static $fields_int = array('stars', 'created', 'reward_gold', 'reward_exp', 'reward_fame', 'duration', 'cooldown', 'party_size_min', 'party_size_max', 'level', 'success_rate', 'death_rate');
   static $db_table = 'quests';
   static $default_class = 'Quest';
   static $primary_key = 'qid';
@@ -42,6 +49,7 @@ class Quest extends RPGEntitySaveable {
   const FILENAME_QUEST_NAMES = '/bin/json/quest_names.json';
 
   const MAX_COUNT = 6;
+  const MULTIPLAYER_FAME_COST = 50;
 
   const TYPE_EXPLORE = 'explore';
   const TYPE_TRAIN = 'train';
@@ -95,34 +103,28 @@ class Quest extends RPGEntitySaveable {
     return $this->party_size_min .($this->party_size_max > 0 && $this->party_size_max != $this->party_size_min ? '-'.$this->party_size_max : '');
   }
 
-  public function get_duration ($guild, $adventurers, $kit) {
+  public function get_duration ($bonus = NULL) {
     $duration = $this->duration;
     // Get quest duration modifier.
-    $duration_mod = $guild->get_bonus()->get_mod(Bonus::QUEST_SPEED, $this);
-    if (!empty($kit)) $duration_mod += $kit->get_bonus()->get_mod(Bonus::QUEST_SPEED, $this, Bonus::MOD_DIFF);
-    foreach ($adventurers as $adventurer) $duration_mod += $adventurer->get_bonus()->get_mod(Bonus::QUEST_SPEED, $this, Bonus::MOD_DIFF);
+    $duration_mod = empty($bonus) ? Bonus::DEFAULT_VALUE : $bonus->get_mod(Bonus::QUEST_SPEED, $this);
     // Modify quest duration.
     $duration = ceil($duration * $duration_mod);
 
     // Load up the location for this Quest.
     $location = Location::load(array('locid' => $this->locid));
-    if (!empty($location)) $duration += $location->get_duration($guild, $adventurers, $kit);
+    if (!empty($location)) $duration += $location->get_duration($bonus);
     return $duration;
   }
 
-  public function get_success_rate ($guild, $adventurers, $kit) {
+  public function get_success_rate ($bonus, $adventurers = array()) {
     $rate = $this->success_rate;
 
     // Adjust it based on the level of the adventurers vs. the level of the quest.
     $levels = 0;
     // Get the quest success rate from the Guild.
-    $mod = $guild->get_bonus()->get_mod(Bonus::QUEST_SUCCESS, $this, Bonus::MOD_HUNDREDS);
-    if (!empty($kit)) $mod += $kit->get_bonus()->get_mod(Bonus::QUEST_SUCCESS, $this, Bonus::MOD_HUNDREDS);
-    foreach ($adventurers as $adventurer) {
-      $levels += $adventurer->level;
-      $mod += $adventurer->get_bonus()->get_mod(Bonus::QUEST_SUCCESS, $this, Bonus::MOD_HUNDREDS);
-    }
-      
+    $mod = $bonus->get_mod(Bonus::QUEST_SUCCESS, $this, Bonus::MOD_HUNDREDS);
+    foreach ($adventurers as $adventurer) $levels += $adventurer->level;
+
     // Modify the rate based on the level difference, then add the bonuses.
     if ($this->level > 0) {
       $diff = min($levels / $this->level, 1);
@@ -137,69 +139,67 @@ class Quest extends RPGEntitySaveable {
     return $rate < 100 ? floor($rate) : 100;
   }
 
-  public function get_death_rate ($guild, $adventurers, $kit) {
+  public function get_death_rate ($bonus) {
     $rate = $this->death_rate;
     // Get the death rate modifier from the Guild.
-    $mod = $guild->get_bonus()->get_mod(Bonus::DEATH_RATE, $this);
-    if (!empty($kit)) $mod -= $kit->get_bonus()->get_mod(Bonus::DEATH_RATE, $this, Bonus::MOD_DIFF);
-    // Check if adventurers modify the death rate at all.
-    foreach ($adventurers as $adventurer) $mod -= $adventurer->get_bonus()->get_mod(Bonus::DEATH_RATE, $this, Bonus::MOD_DIFF);
+    $mod = empty($bonus) ? Bonus::DEFAULT_VALUE : $bonus->get_mod(Bonus::DEATH_RATE, $this);
     return ceil($rate * $mod);
   }
 
-  public function get_reward_gold ($guild, $adventurers, $kit) {
+  public function get_reward_gold ($bonus) {
     $gold = $this->reward_gold;
-    $mod = $guild->get_bonus()->get_mod(Bonus::QUEST_REWARD_GOLD, $this);
-    if (!empty($kit)) $mod += $kit->get_bonus()->get_mod(Bonus::QUEST_REWARD_GOLD, $this, Bonus::MOD_DIFF);
-    foreach ($adventurers as $adventurer) $mod += $adventurer->get_bonus()->get_mod(Bonus::QUEST_REWARD_GOLD, $this, Bonus::MOD_DIFF);
+    $mod = empty($bonus) ? Bonus::DEFAULT_VALUE : $bonus->get_mod(Bonus::QUEST_REWARD_GOLD, $this);
     return ceil($gold * $mod);
   }
 
-  public function get_reward_fame ($guild, $adventurers, $kit) {
+  public function get_reward_fame ($bonus) {
     $fame = $this->reward_fame;
-    $mod = $guild->get_bonus()->get_mod(Bonus::QUEST_REWARD_FAME, $this);
-    if (!empty($kit)) $mod += $kit->get_bonus()->get_mod(Bonus::QUEST_REWARD_FAME, $this, Bonus::MOD_DIFF);
-    foreach ($adventurers as $adventurer) $mod += $adventurer->get_bonus()->get_mod(Bonus::QUEST_REWARD_FAME, $this, Bonus::MOD_DIFF);
+    $mod = empty($bonus) ? Bonus::DEFAULT_VALUE : $bonus->get_mod(Bonus::QUEST_REWARD_FAME, $this);
     return ceil($fame * $mod);
   }
 
-  public function get_reward_exp ($guild, $adventurers, $kit) {
+  public function get_reward_exp ($bonus) {
     $exp = $this->reward_exp;
-    $mod = $guild->get_bonus()->get_mod(Bonus::QUEST_REWARD_EXP, $this);
-    if (!empty($kit)) $mod += $kit->get_bonus()->get_mod(Bonus::QUEST_REWARD_EXP, $this, Bonus::MOD_DIFF);
-    foreach ($adventurers as $adventurer) $mod += $adventurer->get_bonus()->get_mod(Bonus::QUEST_REWARD_EXP, $this, Bonus::MOD_DIFF);
+    $mod = empty($bonus) ? Bonus::DEFAULT_VALUE : $bonus->get_mod(Bonus::QUEST_REWARD_EXP, $this);
     return ceil($exp * $mod);
   }
 
-  public function get_reward_items ($guild, $adventurers, $kit) {
-    $chance_of_item = 5;
-    $mod = $guild->get_bonus()->get_mod(Bonus::QUEST_REWARD_ITEM, $this);
-    if (!empty($kit)) $mod += $kit->get_bonus()->get_mod(Bonus::QUEST_REWARD_ITEM, $this, Bonus::MOD_DIFF);
-    foreach ($adventurers as $adventurer) $mod += $adventurer->get_bonus()->get_mod(Bonus::QUEST_REWARD_ITEM, $this, Bonus::MOD_DIFF);
+  public function get_reward_items ($bonus) {
+    $mod = empty($bonus) ? Bonus::DEFAULT_VALUE : $bonus->get_mod(Bonus::QUEST_REWARD_ITEM, $this);
+    $chance_of_item = ceil(5 * $mod);
     // Check if any items were found.
     $items = array();
     if (rand(1, 100) <= $chance_of_item) {
       $rarity_min = ($this->stars - 1);
       $rarity_max = $this->stars;
-      $item_probabilities = $this->get_item_probabilities($guild, $adventurers, $kit);
+      $item_probabilities = $this->get_item_probabilities($bonus);
       // Generate an item to be found, with the rarity relating to the Quest star rating.
-      $templates = ItemTemplate::random(1, $rarity_min, $rarity_max, array(), array(), $item_probabilities);
-      // Create the items and assign them to the Guild.
-      foreach ($templates as $template) {
-        $item = $guild->add_item($template);
-        if ($item != false) $items[] = $item;
-      }
+      $items = ItemTemplate::random(1, $rarity_min, $rarity_max, array(), array(), $item_probabilities);
     }
     return $items;
   }
 
-  public function get_item_probabilities ($guild, $adventurers, $kit) {
-    $probs = ItemType::PROBABILITIES();
+  public function get_reward_special_items ($bonus) {
+    $mod = empty($bonus) ? Bonus::DEFAULT_VALUE : $bonus->get_mod(Bonus::QUEST_REWARD_SPECIAL_ITEM, $this);
+    $chance_of_item = ceil(10 * $mod);
+    // Check if any items were found.
+    $items = array();
+    if (rand(1, 100) <= $chance_of_item) {
+      $rarity_min = ($this->stars - 1);
+      $rarity_max = $this->stars;
+      // Get the special probabilities.
+      $item_probabilities = $this->get_item_probabilities($bonus, ItemType::SPECIAL_PROBABILITIES());
+      // Generate an item to be found, with the rarity relating to the Quest star rating.
+      $items = ItemTemplate::random(1, $rarity_min, $rarity_max, array(), array(), $item_probabilities);
+    }
+    return $items;
+  }
+
+  public function get_item_probabilities ($bonus, $probs = NULL) {
+    if ($probs === NULL) $probs = ItemType::PROBABILITIES();
     // Loop through each ItemType and modify the probability.
     foreach ($probs as $type => $value) {
-      $mod = $guild->get_bonus()->get_mod(Bonus::ITEM_TYPE_FIND_RATE, "ItemType->".$type, Bonus::MOD_DIFF);
-      if (!empty($kit)) $mod += $kit->get_bonus()->get_mod(Bonus::ITEM_TYPE_FIND_RATE, "ItemType->".$type, Bonus::MOD_DIFF);
-      foreach ($adventurers as $adventurer) $mod += $adventurer->get_bonus()->get_mod(Bonus::ITEM_TYPE_FIND_RATE, "ItemType->".$type, Bonus::MOD_DIFF);
+      $mod = empty($bonus) ? 0 : $bonus->get_mod(Bonus::ITEM_TYPE_FIND_RATE, "ItemType->".$type, Bonus::MOD_DIFF);
       // Add to the existing probability.
       $probs[$type] = ($value + $mod);
     }
@@ -220,69 +220,141 @@ class Quest extends RPGEntitySaveable {
   }
 
   protected function queue_process_quest ($queue = null) {
-    // Load the Guild this quest is for.
-    $guild = Guild::load(array('gid' => $this->gid));
+    // Load the Guilds this quest is for.
+    $guilds = $this->get_registered_guilds();
     // Load up the adventuring group.
-    $advgroup = AdventuringGroup::load(array('agid' => $this->agid));
+    $advgroups = $this->get_registered_adventuring_groups();
     // Get all the adventurers on this quest.
-    $adventurers = Adventurer::load_multiple(array('agid' => $this->agid, 'gid' => $this->gid));
-    $adv_count = count($adventurers);
+    $adventurers = $this->get_registered_adventurers();
+    // Get the kit used (if any).
     $kit = $this->get_kit();
+    // Determine the overall bonus.
+    $bonus = $this->get_bonus();
+    // Extra calculations.
+    $adv_count = count($adventurers);
+    $guild_count = count($guilds);
 
-    // Disband the adventuring group.
-    $advgroup->delete();
+    // Disband the adventuring groups.
+    foreach ($advgroups as $advgroup) $advgroup->delete();
 
     // Determine if the quest was successful.
-    $success_rate = $this->get_success_rate($guild, $adventurers, $kit);
-    $death_rate = $this->get_death_rate($guild, $adventurers, $kit);
+    $success_rate = $this->get_success_rate($bonus, $adventurers);
+    $death_rate = $this->get_death_rate($bonus);
     // Generate a number between 1-100 and see if it's successful.
     $success = (rand(1, 100) <= $success_rate);
 
     // If it's successful, give out the rewards.
     $reward_exp = 0;
-    $quest_data = array('text' => array(), 'success' => $success, 'player' => $guild);
     $channel_data = array('text' => array());
+    $quest_data = array();
+    foreach ($guilds as $guild) {
+      $quest_data[$guild->gid] = array('text' => array(), 'success' => $success, 'player' => $guild);
+    }
     
     if ($success) {
+      // Set channel message.
+      if ($this->multiplayer) {
+        $channel_data['title'] = 'Multi-Guild '. ucwords($this->type) .' Quest:';
+        $channel_data['text'][] = $this->get_display_name() .' was completed.';
+        $channel_data['color'] = SlackAttachment::COLOR_GREEN;
+      }
+
       // Mark the quest as completed.
       $this->completed = true;
-      $quest_data['success_msg'] = 'SUCCESS!';
-      $quest_data['text'][] = $this->name .' was completed.';
-      $reward_gold = $this->get_reward_gold($guild, $adventurers, $kit);
-      $reward_fame = $this->get_reward_fame($guild, $adventurers, $kit);
-      $reward_items = $this->get_reward_items($guild, $adventurers, $kit);
+      $reward_gold = ceil($this->get_reward_gold($bonus) / $guild_count);
+      $reward_fame = ceil($this->get_reward_fame($bonus) / $guild_count);
       // Calculate the exp per adventurer.
-      $reward_exp = ceil($this->get_reward_exp($guild, $adventurers, $kit) / count($adventurers));
+      $reward_exp = ceil($this->get_reward_exp($bonus) / $adv_count);
 
-      // Give the Guild its reward.
-      if ($reward_gold > 0) {
-        $guild->gold += $reward_gold;
-        $quest_data['reward_gold'] = $reward_gold;
-      }
-      if ($reward_fame > 0) {
-        $guild->fame += $reward_fame;
-        $quest_data['reward_fame'] = $reward_fame;
-      }
-      $guild->save();
+      // Give each Guild its reward.
+      foreach ($guilds as $guild) {
+        // Set personal message.
+        $quest_data[$guild->gid]['success_msg'] = 'SUCCESS!';
+        $quest_data[$guild->gid]['text'][] = $this->name .' was completed.';
 
-      if ($reward_exp > 0) {
-        $quest_data['reward_exp'] = $reward_exp;
-      }
+        // Randomize some items for this Guild.
+        $reward_items = $this->get_reward_items($bonus);
+        $reward_special_items = array();
+        // If this is a Boss quest, add in a special item.
+        if ($this->type == Quest::TYPE_BOSS) {
+          $reward_special_items = $this->get_reward_special_items($bonus);
+        }
 
-      if (!empty($reward_items)) {
-        $quest_data['reward_items'] = $reward_items;
+        if ($reward_gold > 0) {
+          $guild->gold += $reward_gold;
+          $quest_data[$guild->gid]['reward_gold'] = $reward_gold;
+        }
+        
+        if ($reward_fame > 0) {
+          $guild->fame += $reward_fame;
+          $quest_data[$guild->gid]['reward_fame'] = $reward_fame;
+        }
+
+        if ($reward_exp > 0) {
+          $quest_data[$guild->gid]['reward_exp'] = $reward_exp;
+        }
+
+        // Give the items this Guild found.
+        if (!empty($reward_items)) {
+          foreach ($reward_items as $item) {
+            $guild->add_item($item);
+          }
+          if (!isset($quest_data[$guild->gid]['reward_items'])) $quest_data[$guild->gid]['reward_items'] = array();
+          $quest_data[$guild->gid]['reward_items'] = array_merge($quest_data[$guild->gid]['reward_items'], $reward_items);
+        }
+
+        // Give the special items this Guild found.
+        if (!empty($reward_special_items)) {
+          $qkeywords = $this->get_keywords();
+          foreach ($reward_special_items as $item) {
+            // Check if this is a soul stone, and if so, add the Boss' name.
+            $extra_data = NULL;
+            if ($item->name_id == 'relic_soulstone') {
+              $boss_adventurer = Adventurer::load(array('aid' => $this->boss_aid, 'gid' => 0));
+              // Change the adventurer's name to their new Boss name from the quest.
+              if (!empty($boss_adventurer)) {
+                $boss_adventurer->name = $qkeywords[0];
+                $boss_adventurer->save();
+                $extra_data = $boss_adventurer->name;
+              }
+              // Create a generic adventurer.
+              else {
+                $name_parts = Adventurer::generate_adventurer_name();
+                $extra_data = $name_parts['first'] .' '. $name_parts['last'];
+              }
+            }
+            $guild->add_item($item, $extra_data);
+          }
+          if (!isset($quest_data[$guild->gid]['reward_items'])) $quest_data[$guild->gid]['reward_items'] = array();
+          $quest_data[$guild->gid]['reward_items'] = array_merge($quest_data[$guild->gid]['reward_items'], $reward_special_items);
+        }
+
+        $guild->save();
       }
     }
     else {
-      $quest_data['success_msg'] = 'FAIL...';
-      $quest_data['text'][] = 'Your adventuring party failed to complete '. $this->name .'.';
+      // Set channel message.
+      if ($this->multiplayer) {
+        $channel_data['title'] = 'Multi-Guild '. ucwords($this->type) .' Quest:';
+        $channel_data['text'][] = $this->get_display_name() .' was unsuccessful...';
+        $channel_data['color'] = SlackAttachment::COLOR_RED;
+      }
+
+      // Set personal messages.
+      foreach ($guilds as $guild) {
+        $quest_data[$guild->gid]['success_msg'] = 'FAIL...';
+        $quest_data[$guild->gid]['text'][] = 'Your adventuring party failed to complete '. $this->name .'.';
+      }
     }
 
     // If this is an exploration quest, reveal the location.
     if ($this->type == Quest::TYPE_EXPLORE) {
+      // Single player, so just grab the guild.
+      $eguild = reset($guilds);
+
       $location = $this->get_location();
       $location->revealed = true;
-      $location->gid = $guild->gid;
+      $location->gid = $eguild->gid;
       $location->save();
 
       // After revealing a location, set all adjacent locations to open.
@@ -303,31 +375,34 @@ class Quest extends RPGEntitySaveable {
 
       // If the location has a name, we found a non-empty spot.
       if (!empty($location->name)) {
-        $quest_data['text'][] = "You discovered ".$location->get_display_name().".";
-        $quest_data['text'][] = '';
-        $channel_data['text'][] = $guild->get_display_name()." discovered ".$location->get_display_name().".";
+        $quest_data[$eguild->gid]['text'][] = "You discovered ".$location->get_display_name().".";
+        $quest_data[$eguild->gid]['text'][] = '';
+        $channel_data['text'][] = $eguild->get_display_name()." discovered ".$location->get_display_name().".";
         $channel_data['color'] = SlackAttachment::COLOR_GREEN;
       }
     }
 
     // Bring all the adventurers home and give them their exp.
+    $time = time();
     foreach ($adventurers as $adventurer) {
       $adventurer->agid = 0;
       if (isset($reward_exp) && $reward_exp > 0) {
         // Give the exp and if they leveled up, show a message.
         if ($adventurer->give_exp($reward_exp)) {
-          $quest_data['text'][] = $adventurer->get_display_name().' is now level '.$adventurer->get_level(false).'!';
+          $quest_data[$adventurer->gid]['text'][] = $adventurer->get_display_name().' is now level '.$adventurer->get_level(false).'!';
         }
       }
-      // Calculate if the adventurer died during this adventure ONLY if they failed the quest.
-      if (!$success && $death_rate > 0 && rand(1, 100) <= $death_rate) {
+      // Calculate if the adventurer died during this adventure ONLY if they failed the quest (Undying adventurers cannot die).
+      if ($adventurer->undying == false && !$success && $death_rate > 0 && rand(1, 100) <= $death_rate) {
         $adventurer->dead = true;
-        $quest_data['text'][] = ':rpg-tomb: RIP '.$adventurer->get_display_name().' died during the quest.';
+        $adventurer->revivable = true;
+        $adventurer->death_date = $time;
+        $quest_data[$adventurer->gid]['text'][] = ':rpg-tomb: RIP '.$adventurer->get_display_name().' died during the quest.';
       }
       $adventurer->save();
     }
 
-    // Consume the kit item.
+    // Delete the kit item (was already removed from the player, but might as well clean up the db.
     if (!empty($kit)) $kit->delete();
 
     // If this is an exploration quest, we can delete it.
@@ -337,10 +412,11 @@ class Quest extends RPGEntitySaveable {
     // Check if we need to reactivate this quest.
     else {
       $this->agid = 0;
-      // $this->gid = 0;
+      $this->kit_id = 0;
+      if ($this->multiplayer) $this->gid = 0;
       $cooldown = 0;
       
-      // Reactivate if the guild failed to complete it.
+      // Reactivate if the guilds failed to complete it.
       if (!$success) {
         // Create a temporary cooldown if it was a failed quest attempt.
         $cooldown = (60 * 60) * ($this->stars * rand(3, 6));
@@ -356,15 +432,19 @@ class Quest extends RPGEntitySaveable {
     }
 
     // Get attachment to display for Quest.
-    $quest_message = $this->get_quest_result_as_message($quest_data);
-    $quest_message->text = 'Your adventurer'.($adv_count != 1 ? 's' : '').' '.($adv_count != 1 ? 'have' : 'has').' returned home from '.($this->type == Quest::TYPE_EXPLORE ? 'exploring' : 'questing').'.';
+    $quest_messages = array();
+    foreach ($quest_data as $gid => $qdata) {
+      $quest_message = $this->get_quest_result_as_message($qdata);
+      $quest_message->text = 'Your adventurer'.($adv_count != 1 ? 's' : '').' '.($adv_count != 1 ? 'have' : 'has').' returned home from '.($this->type == Quest::TYPE_EXPLORE ? 'exploring' : 'questing').'.';
+      $quest_messages[] = $quest_message;
+    }
 
     if (!empty($channel_data['text'])) {
       $channel_message = $this->get_quest_channel_result_as_message($channel_data);
     }
 
     // Send out the messages.
-    $result = array('messages' => array($quest_message));
+    $result = array('messages' => $quest_messages);
     if (isset($channel_message)) $result['messages'][] = $channel_message;
     return $result;
   }
@@ -374,6 +454,7 @@ class Quest extends RPGEntitySaveable {
     
     $attachment = new SlackAttachment ($channel_data);
     $attachment->fallback = $channel_data['text'];
+
     $message = new SlackMessage ();
     $message->add_attachment($attachment);
 
@@ -453,6 +534,104 @@ class Quest extends RPGEntitySaveable {
     $this->save();
   }
 
+  public function load_registered_adventuring_groups () {
+    $this->_adventuring_groups = AdventuringGroup::load_multiple(array('task_id' => $this->qid, 'task_type' => 'Quest'));
+
+    return $this->_adventurers;
+  }
+
+  public function get_registered_adventuring_groups ($refresh = false) {
+    if ($refresh || $this->_adventuring_groups === null) $this->load_registered_adventuring_groups();
+
+    return $this->_adventuring_groups;
+  }
+
+  public function load_registered_adventurers ($refresh = false) {
+    $this->_adventurers = array();
+
+    // Load up all adventuring groups for this quest.
+    $groups = $this->get_registered_adventuring_groups($refresh);
+    if (empty($groups)) return $this->_adventurers;
+
+    foreach ($groups as $group) {
+      $this->_adventurers = array_merge($this->_adventurers, $group->get_adventurers());
+    }
+
+    return $this->_adventurers;
+  }
+
+  public function get_registered_adventurers ($refresh = false) {
+    if ($refresh || $this->_adventurers === null) $this->load_registered_adventurers($refresh);
+
+    return $this->_adventurers;
+  }
+
+  public function load_registered_guilds ($refresh = false) {
+    $this->_guilds = array();
+    // Load up all adventuring groups for this quest.
+    $groups = $this->get_registered_adventuring_groups($refresh);
+    if (empty($groups)) return $this->_guilds;
+
+    foreach ($groups as $group) {
+      $this->_guilds[] = $group->get_guild();
+    }
+
+    return $this->_guilds;
+  }
+
+  public function get_registered_guilds ($refresh = false) {
+    if ($refresh || $this->_guilds === null) $this->load_registered_guilds($refresh);
+
+    return $this->_guilds;
+  }
+
+  public function load_bonus () {
+    // Get all the data we need.
+    $guilds = $this->get_registered_guilds();
+    $adventurers = $this->get_registered_adventurers();
+    $kit = $this->get_kit();
+    
+    // Make a new bonus.
+    $this->_bonus = Quest::make_bonus($guilds, $adventurers, $kit);
+
+    return $this->_bonus;
+  }
+  
+  public function get_bonus ($refresh = false) {
+    if ($refresh || empty($this->_bonus)) $this->load_bonus();
+
+    return $this->_bonus;
+  }
+
+  /**
+   * Check if there are enough adventurers to go on the quest.
+   */
+  public function is_ready ($refresh = false) {
+    $adventurers = $this->get_registered_adventurers($refresh);
+    return (count($adventurers) >= $this->party_size_max);
+  }
+
+  public function open_spots ($refresh = false) {
+    $adventurers = $this->get_registered_adventurers($refresh);
+    return ($this->party_size_max - count($adventurers));
+  }
+
+  public function load_keywords () {
+    $this->_keywords = $this->__decode_keywords($this->keywords);
+  }
+
+  public function get_keywords () {
+    if ($this->_keywords === NULL) $this->load_keywords();
+    return $this->_keywords;
+  }
+
+  public function set_keywords ($list) {
+    // Encode the keywords and store them.
+    $this->keywords = $this->__encode_keywords($list);
+    // Reload the keywords.
+    $this->load_keywords();
+  }
+
 
   /* =================================
      ______________  ________________
@@ -498,7 +677,7 @@ class Quest extends RPGEntitySaveable {
     if (empty($json)) $json = Quest::load_quest_names_list();
     if (empty($original_json)) $original_json = Quest::load_quest_names_list(true);
     
-      // Determine the type.
+    // Determine the type.
     $type = Quest::randomize_quest_types($location->type, array(Quest::TYPE_BOSS));
 
     // Generate the quest.
@@ -507,6 +686,25 @@ class Quest extends RPGEntitySaveable {
     // Assign the quest to the guild.
     $quest->gid = $guild->gid;
     if ($save) $quest->save();
+
+    // Save JSON file.
+    if ($save_json) Quest::save_quest_names_list($json);
+
+    return $quest;
+  }
+
+  public static function generate_multiplayer_quest ($location, &$json = NULL, $original_json = NULL, $save = true) {
+    if (empty($location) || !is_a($location, 'Location')) return false;
+
+    $save_json = empty($json);
+    if (empty($json)) $json = Quest::load_quest_names_list();
+    if (empty($original_json)) $original_json = Quest::load_quest_names_list(true);
+    
+    // For now only Boss quests are multiplayer.
+    $type = Quest::TYPE_BOSS;
+
+    // Generate the quest.
+    $quest = Quest::generate_quest_type($location, $type, $json, $original_json, $save);
 
     // Save JSON file.
     if ($save_json) Quest::save_quest_names_list($json);
@@ -535,13 +733,15 @@ class Quest extends RPGEntitySaveable {
       'type' => $type,
       'active' => true,
       'cooldown' => 0,
-      'guild_limit' => 1,
+      'multiplayer' => true,
     );
 
     // Generate the name and icon.
     $name_and_icon = Quest::generate_quest_name_and_icon($location, $type, $json, $original_json);
     $data['name'] = $name_and_icon['name'];
     $data['icon'] = $name_and_icon['icon'];
+    $data['keywords'] = $name_and_icon['keywords'];
+    $data['boss_aid'] = $name_and_icon['boss_aid'];
 
     // Overrides for 1-star quests.
     if ($stars == 1) {
@@ -584,16 +784,17 @@ class Quest extends RPGEntitySaveable {
 
       case Quest::TYPE_BOSS:
         $data['active'] = false;
-        $data['cooldown'] = (3 * $days) - (5 * $hours); // 3 days less 5 hours.
-        $data['party_size_min'] = 2;
-        $data['party_size_max'] = $stars > 1 ? rand(3, 5) : $data['party_size_max'];
+        $data['cooldown'] = (rand(5, 10) * $hours); // 5-10 hours.
+        $data['party_size_min'] = rand(6 + ($stars * 2), 10 + ($stars * 2));
+        $data['party_size_max'] = $data['party_size_min'];
         $avg_party_size = ($data['party_size_max'] - $data['party_size_min'] / 2) + $data['party_size_min'];
-        $data['reward_gold'] = $stars * rand(200, 400);
+        $data['reward_gold'] = $stars * rand(500, 1000);
         $data['reward_exp'] = ($stars * $data['reward_exp']) + 50;
         $data['reward_fame'] = ($data['reward_fame'] * 3) + 5;
-        $data['duration'] = (rand(4, 7) * $stars) * (24*$hours);
+        $data['duration'] = (rand(8, 14) * $stars) * $hours;
         $data['success_rate'] = $data['success_rate'] - rand(8, 15);
-        $data['guild_limit'] = rand(2, 4);
+        $data['death_rate'] = $stars * rand(3, 8);
+        $data['multiplayer'] = true;
         break;
 
       case Quest::TYPE_FIGHT:
@@ -635,6 +836,7 @@ class Quest extends RPGEntitySaveable {
       'name' => '',
       'keywords' => array(),
       'icon' => ':pushpin:',
+      'boss_aid' => 0,
     );
     if ($location->type == Location::TYPE_EMPTY) return $info;
 
@@ -650,14 +852,51 @@ class Quest extends RPGEntitySaveable {
     // Create any extra tokens that should be passed into the format-type.
     $tokens = $location->get_tokens_from_keywords();
 
+    // Add a token for a dead adventurer name for Boss quests.
+    if ($type == Quest::TYPE_BOSS) {
+      $dead_adventurer = Quest::get_random_dead_adventurer(false);
+      // Set the adventurer to "bossed" (aka turned into a boss).
+      $dead_adventurer->bossed = true;
+      $dead_adventurer->class = AdventurerClass::UNDEAD;
+      $dead_adventurer->save();
+      // Create the token.
+      $dead_name = $dead_adventurer->get_name_parts();
+      $tokens['!boss_name'] = $dead_name['first'];
+      $info['boss_aid'] = $dead_adventurer->aid;
+    }
+
     // Randomly generate the name.
     $name_info = JSONList::generate_name($json_list, $original_json_list, $tokens);
     $info = array_merge($info, $name_info);
+
+    // Replace the keywords with the boss name.
+    if ($type == Quest::TYPE_BOSS) {
+      $info['keywords'] = $name_info['tokens']['!boss_name'] .' '. $name_info['tokens']['!boss_suffix'];
+    }
 
     // If we're supposed to save the JSON, do so now.
     if ($save_json) Location::save_location_names_list($json);
 
     return $info;
+  }
+
+  protected static function get_random_dead_adventurer ($save_new_adventurer = true) {
+    $deads = Adventurer::get_all_dead_adventurers(false);
+
+    // If there are no dead adventurers ever, create a random dead adventurer.
+    if (empty($deads)) {
+      $dead = Adventurer::generate_new_adventurer(false, false);
+      $dead->dead = true;
+      $dead->revivable = false;
+      $dead->available = false;
+      if ($save_new_adventurer) $dead->save();
+    }
+    // If we've got dead adventurers, get a name.
+    else {
+      $dead = $deads[array_rand($deads)];
+    }
+
+    return $dead;
   }
 
   /**
@@ -797,6 +1036,35 @@ class Quest extends RPGEntitySaveable {
     }
 
     return $type;
+  }
+
+  public static function make_bonus ($guilds, $adventurers, $kit = NULL) {
+    if (!is_array($guilds)) $guilds = array($guilds);
+
+    $bonus = new Bonus ();
+
+    // Merge in the Guild bonuses.
+    foreach ($guilds as $guild) {
+      $bonus->merge($guild->get_bonus());
+    }
+
+    // Merge in the Adventurer bonuses.
+    foreach ($adventurers as $adventurer) {
+      $bonus->merge($adventurer->get_bonus());
+    }
+
+    // Merge in the Kit bonus.
+    if (!empty($kit)) $bonus->merge($kit->get_bonus());
+
+    return $bonus;
+  }
+
+  protected static function __encode_keywords ($list) {
+    return is_array($list) ? implode('|', $list) : '';
+  }
+
+  protected static function __decode_keywords ($string) {
+    return empty($string) ? array() : explode('|', $string);
   }
 
 }

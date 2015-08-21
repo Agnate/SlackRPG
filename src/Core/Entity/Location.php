@@ -59,9 +59,9 @@ class Location extends RPGEntitySaveable {
     return Location::get_letter($this->col) .$this->row;
   }
 
-  public function get_duration ($guild, $adventurers, $kit) {
+  public function get_duration ($bonus = NULL) {
     // Calculate the raw distance and multiply by a time constant.
-    $travel_speed_modifier = $this->calculate_travel_speed_modifier($guild, $adventurers, $kit);
+    $travel_speed_modifier = $this->calculate_travel_speed_modifier($bonus);
     $travel_per_tile = Location::TRAVEL_BASE * $travel_speed_modifier;
     return ceil($this->get_distance() * $travel_per_tile);
   }
@@ -80,10 +80,9 @@ class Location extends RPGEntitySaveable {
     return sqrt(pow(($capital->row - $this->row), 2) + pow(($capital->col - $this->col), 2));
   }
 
-  public function calculate_travel_speed_modifier ($guild, $adventurers, $kit) {
-    $mod = $guild->get_bonus()->get_mod(Bonus::TRAVEL_SPEED, $this);
-    if (!empty($kit)) $mod += $kit->get_bonus()->get_mod(Bonus::TRAVEL_SPEED, $this, Bonus::MOD_DIFF);
-    foreach ($adventurers as $adventurer) $mod += $adventurer->get_bonus()->get_mod(Bonus::TRAVEL_SPEED, $this, Bonus::MOD_DIFF);
+  public function calculate_travel_speed_modifier ($bonus = NULL) {
+    if (empty($bonus)) return Bonus::DEFAULT_VALUE;
+    $mod = $bonus->get_mod(Bonus::TRAVEL_SPEED, $this);
     return $mod;
   }
 
@@ -182,6 +181,9 @@ class Location extends RPGEntitySaveable {
     );
 
     foreach ($coords as $coord) {
+      if ($coord['row'] < 1 || $coord['row'] > 999) continue;
+      if ($coord['col'] < 1 || $coord['col'] > 702) continue;
+
       $data = array(
         'row' => $coord['row'],
         'col' => $coord['col'],

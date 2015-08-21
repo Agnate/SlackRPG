@@ -32,19 +32,23 @@ class ItemBonus {
         break;
 
       case 'kit_seisreport':
-        $bonus->add_mod(Bonus::ITEM_TYPE_FIND_RATE, 0.10, 'ItemType->'.ItemType::ORE);
+        $bonus->add_mod(Bonus::QUEST_REWARD_ITEM, 0.05);
+        $bonus->add_mod(Bonus::ITEM_TYPE_FIND_RATE, 0.50, 'ItemType->'.ItemType::ORE);
         break;
 
       case 'kit_apprentice':
-        $bonus->add_mod(Bonus::ITEM_TYPE_FIND_RATE, 0.10, 'ItemType->'.ItemType::POWERSTONE);
+        $bonus->add_mod(Bonus::QUEST_REWARD_ITEM, 0.05);
+        $bonus->add_mod(Bonus::ITEM_TYPE_FIND_RATE, 0.50, 'ItemType->'.ItemType::POWERSTONE);
         break;
 
       case 'kit_herbalist':
-        $bonus->add_mod(Bonus::ITEM_TYPE_FIND_RATE, 0.10, 'ItemType->'.ItemType::HERB);
+        $bonus->add_mod(Bonus::QUEST_REWARD_ITEM, 0.05);
+        $bonus->add_mod(Bonus::ITEM_TYPE_FIND_RATE, 0.50, 'ItemType->'.ItemType::HERB);
         break;
 
       case 'kit_shepherd':
-        $bonus->add_mod(Bonus::ITEM_TYPE_FIND_RATE, 0.10, 'ItemType->'.ItemType::ANIMAL);
+        $bonus->add_mod(Bonus::QUEST_REWARD_ITEM, 0.05);
+        $bonus->add_mod(Bonus::ITEM_TYPE_FIND_RATE, 0.50, 'ItemType->'.ItemType::ANIMAL);
         break;
     }
   }

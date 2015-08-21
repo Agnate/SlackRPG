@@ -84,8 +84,8 @@ class MapImage {
     // Generate the base (randomized grass).
     for ($r = 1; $r <= $num_rows; $r++) {
       for ($c = 1; $c <= $num_cols; $c++) {
-        $x = $r * $cell_size;
-        $y = $c * $cell_size;
+        $x = $c * $cell_size;
+        $y = $r * $cell_size;
         MapImage::create_random_cells($image, $icon_size, $spritesheet, reset($sheet['tiles']['grass']), $x, $y);
       }
     }

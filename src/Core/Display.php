@@ -6,18 +6,31 @@ class Display {
     return number_format($amount).':rpg-coin:';
   }
 
+  public static function currency () {
+    return ':rpg-coin:_Gold_';
+  }
+
   public static function get_duration_as_hours ($duration) {
     $seconds = $duration;
     $hours = floor($seconds / (60 * 60));
     $seconds -= ($hours * 60 * 60);
     $minutes = floor($seconds / 60);
     $seconds -= ($minutes * 60);
+
+    $time = array();
+    if ($hours > 0) $time[] = $hours.' hours';
+    if ($minutes > 0) $time[] = $minutes.' minutes';
+    if ($seconds > 0) $time[] = $seconds.' seconds';
     
-    return ($hours > 0 ? $hours.' hours, ' : '').($minutes > 0 ? $minutes.' minutes, ' : '').($seconds > 0 ? $seconds.' seconds' : '');
+    return implode(', ', $time);
   }
 
   public static function get_fame ($fame) {
     return number_format($fame).':beginner:';
+  }
+
+  public static function fame () {
+    return ':beginner:_Fame_';
   }
 
   public static function get_stars ($stars, $max = 5) {
@@ -65,7 +78,7 @@ class Display {
     return $num.'th';
   }
 
-  public static function show_adventurer_count ($count) {
-    return $count .':rpg-misc-adv:';
+  public static function show_adventurer_count ($total, $count = null) {
+    return ($count !== null ? $count.' / ' : ''). $total .':rpg-misc-adv:';
   }
 }

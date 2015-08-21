@@ -38,3 +38,9 @@ img.map {
 	/*font-style: italic;
 	color: #8b898f;*/
 }
+
+.attachment {
+  padding-left: 10px;
+  margin-top: 10px;
+	border-left: 5px solid black;
+}

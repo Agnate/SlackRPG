@@ -34,6 +34,14 @@ abstract class RPGEntitySaveable extends RPGEntity {
     return $queue;
   }
 
+  public function get_queue () {
+    $data = array(
+      'type' => static::$default_class,
+      'type_id' => $this->{static::$primary_key},
+    );
+    return Queue::load($data);
+  }
+
   public function queue_process () {
     return 'No queue processing has been set up.';
   }
