@@ -39,6 +39,7 @@ class Adventurer extends RPGEntitySaveable {
 
   const LEVEL_CAP = 20;
   const ENHANCE_AT_LEVELS = 5;
+  const REVIVAL_EXPIRATION = 604800; // 60 * 60 * 24 * 7 = 1 week
   const GENDER_MALE = 'male';
   const GENDER_FEMALE = 'female';
 
@@ -140,9 +141,9 @@ class Adventurer extends RPGEntitySaveable {
     $level--;
     // Crude level numbers for now.
     if ($level <= 5) return ($level * 100);
-    if ($level <= 10) return ($level * 500);
-    if ($level <= 15) return ($level * 1000);
-    return ($level * 2000);
+    if ($level <= 10) return ($level * 250);
+    if ($level <= 15) return ($level * 625);
+    return ($level * 1500);
   }
 
   public function has_adventurer_class () {
@@ -338,6 +339,26 @@ class Adventurer extends RPGEntitySaveable {
     return compact('first', 'last');
   }
 
+  public function get_revive_cost ($rate_per_level) {
+    return $this->get_level(false) * $rate_per_level;
+  }
+
+  public function get_soul_ascend_time () {
+    return max(0, ($this->death_date + Adventurer::REVIVAL_EXPIRATION) - time());
+  }
+
+  public function queue_process ($queue = null) {
+    // If we were give a Queue, destroy it.
+    if (!empty($queue)) $queue->delete();
+
+    // This is a revival expiration, so remove ability for adventurer to be revived.
+    $this->dead = true;
+    $this->revivable = false;
+    $this->champion = false;
+    $this->save();
+
+    return TRUE;
+  }
 
 
   /* =================================

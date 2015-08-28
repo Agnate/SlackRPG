@@ -373,6 +373,20 @@ class Guild extends RPGEntitySaveable {
     return $this->_quests;
   }
 
+  public function calculate_adventurer_level_info () {
+    $adventurers = $this->get_adventurers();
+    $lo = 99999;
+    $hi = 0;
+
+    foreach ($adventurers as $adventurer) {
+      $level = $adventurer->get_level();
+      if ($level < $lo) $lo = $level;
+      if ($level > $hi) $hi = $level;
+    }
+
+    return compact('lo', 'hi');
+  }
+
   
 
   /* =================================

@@ -217,23 +217,43 @@ class Location extends RPGEntitySaveable {
     // Assign star rating based on proximity to the Capital.
     if ($this->type != Location::TYPE_EMPTY) {
       $dist = $this->get_distance($capital);
-      // If we can't calculate the distance (or it's the capital), star-rating should be zero.
-      if ($dist === 0) return;
-
-      // 0-5 = 1-star
-      // 5.1-7.5 = 2-star
-      // 7.6-10 = 3-star
-      // 10-13 = 4-star
-      // 13+ = 5-star
-      if ($dist <= 5) $this->star_max = 1;
-      else if ($dist <= 7.5) $this->star_max = 2;
-      else if ($dist <= 10) $this->star_max = 3;
-      else if ($dist <= 13) $this->star_max = 4;
-      else $this->star_max = 5;
-
+      $this->star_max = $this->calc_star_rating($dist);
       if ($this->star_max > 1) $this->star_min = $this->star_max - rand(0, 1);
       else $this->star_min = $this->star_max;
     }
+  }
+
+  protected function calc_star_rating ($distance) {
+    // 0 = 0-star
+    // 0.1-5 = 1-star
+    // 5.1-7.5 = 2-star
+    // 7.6-10 = 3-star
+    // 10-13 = 4-star
+    // 13+ = 5-star
+    if ($distance <= 0) return 0;
+    else if ($distance <= 5) return 1;
+    else if ($distance <= 7.5) return 2;
+    else if ($distance <= 10) return 3;
+    else if ($distance <= 13) return 4;
+    else return 5;
+  }
+
+  public function get_exploration_exp ($capital = null) {
+    // 1-star ->  6 exp/hour
+    // 2-star ->  8 exp/hour
+    // 3-star -> 10 exp/hour
+    // 4-star -> 12 exp/hour
+    // 5-star -> 14 exp/hour
+    $distance = $this->get_distance($capital);
+    $duration = Location::TRAVEL_BASE * $distance;
+    $star = $this->calc_star_rating($distance);
+
+    if ($star <= 0) return 0;
+    else if ($star == 1) return 6 * $duration;
+    else if ($star == 2) return 8 * $duration;
+    else if ($star == 3) return 10 * $duration;
+    else if ($star == 4) return 12 * $duration;
+    else return 14 * $duration;
   }
 
   

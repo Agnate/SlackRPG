@@ -10,17 +10,23 @@ class Display {
     return ':rpg-coin:_Gold_';
   }
 
-  public static function get_duration_as_hours ($duration) {
+  public static function get_duration ($duration) {
     $seconds = $duration;
+    
+    $days = floor($seconds / (60 * 60 * 24));
+    $seconds -= ($days * 60 * 60 * 24);
+
     $hours = floor($seconds / (60 * 60));
     $seconds -= ($hours * 60 * 60);
+    
     $minutes = floor($seconds / 60);
     $seconds -= ($minutes * 60);
 
     $time = array();
-    if ($hours > 0) $time[] = $hours.' hours';
-    if ($minutes > 0) $time[] = $minutes.' minutes';
-    if ($seconds > 0) $time[] = $seconds.' seconds';
+    if ($days > 0) $time[] = $days.' day'.($days == 1 ? '' : 's');
+    if ($hours > 0) $time[] = $hours.' hour'.($hours == 1 ? '' : 's');
+    if ($minutes > 0) $time[] = $minutes.' minute'.($minutes == 1 ? '' : 's');
+    if ($seconds > 0) $time[] = $seconds.' second'.($seconds == 1 ? '' : 's');
     
     return implode(', ', $time);
   }

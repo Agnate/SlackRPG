@@ -36,8 +36,8 @@ class RPGSession {
     $this->register_callback(array('revive'), 'cmd_revive');
     
     $this->register_callback(array('quest'), 'cmd_quest');
-    $this->register_callback(array('approve'), 'cmd_approve');
-    $this->register_callback(array('cancel'), 'cmd_cancel');
+    // $this->register_callback(array('approve'), 'cmd_quest_approve');
+    // $this->register_callback(array('cancel'), 'cmd_quest_cancel');
     $this->register_callback(array('map'), 'cmd_map');
     $this->register_callback(array('explore'), 'cmd_explore');
 
@@ -83,8 +83,9 @@ class RPGSession {
     $response[] = 'Colosseum - Challenge another Guild: `challenge`';
     $response[] = 'Explore the Map: `explore`';
     $response[] = 'Quests: `quest`';
-    $response[] = 'Approve a Multi-Guild Quest: `approve`';
-    $response[] = 'Cancel a Multi-Guild Quest: `cancel`';
+    $response[] = 'Dismiss a Quest: `quest dismiss`';
+    $response[] = 'Approve a Multi-Guild Quest: `quest approve`';
+    $response[] = 'Cancel a Multi-Guild Quest: `quest cancel`';
     $response[] = '';
 
     $response[] = 'Recruit Adventurers: `recruit`';
@@ -331,7 +332,7 @@ class RPGSession {
           $queue = $task->get_queue();
           if (!empty($queue)) {
             $eta = $queue->execute - time();
-            $response[] = $name .' _(returning '.($eta > 0 ? 'in '.Display::get_duration_as_hours($eta) : 'now').')_';
+            $response[] = $name .' _(returning '.($eta > 0 ? 'in '.Display::get_duration($eta) : 'now').')_';
           }
           else {
             $response[] = $name .($exped == 'Quest' ? ' _(waiting for more Guilds)_' : ' _(waiting for opponent to respond)_');
@@ -593,9 +594,7 @@ class RPGSession {
         $this->respond("There are no quests to undertake.\n\nTo open up quests, new locations need to be discovered. Type `explore` to start exploring the map.");
         return FALSE;
       }
-      
-      $response[] = 'To embark on a Quest, type: `quest [QUEST ID] [MODIFIER ITEM ID (optional)] [ADVENTURER NAMES (comma-separated)]` (example: `quest q23 `)';
-      $response[] = '';
+
       $response[] = '*Multi-Guild Quests available* (costs '.Display::get_fame(Quest::MULTIPLAYER_FAME_COST).' per Guild to register):';
       $quest_available = array();
       foreach ($quests as $quest) {
@@ -606,7 +605,7 @@ class RPGSession {
         $adv_count = count($cur_advs);
         $response[] = '`b'.$quest->qid.'` _'. $quest->get_display_name(false) .'_ — '. Display::get_difficulty_stars($quest->stars, 30) . ($quest->death_rate > 0 ? ' — :skull:' : ''). ' — '. Display::show_adventurer_count($quest->party_size_max, $adv_count);
       }
-      if (count($quest_available) <= 0) $response[] = '_None_';
+      if (empty($quest_available)) $response[] = '_None_';
 
       $private_active_quests = array();
       foreach ($private_quests as $quest) {
@@ -623,7 +622,7 @@ class RPGSession {
         $success_rate = $quest->get_success_rate($best_bonus, $best_adventurers);
         $response[] = '`q'.$quest->qid.'` _'. $quest->get_display_name(false) .'_ — '. Display::get_difficulty_stars($quest->stars, $success_rate) . ($quest->death_rate > 0 ? ' — :skull:' : ''). ' — '. Display::show_adventurer_count($quest->get_party_size());
       }
-      if (count($private_active_quests) <= 0) $response[] = '_None_';
+      if (empty($private_active_quests)) $response[] = '_None_';
 
       // Also show the list of available adventurers.
       $response[] = '';
@@ -645,16 +644,31 @@ class RPGSession {
       }
       if (empty($kits)) $response[] = '_None_';
 
+      $response[] = '';
+      $response[] = 'To embark on a Quest, type: `quest [QUEST ID] [MODIFIER ITEM ID (optional)] [ADVENTURER NAMES (comma-separated)]` (example: `quest q23 `)';
+      $response[] = 'To see a list of Quests you\'re participating in, type: `quest underway`';
+      $response[] = 'To dismiss a Quest, type: `quest dismiss [QUEST ID]`';
+      $response[] = 'To approve a Multi-Guild Quest, type: `quest approve [QUEST ID]`';
+      $response[] = 'To cancel a Multi-Guild Quest, type: `quest cancel [QUEST ID]`';
+
       $this->respond($response);
       return FALSE;
+    }
+
+    // Check if the first argument is a secondary command, pass all of the information off to the secondary functions.
+    $cmd_options = array('dismiss', 'approve', 'cancel', 'underway');
+    if (in_array($args[0], $cmd_options)) {
+      $cmd_secondary = array_shift($args);
+      $this->{'cmd_quest_'.$cmd_secondary}($args);
+      return TRUE;
     }
 
     // Check if Quest ID is available.
     $qarg = array_shift($args);
     $qtype = substr($qarg, 0, 1);
     $qid = substr($qarg, 1);
-    if ($qtype == 'q') $quest = Quest::load(array('qid' => $qid, 'gid' => $player->gid, 'completed' => false));
-    else if ($qtype == 'b') $quest = Quest::load(array('qid' => $qid, 'multiplayer' => true, 'completed' => false));
+    if ($qtype == 'q') $quest = Quest::load(array('qid' => $qid, 'gid' => $player->gid, 'completed' => false, 'active' => true));
+    else if ($qtype == 'b') $quest = Quest::load(array('qid' => $qid, 'multiplayer' => true, 'completed' => false, 'active' => true));
 
     if (!isset($quest) || empty($quest)) {
       $this->respond("This quest is not available or does not exist.".$this->get_typed($cmd_word, $orig_args));
@@ -667,7 +681,7 @@ class RPGSession {
       if (!empty($pgroup)) {
         if ($quest->is_ready()) {
           if ($quest->gid == $player->gid) {
-            $this->respond("This Quest is waiting for you to give the final approval. Type: `approve b".$quest->qid."`".$this->get_typed($cmd_word, $orig_args));
+            $this->respond("This Quest is waiting for you to give the final approval. Type: `quest approve b".$quest->qid."`".$this->get_typed($cmd_word, $orig_args));
           }
           else {
             $this->respond("You have already registered for this Quest. Please wait for the Quest Leader to give the final approval.".$this->get_typed($cmd_word, $orig_args));
@@ -821,7 +835,7 @@ class RPGSession {
       $response[] = '*Quest*: '.$quest->get_display_name(false);
       $response[] = '*Rating*: '.Display::get_difficulty_stars($quest->stars, $success_rate);
       if ($quest->multiplayer == false) {
-        $response[] = '*Duration*: '.Display::get_duration_as_hours($duration);
+        $response[] = '*Duration*: '.Display::get_duration($duration);
         $response[] = '*Chance of Success*: '.Display::get_difficulty($success_rate).' '.$success_rate.'%';
         if ($death_rate > 0) $response[] = '*Chance of Death*: :skull: '.$death_rate.'%';
       }
@@ -930,7 +944,7 @@ class RPGSession {
         return FALSE;
       }
 
-      $this->respond($names.' embark'.($name_count == 1 ? 's' : '').' on the quest of _'.$quest->name.'_, returning in '.Display::get_duration_as_hours($duration).'.');
+      $this->respond($names.' embark'.($name_count == 1 ? 's' : '').' on the quest of _'.$quest->name.'_, returning in '.Display::get_duration($duration).'.');
 
       return TRUE;
     }
@@ -950,7 +964,7 @@ class RPGSession {
       }
 
       // Notify the Leader.
-      $this->respond('Multi-Guild Quest named '.$quest->name.' requires the final approval before departure. Please review the Quest to approve or cancel by typing: `approve b'.$quest->qid.'`', RPGSession::PERSONAL, $leader);
+      $this->respond('Multi-Guild Quest named '.$quest->name.' requires the final approval before departure. Please review the Quest to approve or cancel by typing: `quest approve b'.$quest->qid.'`', RPGSession::PERSONAL, $leader);
       return TRUE;
     }
     // Otherwise, just let the user know they registered for the multiplayer quest and more spots need to be filled.
@@ -963,11 +977,157 @@ class RPGSession {
 
 
   /**
+   * Show a list of Quests that the Guild is participating in.
+   */
+  protected function cmd_quest_underway ($args = array()) {
+    $orig_args = $args;
+    $cmd_word = 'quest underway';
+    $response = array();
+
+    // Load the player and fail out if they have not created a Guild.
+    if (!($player = $this->load_current_player())) return;
+
+    // Load up all Global Quests.
+    $quests = Quest::load_multiple(array('active' => true, 'multiplayer' => true));
+    // Load up all private Quests.
+    $private_quests = $player->get_quests();
+
+    // Show quests currently on.
+    $response[] = '*Multi-Guild Quests underway*:';
+    $quest_underway = array();
+    foreach ($quests as $quest) {
+      // Skip quests that are full-up but aren't yet confirmed.
+      if ($quest->is_ready()) continue;
+      $quest_underway[] = $quest;
+      $queue = $quest->get_queue();
+      if (!empty($queue)) {
+        $eta = $queue->execute - time();
+        $response[] = '`b'.$quest->qid.'` _'. $name .' (returning '.($eta > 0 ? 'in '.Display::get_duration($eta) : 'now').')_';
+      }
+      else {
+        $response[] = '`b'.$quest->qid.'` _'. $name .' (waiting for more Guilds)_';
+      }
+    }
+    if (empty($quest_underway)) $response[] = '_None_';
+    $response[] = '';
+
+    $response[] = '*Quests underway*:';
+    $private_underway_quests = array();
+    foreach ($private_quests as $quest) {
+      if ($quest->active || empty($quest->agid)) continue;
+      $private_underway_quests[] = $quest;
+      $pqueue = $quest->get_queue();
+      $eta = (!empty($pqueue) ? $pqueue->execute - time() : 0);
+      $response[] = '`q'.$quest->qid.'` _'.$quest->get_display_name(false).' (returning '.($eta > 0 ? 'in '.Display::get_duration($eta) : 'now').')_';
+    }
+    if (empty($private_underway_quests)) $response[] = '_None_';
+
+    $this->respond($response);
+  }
+
+
+  /**
+   * Allow Guilds to dismiss a Quest and remove it from their Quest list.
+   */
+  protected function cmd_quest_dismiss ($args = array()) {
+    $orig_args = $args;
+    $cmd_word = 'quest dismiss';
+    $response = array();
+
+    // Load the player and fail out if they have not created a Guild.
+    if (!($player = $this->load_current_player())) return;
+
+    // Info must be submitted to properly dismiss.
+    if (empty($args) || empty($args[0])) {
+      $response[] = 'You must select a Quest to dismiss from your list by typing: `quest dismiss [QUEST ID]` (example: `quest dismiss q12`)';
+      $response[] = '';
+      $response[] = '*Quest available to dismiss*:';
+
+      // Load up all private Quests.
+      $private_quests = $player->get_quests();
+      $private_active_quests = array();
+      foreach ($private_quests as $quest) {
+        if ($quest->active == false || !empty($quest->agid)) continue;
+        $private_active_quests[] = $quest;
+
+        // Get the best adventurers available for questing.
+        $best_adventurers = $player->get_best_adventurers($quest->party_size_max);
+        $best_bonus = Quest::make_bonus($player, $best_adventurers);
+        $success_rate = $quest->get_success_rate($best_bonus, $best_adventurers);
+        $response[] = '`q'.$quest->qid.'` _'. $quest->get_display_name(false) .'_ — '. Display::get_difficulty_stars($quest->stars, $success_rate) . ($quest->death_rate > 0 ? ' — :skull:' : ''). ' — '. Display::show_adventurer_count($quest->get_party_size());
+      }
+      if (empty($private_active_quests)) $response[] = '_None_';
+
+      $this->respond($response);
+      return FALSE;
+    }
+
+    // Check if Quest ID is available for removal.
+    $qarg = array_shift($args);
+    $qtype = substr($qarg, 0, 1);
+    $qid = substr($qarg, 1);
+    if ($qtype == 'q') $quest = Quest::load(array('qid' => $qid, 'gid' => $player->gid, 'agid' => 0, 'completed' => false, 'active' => true, 'multiplayer' => false));
+
+    if (!isset($quest) || empty($quest)) {
+      $this->respond("This quest does not exist or cannot be dismissed.".$this->get_typed($cmd_word, $orig_args));
+      return FALSE;
+    }
+
+    // Check the last argument for the confirmation code.
+    $confirmation = false;
+    if (!empty($args) && strpos($args[count($args)-1], 'CONFIRM') === 0) {
+      $confirmation = array_pop($args);
+    }
+
+    $best_adventurers = $player->get_best_adventurers($quest->party_size_max);
+    $best_bonus = Quest::make_bonus($player, $best_adventurers);
+    $success_rate = $quest->get_success_rate($best_bonus, $best_adventurers);
+    $duration = $quest->get_duration($best_bonus);
+    $death_rate = $quest->get_death_rate($best_bonus);
+
+    // Display the confirmation message and code.
+    if (empty($confirmation)) {
+      $response[] = 'The following Quest will be *DISMISSED* from your Quest list:';
+      $response[] = '';
+      $response[] = '*Quest*: '.$quest->get_display_name(false);
+      $response[] = '*Rating*: '.Display::get_difficulty_stars($quest->stars, $success_rate);
+      $response[] = '*Duration*: '.Display::get_duration($duration);
+      $response[] = '*Chance of Success*: '.Display::get_difficulty($success_rate).' '.$success_rate.'%';
+      if ($death_rate > 0) $response[] = '*Chance of Death*: :skull: '.$death_rate.'%';
+
+      $response[] = '';
+      $response[] = 'Are you sure you want to *dismiss* this Quest?';
+      $response[] = $this->get_confirm($cmd_word, $orig_args);
+      $this->respond($response);
+      return FALSE;
+    }
+
+    // Delete the quest.
+    $success = $quest->delete();
+    if ($success === false) {
+      $this->respond('There was a problem removing the Quest. Please talk to Paul.');
+      return FALSE;
+    }
+
+    // Recycle the Quest name(s) if necessary.
+    $success = Quest::recycle_quest($quest);
+    if ($success === false) {
+      $this->respond('There was a problem recycling the Quest information. Please talk to Paul.');
+      return FALSE;
+    }
+
+    $response[] = '_'.$quest->get_display_name(false).'_ was dismissed and removed from your Quest list.';
+    $this->respond($response);
+  }
+
+
+
+  /**
    * Approve multi-guild quests.
    */
-  protected function cmd_approve ($args = array()) {
+  protected function cmd_quest_approve ($args = array()) {
     $orig_args = $args;
-    $cmd_word = 'approve';
+    $cmd_word = 'quest approve';
     $response = array();
 
     // Load the player and fail out if they have not created a Guild.
@@ -1035,7 +1195,7 @@ class RPGSession {
       $response[] = '';
       $response[] = '*Quest*: '.$quest->get_display_name(false);
       $response[] = '*Rating*: '.Display::get_difficulty_stars($quest->stars, $success_rate);
-      $response[] = '*Duration*: '.Display::get_duration_as_hours($duration);
+      $response[] = '*Duration*: '.Display::get_duration($duration);
       $response[] = '*Chance of Success*: '.Display::get_difficulty($success_rate).' '.$success_rate.'%';
       if ($death_rate > 0) $response[] = '*Chance of Death*: :skull: '.$death_rate.'%';
 
@@ -1045,7 +1205,7 @@ class RPGSession {
       foreach ($adventurers as $adventurer) $response[] = $adventurer->get_display_name(false);
       $response[] = '';
 
-      $response[] = 'To cancel this Quest instead, type: `cancel b'.$quest->qid.'`';
+      $response[] = 'To cancel this Quest instead, type: `quest cancel b'.$quest->qid.'`';
       $response[] = '';
 
       $response[] = $this->get_confirm($cmd_word, $orig_args);
@@ -1104,7 +1264,7 @@ class RPGSession {
       $last_name = ($name_count > 1) ? ', and '.array_pop($names) : '';
       $names = implode(', ', $names).$last_name;
       // Message the user to let them know their adventurers are leaving.
-      $this->respond($names.' embark'.($name_count == 1 ? 's' : '').' on the quest of '.$quest->name.' returning in '.Display::get_duration_as_hours($duration).'.', RPGSession::PERSONAL, $rguild);
+      $this->respond($names.' embark'.($name_count == 1 ? 's' : '').' on the quest of '.$quest->name.' returning in '.Display::get_duration($duration).'.', RPGSession::PERSONAL, $rguild);
     }
   }
 
@@ -1113,9 +1273,9 @@ class RPGSession {
   /**
    * Cancel multi-guild quests.
    */
-  protected function cmd_cancel ($args = array()) {
+  protected function cmd_quest_cancel ($args = array()) {
     $orig_args = $args;
-    $cmd_word = 'cancel';
+    $cmd_word = 'quest cancel';
     $response = array();
 
     // Load the player and fail out if they have not created a Guild.
@@ -1186,7 +1346,7 @@ class RPGSession {
       $response[] = '';
       $response[] = '*Quest*: '.$quest->get_display_name(false);
       $response[] = '*Rating*: '.Display::get_difficulty_stars($quest->stars, $success_rate);
-      $response[] = '*Duration*: '.Display::get_duration_as_hours($duration);
+      $response[] = '*Duration*: '.Display::get_duration($duration);
       $response[] = '*Chance of Success*: '.Display::get_difficulty($success_rate).' '.$success_rate.'%';
       if ($death_rate > 0) $response[] = '*Chance of Death*: :skull: '.$death_rate.'%';
 
@@ -1199,7 +1359,7 @@ class RPGSession {
       $response[] = 'Are you sure you wish to *CANCEL* this Quest?';
       $response[] = 'As the Leader, you will lose your '.Display::get_fame($leader_cancel_cost).' registration fee if you cancel. All other participating Guilds will be reimbursed '. Display::get_fame($reimburse_amount) .' (half of the fee) if the Quest is canceled.';
       $response[] = '';
-      $response[] = 'To depart on this Quest instead, type: `approve b'.$quest->qid.'`';
+      $response[] = 'To depart on this Quest instead, type: `quest approve b'.$quest->qid.'`';
       $response[] = '';
 
       $response[] = $this->get_confirm($cmd_word, $orig_args);
@@ -1474,7 +1634,7 @@ class RPGSession {
     if (empty($confirmation)) {
       $response[] = '*Quest*: Exploration';
       if (isset($kit)) $response[] = '*Modifier Item*: '. $kit->get_display_name(false);
-      $response[] = '*Duration*: '.Display::get_duration_as_hours($duration);
+      $response[] = '*Duration*: '.Display::get_duration($duration);
       $response[] = '*Adventuring party ('.count($adventurers).')*:';
       foreach ($adventurers as $adventurer) {
         $response[] = $adventurer->get_display_name(false);
@@ -1565,7 +1725,7 @@ class RPGSession {
     $last_name = ($name_count > 1) ? ', and '.array_pop($names) : '';
     $names = implode(', ', $names).$last_name;
 
-    $this->respond($names.' set'.($name_count == 1 ? 's' : '').' off to explore '.$location->get_coord_name().' returning in '.Display::get_duration_as_hours($duration).'.');
+    $this->respond($names.' set'.($name_count == 1 ? 's' : '').' off to explore '.$location->get_coord_name().' returning in '.Display::get_duration($duration).'.');
   }
 
 
@@ -1842,7 +2002,7 @@ class RPGSession {
       return FALSE;
     }
 
-    $this->respond($upgrade->get_display_name(false) .' was purchased and will be upgraded in '.Display::get_duration_as_hours($duration).'.');
+    $this->respond($upgrade->get_display_name(false) .' was purchased and will be upgraded in '.Display::get_duration($duration).'.');
   }
 
 
@@ -2308,8 +2468,8 @@ class RPGSession {
       }
 
       // Notify everyone.
-      $this->respond("You have accepted the Colosseum challenge from ".$opponent->get_display_name().". The fight will finish in ".Display::get_duration_as_hours($duration).".");
-      $this->respond($player->get_display_name()." has accepted your Colosseum challenge! The fight will finish in ".Display::get_duration_as_hours($duration).".", RPGSession::PERSONAL, $opponent);
+      $this->respond("You have accepted the Colosseum challenge from ".$opponent->get_display_name().". The fight will finish in ".Display::get_duration($duration).".");
+      $this->respond($player->get_display_name()." has accepted your Colosseum challenge! The fight will finish in ".Display::get_duration($duration).".", RPGSession::PERSONAL, $opponent);
       return TRUE;
     }
 
@@ -2331,18 +2491,19 @@ class RPGSession {
 
     $response = array();
 
-    $cost = 5000;
+    $cost_rate = 350;
     $revival_template = ItemTemplate::load(array('name_id' => 'revival_phoenixfeather'));
 
     // Show list of fallen adventurers.
     if (empty($args) || empty($args[0])) {
-      $response[] = "All revivals cost ".Display::get_currency($cost)." and a ".$revival_template->get_display_name().'.';
+      $response[] = "All revivals cost ".Display::get_currency($cost_rate)." per Adventurer Level and a ".$revival_template->get_display_name().'.';
       $response[] = '';
       $response[] = "Graveyard:";
       $adventurers = Adventurer::load_multiple(array('gid' => $player->gid, 'dead' => true, 'revivable' => true));
       if (!empty($adventurers)) {
         foreach ($adventurers as $adventurer) {
-          $response[] = ':rpg-tomb: '.$adventurer->get_display_name(true, false);
+          $cost = $adventurer->get_revive_cost($cost_rate);
+          $response[] = ':rpg-tomb: '.$adventurer->get_display_name(true, false).' _(soul ascends in '.Display::get_duration($adventurer->get_soul_ascend_time()).')_ — '.Display::get_currency($cost);
         }
         $response[] = '';
         $response[] = 'To revive a fallen adventurer, type: `revive [ADVENTURER NAME]`';
@@ -2375,6 +2536,7 @@ class RPGSession {
     }
 
     // Check that they can afford to revive an adventurer.
+    $cost = $adventurer->get_revive_cost($cost_rate);
     if ($player->gold < $cost) {
       $this->respond("You do not have ".Display::get_currency($cost)." to revive ".$adventurer->name.".");
       return FALSE;
@@ -2550,6 +2712,68 @@ class RPGSession {
 
     // Load the player and fail out if they have not created a Guild.
     if (!($player = $this->load_current_player())) return;
+
+
+    // Test code for selecting locations for quests.
+    $season = Season::current();
+    $map = $season->get_map();
+
+    // Get list of all revealed locations.
+    $types = Location::types();
+    $locations = Location::load_multiple(array('mapid' => $map->mapid, 'type' => $types, 'revealed' => true));
+
+    d($locations);
+
+    // Sort out locations by star-rating.
+    $all_locations = array('all' => $locations);
+    foreach ($locations as &$location) {
+      for ($star = $location->star_min; $star <= $location->star_max; $star++) {
+        if ($star == 0) continue;
+        if (!isset($all_locations[$star])) $all_locations[$star] = array();
+        $all_locations[$star]['loc'.$location->locid] = $location;
+      }
+    }
+
+    d($all_locations);
+
+    // Determine the location list that the generator should pull from,
+    // choosing lower-star locations for Guilds with weaker adventurers.
+    $level = $player->calculate_adventurer_level_info();
+    d($level);
+    $star = Quest::calculate_appropriate_star_range($level['lo'], $level['hi']);
+    d($star);
+    $original_locations = array();
+    // Loop through all locations and merge together the viable locations.
+    for ($s = $star['lo']; $s <= $star['hi']; $s++) {
+      if (!isset($all_locations[$s])) continue;
+      $original_locations = array_merge($original_locations, $all_locations[$s]);
+    }
+
+    d($original_locations);
+
+    // If there are no locations for this star range (for whatever reason), default to all locations.
+    if (empty($original_locations)) $original_locations = $all_locations['all'];
+
+    d($original_locations);
+
+    return false;
+
+
+
+    // Test generating personal quests.
+    // $season = Season::current();
+    // $map = $season->get_map();
+
+    // $types = Location::types();
+    // $locations = Location::load_multiple(array('mapid' => $map->mapid, 'type' => $types, 'revealed' => true));
+    // $location = array_splice($locations, array_rand($locations), 1);
+    // $location = array_pop($location);
+
+    // $quest = Quest::generate_personal_quest($player, $location);
+    // d($quest);
+
+    // return false;
+
 
 
     // $item_template = ItemTemplate::load(array('name_id' => 'ore_iron'));
@@ -3437,7 +3661,7 @@ class RPGSession {
     $response = array();
     $response[] = $upgrade->get_display_name(false);
     if (!empty($upgrade->description)) $response[] = '*Description*: '.$upgrade->description;
-    $response[] = '*Time to complete*: '.Display::get_duration_as_hours($upgrade->duration);
+    $response[] = '*Time to complete*: '.Display::get_duration($upgrade->duration);
     $response[] = '*Cost*: '.Display::get_currency($upgrade->cost);
 
     $required_items = $upgrade->get_required_type('item');

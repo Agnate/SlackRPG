@@ -396,7 +396,10 @@ class Quest extends RPGEntitySaveable {
       if ($adventurer->undying == false && !$success && $death_rate > 0 && rand(1, 100) <= $death_rate) {
         $adventurer->dead = true;
         $adventurer->revivable = true;
+        $adventurer->champion = false;
         $adventurer->death_date = $time;
+        // Queue up the revival expiration.
+        $adqueue = $adventurer->queue( Adventurer::REVIVAL_EXPIRATION );
         $quest_data[$adventurer->gid]['text'][] = ':rpg-tomb: RIP '.$adventurer->get_display_name().' died during the quest.';
       }
       $adventurer->save();
@@ -685,7 +688,7 @@ class Quest extends RPGEntitySaveable {
 
     // Assign the quest to the guild.
     $quest->gid = $guild->gid;
-    if ($save) $quest->save();
+    if ($save) $success = $quest->save();
 
     // Save JSON file.
     if ($save_json) Quest::save_quest_names_list($json);
@@ -733,14 +736,15 @@ class Quest extends RPGEntitySaveable {
       'type' => $type,
       'active' => true,
       'cooldown' => 0,
-      'multiplayer' => true,
+      'multiplayer' => false,
+      'death_rate' => 0,
     );
 
     // Generate the name and icon.
     $name_and_icon = Quest::generate_quest_name_and_icon($location, $type, $json, $original_json);
     $data['name'] = $name_and_icon['name'];
     $data['icon'] = $name_and_icon['icon'];
-    $data['keywords'] = $name_and_icon['keywords'];
+    $data['keywords'] = Quest::__encode_keywords($name_and_icon['keywords']);
     $data['boss_aid'] = $name_and_icon['boss_aid'];
 
     // Overrides for 1-star quests.
@@ -755,14 +759,16 @@ class Quest extends RPGEntitySaveable {
       $data['success_rate'] = 100 - Quest::sum_multiple_randoms($stars, 3, 5);
     }
 
+    $location_exp = $location->get_exploration_exp();
+
     // Set some defaults.
     if (!isset($data['party_size_min'])) $data['party_size_min'] = 1;
     if (!isset($data['party_size_max'])) $data['party_size_max'] = 3;
     $avg_party_size = ($data['party_size_max'] - $data['party_size_min'] / 2) + $data['party_size_min'];
     if (!isset($data['duration'])) $data['duration'] = Quest::sum_multiple_randoms($stars, 2, 4) * $hours;
     if (!isset($data['reward_gold'])) $data['reward_gold'] = Quest::sum_multiple_randoms($stars, 50, 250);
-    if (!isset($data['reward_exp'])) $data['reward_exp'] = Quest::sum_multiple_randoms(($stars * $avg_party_size), 25, 75);
-    if (!isset($data['reward_fame'])) $data['reward_fame'] = Quest::sum_multiple_randoms($stars, 3, 8);
+    if (!isset($data['reward_exp'])) $data['reward_exp'] = $location_exp + Quest::calc_quest_exp($type, $data['duration'], $stars, $avg_party_size);
+    if (!isset($data['reward_fame'])) $data['reward_fame'] = Quest::sum_multiple_randoms($stars, 4, 8);
     if (!isset($data['level'])) $data['level'] = Quest::sum_multiple_randoms(($avg_party_size * $stars), 1, 4);
     if (!isset($data['success_rate'])) $data['success_rate'] = 100 - Quest::sum_multiple_randoms($stars, 1, 4);
 
@@ -770,7 +776,7 @@ class Quest extends RPGEntitySaveable {
     switch ($type) {
       case Quest::TYPE_EXPLORE:
         $data['reward_gold'] = 0;
-        $data['reward_exp'] = rand(5, 15);
+        $data['reward_exp'] = $location_exp;
         $data['reward_fame'] = 0;
         $data['duration'] = 0;
         $data['level'] = 0;
@@ -778,35 +784,39 @@ class Quest extends RPGEntitySaveable {
         // Bonus reward if you discover a non-empty location.
         if ($location->type != Location::TYPE_EMPTY) {
           $data['reward_fame'] += $stars * 3;
-          $data['reward_exp'] += rand(5, 15);
+          $data['reward_exp'] += $stars * rand(10, 15);
         }
         break;
 
       case Quest::TYPE_BOSS:
         $data['active'] = false;
-        $data['cooldown'] = (rand(5, 10) * $hours); // 5-10 hours.
+        $data['cooldown'] = (rand(0, 10) * $hours); // 1-10 hours.
         $data['party_size_min'] = rand(6 + ($stars * 2), 10 + ($stars * 2));
         $data['party_size_max'] = $data['party_size_min'];
         $avg_party_size = ($data['party_size_max'] - $data['party_size_min'] / 2) + $data['party_size_min'];
-        $data['reward_gold'] = $stars * rand(500, 1000);
-        $data['reward_exp'] = ($stars * $data['reward_exp']) + 50;
-        $data['reward_fame'] = ($data['reward_fame'] * 3) + 5;
+        // Assume 3 adventurers per Guild + 1 per Guild for every star above 3.
+        $avg_num_advs_per_guild = 3 + max(0, ($stars - 3));
+        $avg_num_guilds = max(1, ceil($data['party_size_max'] / $avg_num_advs_per_guild));
         $data['duration'] = (rand(8, 14) * $stars) * $hours;
+        $data['reward_gold'] = Quest::sum_multiple_randoms($stars, 150, 500) * $avg_num_guilds;
+        $data['reward_exp'] = $location_exp + Quest::calc_quest_exp($type, $data['duration'], $stars, $avg_party_size);
+        $data['reward_fame'] = (Quest::sum_multiple_randoms($stars, 12, 24) + Quest::MULTIPLAYER_FAME_COST) * $avg_num_guilds;
         $data['success_rate'] = $data['success_rate'] - rand(8, 15);
-        $data['death_rate'] = $stars * rand(3, 8);
+        $data['death_rate'] = $stars * rand(5, 8);
         $data['multiplayer'] = true;
         break;
 
       case Quest::TYPE_FIGHT:
-        $data['reward_exp'] += floor($data['reward_exp'] * 0.5);
+        $data['reward_exp'] += floor($data['reward_exp'] * 0.10);
+        $data['death_rate'] = $stars * rand(1, 3);
         break;
 
       case Quest::TYPE_AID:
-        $data['reward_fame'] += floor($data['reward_fame'] * 0.5);
+        $data['reward_fame'] += floor($data['reward_fame'] * 0.15);
         break;
 
       case Quest::TYPE_INVESTIGATE:
-        $data['reward_gold'] += floor($data['reward_gold'] * 0.5);
+        $data['reward_gold'] += floor($data['reward_gold'] * 0.25);
         break;
     }
 
@@ -906,6 +916,41 @@ class Quest extends RPGEntitySaveable {
     $value = 0;
     for ($i = 1; $i <= $num; $i++) $value += rand($min, $max);
     return $value;
+  }
+
+  protected static function calc_quest_exp ($type, $duration, $stars, $avg_adventurers) {
+    $exp = 0;
+
+    // Boss:
+    // (8-14 x stars) hours
+    // 1-star -> 15 exp/hour
+    // 2-star -> 18 exp/hour
+    // 3-star -> 21 exp/hour
+    // 4-star -> 25 exp/hour
+    // 5-star -> 30 exp/hour
+    if ($type == Quest::TYPE_BOSS) {
+      if ($stars == 1) $exp = $duration * $avg_adventurers * 15;
+      else if ($stars == 2) $exp = $duration * $avg_adventurers * 18;
+      else if ($stars == 3) $exp = $duration * $avg_adventurers * 21;
+      else if ($stars == 4) $exp = $duration * $avg_adventurers * 25;
+      else $exp = $duration * $avg_adventurers * 30;
+    }
+    // Normal:
+    // (2-4 x stars) hours
+    // 1-star -> 10 exp/hour
+    // 2-star -> 12 exp/hour
+    // 3-star -> 14 exp/hour
+    // 4-star -> 17 exp/hour
+    // 5-star -> 20 exp/hour
+    else {
+      if ($stars == 1) $exp = $duration * $avg_adventurers * 10;
+      else if ($stars == 2) $exp = $duration * $avg_adventurers * 12;
+      else if ($stars == 3) $exp = $duration * $avg_adventurers * 14;
+      else if ($stars == 4) $exp = $duration * $avg_adventurers * 17;
+      else $exp = $duration * $avg_adventurers * 20;
+    }
+
+    return $exp;
   }
 
   public static function randomize_quest_types ($loc_type, $exclude_types = array()) {
@@ -1065,6 +1110,30 @@ class Quest extends RPGEntitySaveable {
 
   protected static function __decode_keywords ($string) {
     return empty($string) ? array() : explode('|', $string);
+  }
+
+  /**
+   * From a low and high range of adventurer levels, calculate an appropriate star rating range.
+   *
+   * Note: The max is intentionally 4 so that 5-star quests are still somewhat rare.
+   */
+  public static function calculate_appropriate_star_range ($level_lo, $level_hi) {
+    $star = array(
+      'lo' => 1,
+      'hi' => 4,
+    );
+
+    if ($level_lo < 5) $star['lo'] = 1;
+    else if ($level_lo < 10) $star['lo'] = 2;
+    else if ($level_lo < 15) $star['lo'] = 3;
+    else $star['lo'] = 4;
+
+    if ($level_hi < 5) $star['hi'] = 1;
+    else if ($level_hi < 10) $star['hi'] = 2;
+    else if ($level_hi < 15) $star['hi'] = 3;
+    else $star['hi'] = 4;
+
+    return $star;
   }
 
 }
