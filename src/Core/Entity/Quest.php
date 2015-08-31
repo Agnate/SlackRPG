@@ -392,15 +392,12 @@ class Quest extends RPGEntitySaveable {
           $quest_data[$adventurer->gid]['text'][] = $adventurer->get_display_name().' is now level '.$adventurer->get_level(false).'!';
         }
       }
-      // Calculate if the adventurer died during this adventure ONLY if they failed the quest (Undying adventurers cannot die).
-      if ($adventurer->undying == false && !$success && $death_rate > 0 && rand(1, 100) <= $death_rate) {
-        $adventurer->dead = true;
-        $adventurer->revivable = true;
-        $adventurer->champion = false;
-        $adventurer->death_date = $time;
-        // Queue up the revival expiration.
-        $adqueue = $adventurer->queue( Adventurer::REVIVAL_EXPIRATION );
-        $quest_data[$adventurer->gid]['text'][] = ':rpg-tomb: RIP '.$adventurer->get_display_name().' died during the quest.';
+      // Calculate if the adventurer died during this adventure ONLY if they failed the quest.
+      if (!$success && $death_rate > 0 && rand(1, 100) <= $death_rate) {
+        // Try to kill them (undying cannot die) and if it's successful, show the message.
+        if ($adventuer->kill(false)) {
+          $quest_data[$adventurer->gid]['text'][] = ':rpg-tomb: RIP '.$adventurer->get_display_name().' died during the quest.';
+        }
       }
       $adventurer->save();
     }
@@ -790,7 +787,7 @@ class Quest extends RPGEntitySaveable {
 
       case Quest::TYPE_BOSS:
         $data['active'] = false;
-        $data['cooldown'] = (rand(0, 10) * $hours); // 1-10 hours.
+        $data['cooldown'] = (rand(0, 10) * $hours); // 0-10 hours.
         $data['party_size_min'] = rand(6 + ($stars * 2), 10 + ($stars * 2));
         $data['party_size_max'] = $data['party_size_min'];
         $avg_party_size = ($data['party_size_max'] - $data['party_size_min'] / 2) + $data['party_size_min'];
@@ -801,7 +798,7 @@ class Quest extends RPGEntitySaveable {
         $data['reward_gold'] = Quest::sum_multiple_randoms($stars, 150, 500) * $avg_num_guilds;
         $data['reward_exp'] = $location_exp + Quest::calc_quest_exp($type, $data['duration'], $stars, $avg_party_size);
         $data['reward_fame'] = (Quest::sum_multiple_randoms($stars, 12, 24) + Quest::MULTIPLAYER_FAME_COST) * $avg_num_guilds;
-        $data['success_rate'] = $data['success_rate'] - rand(8, 15);
+        $data['success_rate'] = 80 - Quest::sum_multiple_randoms($stars, 8, 12);
         $data['death_rate'] = $stars * rand(5, 8);
         $data['multiplayer'] = true;
         break;
@@ -920,6 +917,7 @@ class Quest extends RPGEntitySaveable {
 
   protected static function calc_quest_exp ($type, $duration, $stars, $avg_adventurers) {
     $exp = 0;
+    $hours = floor($duration / 60 / 60);
 
     // Boss:
     // (8-14 x stars) hours
@@ -929,11 +927,11 @@ class Quest extends RPGEntitySaveable {
     // 4-star -> 25 exp/hour
     // 5-star -> 30 exp/hour
     if ($type == Quest::TYPE_BOSS) {
-      if ($stars == 1) $exp = $duration * $avg_adventurers * 15;
-      else if ($stars == 2) $exp = $duration * $avg_adventurers * 18;
-      else if ($stars == 3) $exp = $duration * $avg_adventurers * 21;
-      else if ($stars == 4) $exp = $duration * $avg_adventurers * 25;
-      else $exp = $duration * $avg_adventurers * 30;
+      if ($stars == 1) $exp = $hours * $avg_adventurers * 15;
+      else if ($stars == 2) $exp = $hours * $avg_adventurers * 18;
+      else if ($stars == 3) $exp = $hours * $avg_adventurers * 21;
+      else if ($stars == 4) $exp = $hours * $avg_adventurers * 25;
+      else $exp = $hours * $avg_adventurers * 30;
     }
     // Normal:
     // (2-4 x stars) hours
@@ -943,11 +941,11 @@ class Quest extends RPGEntitySaveable {
     // 4-star -> 17 exp/hour
     // 5-star -> 20 exp/hour
     else {
-      if ($stars == 1) $exp = $duration * $avg_adventurers * 10;
-      else if ($stars == 2) $exp = $duration * $avg_adventurers * 12;
-      else if ($stars == 3) $exp = $duration * $avg_adventurers * 14;
-      else if ($stars == 4) $exp = $duration * $avg_adventurers * 17;
-      else $exp = $duration * $avg_adventurers * 20;
+      if ($stars == 1) $exp = $hours * $avg_adventurers * 10;
+      else if ($stars == 2) $exp = $hours * $avg_adventurers * 12;
+      else if ($stars == 3) $exp = $hours * $avg_adventurers * 14;
+      else if ($stars == 4) $exp = $hours * $avg_adventurers * 17;
+      else $exp = $hours * $avg_adventurers * 20;
     }
 
     return $exp;

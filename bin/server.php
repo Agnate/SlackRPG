@@ -116,10 +116,18 @@ function timer_process_queue () {
   
   // Load all queue items that are ready to execute.
   $queue_items = Queue::load_ready();
-  
+
   foreach ($queue_items as $qitem) {
     // Load the queue item.
     $item = $qitem->process();
+
+    // If there was a problem loading this queue item,
+    // it's possible the related object was deleted. Just remove the queue.
+    if (empty($item)) {
+      $qitem->delete();
+      continue;
+    }
+
     // Process the queue item.
     $result = $item->queue_process($qitem);
 

@@ -288,7 +288,8 @@ class RPGSession {
     // Show adventurers.
     $adv_total = $guild->get_adventurers_count();
     $adv_alive = $guild->get_adventurers_count(false);
-    $response[] = '*Adventurers*:'.($guild_is_player ? ' '.$adv_alive.' / '.$guild->adventurer_limit.' (+'.($adv_total - $adv_alive).' Undead)' : '');
+    $adv_undead = $adv_total - $adv_alive;
+    $response[] = '*Adventurers*:'.($guild_is_player ? ' '.$adv_alive.' / '.$guild->adventurer_limit.($adv_undead <= 0 ? '' : ' (+'.$adv_undead.' Undead)') : '');
     foreach ($adventurers as $adventurer) {
       $adv_status = !empty($adventurer->agid) ? ' [Adventuring]' : '';
       $response[] = $adventurer->get_display_name(false) .($guild_is_player ? $adv_status : '');
@@ -2496,17 +2497,19 @@ class RPGSession {
 
     // Show list of fallen adventurers.
     if (empty($args) || empty($args[0])) {
-      $response[] = "All revivals cost ".Display::get_currency($cost_rate)." per Adventurer Level and a ".$revival_template->get_display_name().'.';
+      $response[] = 'To revive a fallen adventurer, type: `revive [ADVENTURER NAME]`';
+      $response[] = "All revivals cost a ".$revival_template->get_display_name()." and ".Display::get_currency($cost_rate)." per Adventurer Level.";
       $response[] = '';
       $response[] = "Graveyard:";
       $adventurers = Adventurer::load_multiple(array('gid' => $player->gid, 'dead' => true, 'revivable' => true));
       if (!empty($adventurers)) {
         foreach ($adventurers as $adventurer) {
           $cost = $adventurer->get_revive_cost($cost_rate);
-          $response[] = ':rpg-tomb: '.$adventurer->get_display_name(true, false).' _(soul ascends in '.Display::get_duration($adventurer->get_soul_ascend_time()).')_ — '.Display::get_currency($cost);
+          $ascends = $adventurer->get_soul_ascend_time();
+          $response[] = ':rpg-tomb: '.$adventurer->get_display_name(true, false).($ascends === FALSE ? '' : ' _(soul ascends '.Display::get_remaining_time($ascends).')_').' — '.Display::get_currency($cost);
         }
         $response[] = '';
-        $response[] = 'To revive a fallen adventurer, type: `revive [ADVENTURER NAME]`';
+        $response[] = '_Note: When an adventurer\'s soul ascends, that adventurer can no longer be revived._';
       }
       else {
         $response[] = "_There are no adventurers here._";
@@ -2714,49 +2717,57 @@ class RPGSession {
     if (!($player = $this->load_current_player())) return;
 
 
+    // Test killing an adventurer and letting them revive.
+    // $adventurers = $player->get_adventurers();
+    // $adventurer = array_shift($adventurers);
+    // $adventurer->kill();
+    // return FALSE;
+
+
+
     // Test code for selecting locations for quests.
-    $season = Season::current();
-    $map = $season->get_map();
+    // $season = Season::current();
+    // $map = $season->get_map();
 
-    // Get list of all revealed locations.
-    $types = Location::types();
-    $locations = Location::load_multiple(array('mapid' => $map->mapid, 'type' => $types, 'revealed' => true));
+    // // Get list of all revealed locations.
+    // $types = Location::types();
+    // $locations = Location::load_multiple(array('mapid' => $map->mapid, 'type' => $types, 'revealed' => true));
 
-    d($locations);
+    // d($locations);
 
-    // Sort out locations by star-rating.
-    $all_locations = array('all' => $locations);
-    foreach ($locations as &$location) {
-      for ($star = $location->star_min; $star <= $location->star_max; $star++) {
-        if ($star == 0) continue;
-        if (!isset($all_locations[$star])) $all_locations[$star] = array();
-        $all_locations[$star]['loc'.$location->locid] = $location;
-      }
-    }
+    // // Sort out locations by star-rating.
+    // $all_locations = array('all' => $locations);
+    // foreach ($locations as &$location) {
+    //   for ($star = $location->star_min; $star <= $location->star_max; $star++) {
+    //     if ($star == 0) continue;
+    //     if (!isset($all_locations[$star])) $all_locations[$star] = array();
+    //     $all_locations[$star]['loc'.$location->locid] = $location;
+    //   }
+    // }
 
-    d($all_locations);
+    // d($all_locations);
 
-    // Determine the location list that the generator should pull from,
-    // choosing lower-star locations for Guilds with weaker adventurers.
-    $level = $player->calculate_adventurer_level_info();
-    d($level);
-    $star = Quest::calculate_appropriate_star_range($level['lo'], $level['hi']);
-    d($star);
-    $original_locations = array();
-    // Loop through all locations and merge together the viable locations.
-    for ($s = $star['lo']; $s <= $star['hi']; $s++) {
-      if (!isset($all_locations[$s])) continue;
-      $original_locations = array_merge($original_locations, $all_locations[$s]);
-    }
+    // // Determine the location list that the generator should pull from,
+    // // choosing lower-star locations for Guilds with weaker adventurers.
+    // $level = $player->calculate_adventurer_level_info();
+    // d($level);
+    // $star = Quest::calculate_appropriate_star_range($level['lo'], $level['hi']);
+    // d($star);
+    // $original_locations = array();
+    // // Loop through all locations and merge together the viable locations.
+    // for ($s = $star['lo']; $s <= $star['hi']; $s++) {
+    //   if (!isset($all_locations[$s])) continue;
+    //   $original_locations = array_merge($original_locations, $all_locations[$s]);
+    // }
 
-    d($original_locations);
+    // d($original_locations);
 
-    // If there are no locations for this star range (for whatever reason), default to all locations.
-    if (empty($original_locations)) $original_locations = $all_locations['all'];
+    // // If there are no locations for this star range (for whatever reason), default to all locations.
+    // if (empty($original_locations)) $original_locations = $all_locations['all'];
 
-    d($original_locations);
+    // d($original_locations);
 
-    return false;
+    // return false;
 
 
 
@@ -2847,29 +2858,29 @@ class RPGSession {
     d($mquest);
 
     // Create a soul stone from boss.
-    $item_template = ItemTemplate::load(array('name_id' => 'relic_soulstone'));
+    // $item_template = ItemTemplate::load(array('name_id' => 'relic_soulstone'));
 
-    $qkeywords = $mquest->get_keywords();
-    d($qkeywords);
+    // $qkeywords = $mquest->get_keywords();
+    // d($qkeywords);
 
-    for ($i = 0; $i < 2; $i++) {
-      $boss_adventurer = Adventurer::load(array('aid' => $mquest->boss_aid, 'gid' => 0));
-      // Change the adventurer's name to their new Boss name from the quest.
-      if (!empty($boss_adventurer)) {
-        $boss_adventurer->name = $qkeywords[0];
-        $boss_adventurer->save();
-        $extra_data = $boss_adventurer->name;
-      }
-      // Create a generic adventurer.
-      else {
-        $name_parts = Adventurer::generate_adventurer_name();
-        $extra_data = $name_parts['first'] .' '. $name_parts['last'];
-      }
+    // for ($i = 0; $i < 2; $i++) {
+    //   $boss_adventurer = Adventurer::load(array('aid' => $mquest->boss_aid, 'gid' => 0));
+    //   // Change the adventurer's name to their new Boss name from the quest.
+    //   if (!empty($boss_adventurer)) {
+    //     $boss_adventurer->name = $qkeywords[0];
+    //     $boss_adventurer->save();
+    //     $extra_data = $boss_adventurer->name;
+    //   }
+    //   // Create a generic adventurer.
+    //   else {
+    //     $name_parts = Adventurer::generate_adventurer_name();
+    //     $extra_data = $name_parts['first'] .' '. $name_parts['last'];
+    //   }
 
-      d(compact('boss_adventurer', 'extra_data'));
+    //   d(compact('boss_adventurer', 'extra_data'));
 
-      $player->add_item($item_template, $extra_data);
-    }
+    //   $player->add_item($item_template, $extra_data);
+    // }
 
     return false;
 
@@ -3723,7 +3734,7 @@ class RPGSession {
     $response[] = "Congratulations on registering your Guild! Below is a brief introduction to the game and how it works. I hope you enjoy it!";
     $response[] = '';
     $response[] = '*Purpose*:';
-    $response[] = 'The purpose of this game is to acquire the most '.$fame.'. These points represent how well-known you are in the world. You earn '.$fame.' by completing exploring the map, completing quests, and dueling in the Colosseum.';
+    $response[] = 'The purpose of this game is to acquire the most '.$fame.' points. These points represent how well-known you are in the world. You earn '.$fame.' by completing exploring the map, completing quests, and dueling in the Colosseum.';
     $response[] = '';
     $response[] = '*Adventurers*:';
     $response[] = 'Adventurers perform various tasks for your Guild. As your Adventurers complete these tasks, they will receive experience points and level up. Higher level Adventurers increase your chances of successfully completing quests. As they level up, they will also randomly develop enhancements that help you out in various ways. Some tasks include:';

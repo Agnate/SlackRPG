@@ -344,7 +344,10 @@ class Adventurer extends RPGEntitySaveable {
   }
 
   public function get_soul_ascend_time () {
-    return max(0, ($this->death_date + Adventurer::REVIVAL_EXPIRATION) - time());
+    // Check for a queue and use the execute time.
+    $queue = $this->get_queue();
+    if (empty($queue)) return FALSE;
+    return max(0, ($queue->execute - time()));
   }
 
   public function queue_process ($queue = null) {
@@ -356,6 +359,27 @@ class Adventurer extends RPGEntitySaveable {
     $this->revivable = false;
     $this->champion = false;
     $this->save();
+
+    return TRUE;
+  }
+
+  /**
+   * Returns TRUE if the adventurer dies. FALSE if they do not die.
+   */
+  public function kill ($save = true, $revivable = true) {
+    // If the adventurer cannot die, we can skip this whole thing.
+    if ($this->undying) return FALSE;
+
+    // Set them to dead.
+    $this->dead = true;
+    $this->revivable = $revivable;
+    $this->champion = false;
+    $this->death_date = time();
+
+    if ($save) $this->save();
+
+    // Queue up the revival expiration.
+    $queue = $this->queue( Adventurer::REVIVAL_EXPIRATION );
 
     return TRUE;
   }

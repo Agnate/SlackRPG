@@ -329,7 +329,7 @@ function update_version_0_0_0 ($forced = false) {
   $item_templates[] = array(':name_id' => 'herb_green', ':name' => 'Green Herb', ':icon' => '', ':type' => 'herb', ':rarity_lo' => 1, ':rarity_hi' => 2, ':cost' => 0, ':for_sale' => false);
   $item_templates[] = array(':name_id' => 'herb_red', ':name' => 'Red Herb', ':icon' => '', ':type' => 'herb', ':rarity_lo' => 3, ':rarity_hi' => 4, ':cost' => 0, ':for_sale' => false);
   
-  $item_templates[] = array(':name_id' => 'revival_phoenixfeather', ':name' => 'Phoenix Feather', ':icon' => '', ':type' => 'revival', ':rarity_lo' => 1, ':rarity_hi' => 5, ':cost' => 0, ':for_sale' => false);
+  $item_templates[] = array(':name_id' => 'revival_phoenixfeather', ':name' => 'Phoenix Feather', ':icon' => ':rpg-item-feather:', ':type' => 'revival', ':rarity_lo' => 1, ':rarity_hi' => 5, ':cost' => 0, ':for_sale' => false);
   
   $item_templates[] = array(':name_id' => 'kit_firstaid', ':name' => 'First Aid Kit', ':icon' => '', ':type' => 'kit', ':rarity_lo' => 0, ':rarity_hi' => 5, ':cost' => 500, ':for_sale' => true);
   $item_templates[] = array(':name_id' => 'kit_advsupplies', ':name' => 'Adventuring Supplies', ':icon' => '', ':type' => 'kit', ':rarity_lo' => 0, ':rarity_hi' => 5, ':cost' => 350, ':for_sale' => true);

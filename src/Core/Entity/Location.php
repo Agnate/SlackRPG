@@ -245,15 +245,16 @@ class Location extends RPGEntitySaveable {
     // 4-star -> 12 exp/hour
     // 5-star -> 14 exp/hour
     $distance = $this->get_distance($capital);
-    $duration = Location::TRAVEL_BASE * $distance;
+    $duration = ceil(Location::TRAVEL_BASE * $distance);
+    $hours = floor($duration / 60 / 60);
     $star = $this->calc_star_rating($distance);
 
     if ($star <= 0) return 0;
-    else if ($star == 1) return 6 * $duration;
-    else if ($star == 2) return 8 * $duration;
-    else if ($star == 3) return 10 * $duration;
-    else if ($star == 4) return 12 * $duration;
-    else return 14 * $duration;
+    else if ($star == 1) return 6 * $hours;
+    else if ($star == 2) return 8 * $hours;
+    else if ($star == 3) return 10 * $hours;
+    else if ($star == 4) return 12 * $hours;
+    else return 14 * $hours;
   }
 
   

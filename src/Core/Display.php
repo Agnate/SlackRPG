@@ -31,6 +31,11 @@ class Display {
     return implode(', ', $time);
   }
 
+  public static function get_remaining_time ($duration, $prefix = 'in') {
+    $time = Display::get_duration($duration);
+    return ($duration == 0 ? 'now' : $prefix.' '.$time);
+  }
+
   public static function get_fame ($fame) {
     return number_format($fame).':beginner:';
   }
