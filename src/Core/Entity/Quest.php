@@ -424,7 +424,7 @@ class Quest extends RPGEntitySaveable {
       // Reactivate if the guilds failed to complete it.
       if (!$success) {
         // Create a temporary cooldown if it was a failed quest attempt.
-        $cooldown = (60 * 60) * ($this->stars * rand(3, 6));
+        // $cooldown = (60 * 60) * ($this->stars * rand(3, 6));
         // If there's no cooldown, it's instantly active.
         if ($cooldown == 0) $this->active = true;
       }
