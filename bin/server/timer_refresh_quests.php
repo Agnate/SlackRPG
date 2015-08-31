@@ -103,13 +103,15 @@ function generate_new_quests ($output_information = false, $num_quests = 0, $num
 
     // If there are no locations for this star range (for whatever reason), default to all locations.
     if (empty($original_locations)) $original_locations = $all_locations['all'];
+    unset($locations);
 
     $quests = array();
     for ($i = 0; $i < $num_new_quests; $i++) {
       // Choose a location to theme the quest with.
       if (empty($locations)) $locations = $original_locations;
-      $location = array_splice($locations, array_rand($locations), 1);
-      $location = array_pop($location);
+      $loc_key = array_rand($locations);
+      $location = $locations[$loc_key];
+      unset($locations[$loc_key]);
       // If we still don't have a location, there's a problem so break out.
       if (empty($location)) break;
       // Generate the quest.
@@ -134,11 +136,13 @@ function generate_new_quests ($output_information = false, $num_quests = 0, $num
     // Check how many quests we can make.
     $num_multiplayer_quests = min($num_multiplayer_quests, $max_multiplayer - count($cur_mquests));
     if ($num_multiplayer_quests > 0) {
+      unset($locations);
       for ($i = 0; $i < $num_multiplayer_quests; $i++) {
         // Choose a location to theme the quest with.
         if (empty($locations)) $locations = $all_locations['all'];
-        $location = array_splice($locations, array_rand($locations), 1);
-        $location = array_pop($location);
+        $loc_key = array_rand($locations);
+        $location = $locations[$loc_key];
+        unset($locations[$loc_key]);
         // If we still don't have a location, there's a problem so break out.
         if (empty($location)) break;
         // Generate the multiplayer quest.

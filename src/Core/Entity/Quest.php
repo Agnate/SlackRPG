@@ -166,7 +166,7 @@ class Quest extends RPGEntitySaveable {
 
   public function get_reward_items ($bonus) {
     $mod = empty($bonus) ? Bonus::DEFAULT_VALUE : $bonus->get_mod(Bonus::QUEST_REWARD_ITEM, $this);
-    $chance_of_item = ceil(5 * $mod);
+    $chance_of_item = ceil(10 * $mod);
     // Check if any items were found.
     $items = array();
     if (rand(1, 100) <= $chance_of_item) {
@@ -368,6 +368,11 @@ class Quest extends RPGEntitySaveable {
       }
       Location::save_location_names_list($loc_json);
 
+      // Generate a new Quest for the guild(s) that discovered this new location.
+      if ($location->type != Location::TYPE_EMPTY) {
+        $new_quest = Quest::generate_personal_quest($eguild, $location);
+      }
+
       // Regenerate the map now that a new location is revealed.
       $season = Season::current();
       $map = Map::load(array('season' => $season->sid));
@@ -375,7 +380,7 @@ class Quest extends RPGEntitySaveable {
 
       // If the location has a name, we found a non-empty spot.
       if (!empty($location->name)) {
-        $quest_data[$eguild->gid]['text'][] = "You discovered ".$location->get_display_name().".";
+        $quest_data[$eguild->gid]['text'][] = "You discovered ".$location->get_display_name().".".(isset($new_quest) && !empty($new_quest) ? " A new Quest is available." : '');
         $quest_data[$eguild->gid]['text'][] = '';
         $channel_data['text'][] = $eguild->get_display_name()." discovered ".$location->get_display_name().".";
         $channel_data['color'] = SlackAttachment::COLOR_GREEN;

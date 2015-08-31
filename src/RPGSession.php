@@ -3788,7 +3788,8 @@ class RPGSession {
     $args = array($input);
     
     foreach ($this->commands as $cmd_key => $cmd) {
-      $check = strpos($input, $cmd_key);
+      $input_to_check = strtolower($input);
+      $check = strpos($input_to_check, $cmd_key);
       if ($check !== false && $check === 0) {
         $args = explode(' ', trim(str_replace($cmd_key, '', $input)));
 
