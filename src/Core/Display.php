@@ -37,11 +37,11 @@ class Display {
   }
 
   public static function get_fame ($fame) {
-    return number_format($fame).':beginner:';
+    return number_format($fame).':fame:';
   }
 
   public static function fame () {
-    return ':beginner:_Fame_';
+    return ':fame:_Fame_';
   }
 
   public static function get_stars ($stars, $max = 5) {
