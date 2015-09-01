@@ -51,6 +51,9 @@ class Quest extends RPGEntitySaveable {
   const MAX_COUNT = 6;
   const MULTIPLAYER_FAME_COST = 50;
 
+  // Set this to 1 to use normal duration times. Set to a lower number (example 0.05) to reduce the Quest duration for debugging.
+  const DEBUG_DURATION_MODIFIER = 0.05;
+
   const TYPE_EXPLORE = 'explore';
   const TYPE_TRAIN = 'train';
   const TYPE_INVESTIGATE = 'investigate';
@@ -109,6 +112,9 @@ class Quest extends RPGEntitySaveable {
     $duration_mod = empty($bonus) ? Bonus::DEFAULT_VALUE : $bonus->get_mod(Bonus::QUEST_SPEED, $this);
     // Modify quest duration.
     $duration = ceil($duration * $duration_mod);
+
+    // DEBUGGING - Multiply by the debug modifier to change quest times.
+    $duration = ceil($duration * Quest::DEBUG_DURATION_MODIFIER);
 
     // Load up the location for this Quest.
     $location = Location::load(array('locid' => $this->locid));
@@ -588,6 +594,17 @@ class Quest extends RPGEntitySaveable {
     if ($refresh || $this->_guilds === null) $this->load_registered_guilds($refresh);
 
     return $this->_guilds;
+  }
+
+  public function is_registered_guild ($guild) {
+    $guilds = $this->get_registered_guilds();
+    if (empty($guilds)) return FALSE;
+
+    foreach ($guilds as $aguild) {
+      if ($aguild->gid == $guild->gid) return TRUE;
+    }
+
+    return FALSE;
   }
 
   public function load_bonus () {

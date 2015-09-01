@@ -29,14 +29,14 @@ class ItemDesc {
 
       case 'revival_fenixdown': return $item->name.' is used to revive a fallen Adventurer in town.';
 
-      case 'kit_firstaid': return $item->name.' is a one-time use item that reduces the chances of Adventurers dying while on a Quest.';
-      case 'kit_advsupplies': return $item->name.' is a one-time use item that increases the chances of success while on a Quest.';
-      case 'kit_guildbanner': return $item->name.' is a one-time use item that increases the amount of Fame earned while on a Quest.';
-      case 'kit_guide': return $item->name.' is a hired helper that reduces the travel time when Exploring and Questing (after which they will leave having fulfilled their duty).';
-      case 'kit_seisreport': return $item->name.' is a one-time use item that increases the chances of finding Ore when Exploring and Questing.';
-      case 'kit_apprentice': return $item->name.' is a hired helper that increases the chances of finding Powerstones when Exploring and Questing (after which they will leave having fulfilled their duty).';
-      case 'kit_herbalist': return $item->name.' is a hired helper that increases the chances of finding Herbs when Exploring and Questing (after which they will leave having fulfilled their duty).';
-      case 'kit_shepherd': return $item->name.' is a hired helper that increases the chances of finding Animals when Exploring and Questing (after which they will leave having fulfilled their duty).';
+      case 'kit_firstaid': return 'Reduces the chances of Adventurers dying while on a Quest.';
+      case 'kit_advsupplies': return 'Increases the chances of success while on a Quest.';
+      case 'kit_guildbanner': return 'Increases the amount of Fame earned while on a Quest.';
+      case 'kit_guide': return 'Reduces the travel time when Exploring and Questing.';
+      case 'kit_seisreport': return 'Increases the chances of finding Ore when Exploring and Questing.';
+      case 'kit_apprentice': return 'Increases the chances of finding Powerstones when Exploring and Questing.';
+      case 'kit_herbalist': return 'Increases the chances of finding Herbs when Exploring and Questing.';
+      case 'kit_shepherd': return 'Increases the chances of finding Animals when Exploring and Questing.';
 
       case 'relic_soulstone': return $item->name.' contains the soul of '.(empty($extra_data) ? 'a fallen Adventurer' : $extra_data).' and is used to control their Undead body. This Adventurer can never die and does not count toward your Adventurer limit.';
     }

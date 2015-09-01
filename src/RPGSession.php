@@ -203,7 +203,7 @@ class RPGSession {
       'name' => $name,
       'icon' => $icon,
       'season' => $season->sid,
-      'gold' => 1000, // Starting gold.
+      'gold' => 500, // Starting gold.
     );
     $player = new Guild ($data);
 
@@ -238,12 +238,31 @@ class RPGSession {
       $adventurers[] = $adventurer;
     }
 
+    // Check if we should add a starting Quest (based on whether or not there are revealed locations).
+    $season = Season::current();
+    $map = $season->get_map();
+    // Get list of all revealed locations.
+    $types = Location::types();
+    $locations = Location::load_multiple(array('mapid' => $map->mapid, 'type' => $types, 'revealed' => true));
+    // Looks like there's some revealed locations, so let's generate a personal quest for this new Guild.
+    if (!empty($locations)) {
+      $location = $locations[array_rand($locations)];
+      if (!empty($location)) {
+        $new_quest = Quest::generate_personal_quest($player, $location);
+      }
+    }
+
     $this->respond('@'.$player->username.' just registered a Guild called '.$player->get_display_name().'!', RPGSession::CHANNEL);
 
     $response = array();
     $response[] = 'You just registered '.$player->get_display_name().' and '.$num_adventurers.' new adventurer'.($num_adventurers > 1 ? 's have' : ' has').' joined you!';
     $response[] = 'Welcome,';
     foreach ($adventurers as $adventurer) $response[] = $adventurer->get_display_name();
+
+    if (isset($new_quest) && !empty($new_quest)) {
+      $response[] = '';
+      $response[] = 'It looks like other Guilds have been exploring the region around the Capital, so there is a Quest waiting for you. Type `quest` to view the list of available Quests.';
+    }
 
     $response[] = '';
     $response[] = $this->introduction_message();
@@ -997,8 +1016,11 @@ class RPGSession {
     $response[] = '*Multi-Guild Quests underway*:';
     $quest_underway = array();
     foreach ($quests as $quest) {
+      // Only show Quests that this Guild has participated in.
+      if ($quest->is_registered_guild($player) == FALSE) continue;
       // Skip quests that are full-up but aren't yet confirmed.
       if ($quest->is_ready()) continue;
+      
       $quest_underway[] = $quest;
       $queue = $quest->get_queue();
       if (!empty($queue)) {
@@ -2615,6 +2637,9 @@ class RPGSession {
     // Show the list of available items.
     if (empty($args) || empty($args[0])) {
       $response[] = 'Welcome to the *Shop*';
+      $response[] = '';
+      $response[] = '_Note: All items are one-time use._';
+      $response[] = '';
       $response[] = 'To purchase an item, type: `shop [ITEM NAME]` (example: `shop Shepherd`)';
       $response[] = '';
       $response[] = 'Items for sale:';
@@ -2622,8 +2647,9 @@ class RPGSession {
       // Show items for sale.
       $items = ItemTemplate::load_multiple(array('for_sale' => true));
       foreach ($items as $item) {
-        $response[] = $item->get_display_name() .' ('. Display::get_currency($item->cost) .')';
+        $response[] = $item->get_display_name() .' (_'. $item->get_description() .'_) — '. Display::get_currency($item->cost);
       }
+
       if (empty($items)) $response[] = '_None_';
       
       $this->respond($response);
@@ -2715,6 +2741,22 @@ class RPGSession {
 
     // Load the player and fail out if they have not created a Guild.
     if (!($player = $this->load_current_player())) return;
+
+
+
+    $season = Season::current();
+    $map = $season->get_map();
+
+    // Get list of all revealed locations.
+    $types = Location::types();
+    $locations = Location::load_multiple(array('mapid' => $map->mapid, 'type' => $types, 'revealed' => true));
+    // Get the first location.
+    $location = array_shift($locations);
+
+    d($location->get_distance());
+    d($location->get_exploration_exp());
+
+    return FALSE;
 
 
     // Test killing an adventurer and letting them revive.

@@ -169,11 +169,11 @@ class Upgrade extends RPGEntitySaveable {
         break;
 
       case 'dorm1':
-        $guild->adventurer_limit = 5;
+        $guild->adventurer_limit = 6;
         break;
 
       case 'dorm2':
-        $guild->adventurer_limit = 7;
+        $guild->adventurer_limit = 8;
         break;
 
       case 'dorm3':

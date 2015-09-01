@@ -39,7 +39,7 @@ class Location extends RPGEntitySaveable {
   const FILENAME_LIST_ORIGINAL = '/bin/json/original/location_names.json';
   const FILENAME_LIST = '/bin/json/location_names.json';
 
-  const TRAVEL_BASE = 5; // 10800 = 3 hours/tile (60 * 60 * 3)
+  const TRAVEL_BASE = 5; // 5400 = 1.5 hours/tile (60 * 60 * 1.5)
   
 
   
@@ -239,22 +239,20 @@ class Location extends RPGEntitySaveable {
   }
 
   public function get_exploration_exp ($capital = null) {
-    // 1-star ->  6 exp/hour
-    // 2-star ->  8 exp/hour
-    // 3-star -> 10 exp/hour
-    // 4-star -> 12 exp/hour
-    // 5-star -> 14 exp/hour
+    // 1-star ->  9 exp/tile
+    // 2-star -> 12 exp/tile
+    // 3-star -> 15 exp/tile
+    // 4-star -> 18 exp/tile
+    // 5-star -> 21 exp/tile
     $distance = $this->get_distance($capital);
-    $duration = ceil(Location::TRAVEL_BASE * $distance);
-    $hours = floor($duration / 60 / 60);
     $star = $this->calc_star_rating($distance);
 
     if ($star <= 0) return 0;
-    else if ($star == 1) return 6 * $hours;
-    else if ($star == 2) return 8 * $hours;
-    else if ($star == 3) return 10 * $hours;
-    else if ($star == 4) return 12 * $hours;
-    else return 14 * $hours;
+    else if ($star == 1) return floor(9 * $distance);
+    else if ($star == 2) return floor(12 * $distance);
+    else if ($star == 3) return floor(15 * $distance);
+    else if ($star == 4) return floor(18 * $distance);
+    else return floor(21 * $distance);
   }
 
   

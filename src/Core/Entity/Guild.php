@@ -30,7 +30,7 @@ class Guild extends RPGEntitySaveable {
   static $default_class = 'Guild';
   static $primary_key = 'gid';
 
-  const DEFAULT_ADVENTURER_LIMIT = 3;
+  const DEFAULT_ADVENTURER_LIMIT = 4;
   
   function __construct($data = array()) {
     // Perform regular constructor.
