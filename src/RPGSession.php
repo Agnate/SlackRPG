@@ -1679,7 +1679,7 @@ class RPGSession {
       'active' => false,
       'permanent' => false,
       'reward_gold' => 0,
-      'reward_exp' => 0,
+      'reward_exp' => $location->get_exploration_exp() * count($adventurers),
       'reward_fame' => 0,
       'duration' => 0,
       'cooldown' => 0,
@@ -2718,6 +2718,11 @@ class RPGSession {
 
 
   protected function cmd_test_sprites ($args = array()) {
+    
+    return FALSE;
+
+
+
     $orig_args = $args;
     $cmd_word = 'test';
 
@@ -2736,6 +2741,11 @@ class RPGSession {
 
 
   protected function cmd_test ($args = array()) {
+
+    return FALSE;
+
+
+
     $orig_args = $args;
     $cmd_word = 'test';
 
@@ -2743,7 +2753,20 @@ class RPGSession {
     if (!($player = $this->load_current_player())) return;
 
 
+    $season = Season::current();
+    $map = $season->get_map();
+    $mapimage = MapImage::generate_image($map);
 
+    // Test random item generation.
+    $items = ItemTemplate::random();
+    d($items);
+
+    return FALSE;
+
+
+
+
+    // Test completing a Quest.
     $season = Season::current();
     $map = $season->get_map();
 
@@ -2755,6 +2778,55 @@ class RPGSession {
 
     d($location->get_distance());
     d($location->get_exploration_exp());
+
+    $quest = Quest::generate_personal_quest($player, $location);
+
+    d($quest);
+
+    // Register adventurers for this quest.
+    $adventurers = $player->get_best_adventurers($quest->party_size_max);
+    $bonus = Quest::make_bonus($player, $adventurers);
+
+    // Put together the adventuring party.
+    $data = array(
+      'gid' => $player->gid,
+      'created' => time(),
+      'task_id' => $quest->qid,
+      'task_type' => 'Quest',
+      'task_eta' => $quest->get_duration($bonus),
+      'completed' => false,
+    );
+    $advgroup = new AdventuringGroup ($data);
+    $success = $advgroup->save();
+    if ($success === false) {
+      d('There was a problem saving the adventuring group. Please talk to Paul.');
+      return FALSE;
+    }
+
+    // Assign all the adventurers to the new group.
+    foreach ($adventurers as $adventurer) {
+      $adventurer->agid = $advgroup->agid;
+      $success = $adventurer->save();
+      if ($success === false) {
+        d('There was a problem saving an adventurer to the adventuring group. Please talk to Paul.');
+        return FALSE;
+      }
+    }
+
+    // Assign adventuring group to the quest.
+    $quest->gid = $player->gid;
+    $quest->agid = $advgroup->agid;
+    $quest->active = false;
+    $success = $quest->save();
+    if ($success === false) {
+      d('There was a problem saving the quest. Please talk to Paul.');
+      return FALSE;
+    }
+
+    // Process the "completed" quest.
+    $response = $quest->queue_process();
+
+    d($response);
 
     return FALSE;
 
@@ -3794,7 +3866,7 @@ class RPGSession {
     $response[] = '*Report and Status Information*:';
     $response[] = '- To see a report about your Guild, type `report`. You can add another Guild\'s name to see a summary of their information (example: `report [GUILD NAME]`).';
     $response[] = '- To see the Leaderboard and how Guilds are doing for '.$fame.', type `leaderboard`.';
-    $response[] = '- To see informatio about your Adventurers, type `status`. You can add an Adventurer\'s name to see more detailed information (example: `status Aerith Gainsborough`)';
+    $response[] = '- To see information about your Adventurers, type `status`. You can add an Adventurer\'s name to see more detailed information (example: `status Aerith Gainsborough`)';
     $response[] = '';
     $response[] = '*Conclusion*:';
     $response[] = "I think that's enough reading for now. Get out there and explore!";
@@ -3830,10 +3902,13 @@ class RPGSession {
     $args = array($input);
     
     foreach ($this->commands as $cmd_key => $cmd) {
-      $input_to_check = strtolower($input);
-      $check = strpos($input_to_check, $cmd_key);
+      $input_to_check = substr($input, 0, strlen($cmd_key));
+      // Check the fully lower-cased cmd.
+      $check = strpos(strtolower($input_to_check), $cmd_key);
       if ($check !== false && $check === 0) {
-        $args = explode(' ', trim(str_replace($cmd_key, '', $input)));
+        // Cut the command out of the input.
+        $input = substr($input, strlen($input_to_check));
+        $args = explode(' ', trim($input));
 
         $cmd_args = array();
         if (is_array($cmd)) {

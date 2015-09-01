@@ -50,6 +50,12 @@ class Challenge extends RPGEntitySaveable {
     if (empty($this->confirmed)) $this->confirmed = false;
   }
 
+  public function get_display_name () {
+    $challenger = $this->get_challenger();
+    $opponent = $this->get_opponent();
+    return 'Colosseum challenge: '.$challenger->get_display_name(false) .' vs '. $opponent->get_display_name(false);
+  }
+
   public function load_challenger () {
     $this->_challenger = Guild::load(array('gid' => $this->challenger_id));
   }

@@ -272,6 +272,8 @@ class Quest extends RPGEntitySaveable {
       // Calculate the exp per adventurer.
       $reward_exp = ceil($this->get_reward_exp($bonus) / $adv_count);
 
+      d(compact('guilds', 'adventurers', 'reward_gold', 'reward_fame', 'reward_exp'));
+
       // Give each Guild its reward.
       foreach ($guilds as $guild) {
         // Set personal message.

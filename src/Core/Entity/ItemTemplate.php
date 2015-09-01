@@ -54,6 +54,8 @@ class ItemTemplate extends RPGEntitySaveable {
     $list = array();
     $all_items = array();
     foreach ($all_probs as $type => $prob) {
+      // If there's no probability of generating, skip it.
+      if ($prob <= 0) continue;
       // If we need to exclude a type, do so.
       if (in_array($type, $exclude_types)) continue;
 
