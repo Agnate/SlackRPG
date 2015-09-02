@@ -253,7 +253,7 @@ class Bonus {
       case Bonus::QUEST_REWARD_FAME: $name = 'amount of fame received for completing !Quest'; break;
       case Bonus::QUEST_REWARD_EXP: $name = 'amount of experience points received for completing !Quest'; break;
       case Bonus::QUEST_REWARD_ITEM: $name = 'chance of finding an item when completing !Quest'; break;
-      case Bonus::QUEST_REWARD_SPECIAL_ITEM: 'chance of finding a special item when completing !Quest'; break;
+      case Bonus::QUEST_REWARD_SPECIAL_ITEM: $name = 'chance of finding a special item when completing !Quest'; break;
       case Bonus::ITEM_TYPE_FIND_RATE: $name = 'chance of finding !ItemType when completing !Quest'; break;
 
       case Bonus::MISS_RATE: $name = 'miss rate in a Colosseum fight'; break;

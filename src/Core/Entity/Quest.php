@@ -170,9 +170,10 @@ class Quest extends RPGEntitySaveable {
     return ceil($exp * $mod);
   }
 
-  public function get_reward_items ($bonus) {
-    $mod = empty($bonus) ? Bonus::DEFAULT_VALUE : $bonus->get_mod(Bonus::QUEST_REWARD_ITEM, $this);
-    $chance_of_item = ceil(10 * $mod);
+  public function get_reward_items ($bonus, $default_chance = 10) {
+    $mod_diff = empty($bonus) ? 0 : $bonus->get_mod(Bonus::QUEST_REWARD_ITEM, $this, Bonus::MOD_HUNDREDS);
+    // Add the bonus mod to the default rate.
+    $chance_of_item = $default_chance + $mod_diff;
     // Check if any items were found.
     $items = array();
     if (rand(1, 100) <= $chance_of_item) {
@@ -185,9 +186,10 @@ class Quest extends RPGEntitySaveable {
     return $items;
   }
 
-  public function get_reward_special_items ($bonus) {
-    $mod = empty($bonus) ? Bonus::DEFAULT_VALUE : $bonus->get_mod(Bonus::QUEST_REWARD_SPECIAL_ITEM, $this);
-    $chance_of_item = ceil(10 * $mod);
+  public function get_reward_special_items ($bonus, $default_chance = 0) {
+    $mod_diff = empty($bonus) ? 0 : $bonus->get_mod(Bonus::QUEST_REWARD_SPECIAL_ITEM, $this, Bonus::MOD_HUNDREDS);
+    // Add the bonus mod to the default rate.
+    $chance_of_item = $default_chance + $mod_diff;
     // Check if any items were found.
     $items = array();
     if (rand(1, 100) <= $chance_of_item) {
@@ -280,11 +282,9 @@ class Quest extends RPGEntitySaveable {
 
         // Randomize some items for this Guild.
         $reward_items = $this->get_reward_items($bonus);
-        $reward_special_items = array();
-        // If this is a Boss quest, add in a special item.
-        if ($this->type == Quest::TYPE_BOSS) {
-          $reward_special_items = $this->get_reward_special_items($bonus);
-        }
+        // Special items rate is usually 0, but some bonuses can increase this.
+        // If this is a Boss quest, increase the rate of a special item.
+        $reward_special_items = $this->get_reward_special_items($bonus, ($this->type == Quest::TYPE_BOSS ? 10 : 0));
 
         if ($reward_gold > 0) {
           $guild->gold += $reward_gold;
@@ -519,7 +519,7 @@ class Quest extends RPGEntitySaveable {
 
     if (isset($quest_data['reward_items'])) {
       $field = new SlackAttachmentField ();
-      $field->title = 'Experience';
+      $field->title = 'Items';
       $items = array();
       foreach ($quest_data['reward_items'] as $item) {
         $items[] = $item->get_display_name();

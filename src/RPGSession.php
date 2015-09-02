@@ -732,22 +732,22 @@ class RPGSession {
       return FALSE;
     }
 
-    // If this is a multiplayer quest and we already have a kit used, don't allow a second.
-    if ($quest->multiplayer && !empty($quest->kit_id)) {
-      $this->respond("Another Guild already chose an item to use on this Quest, so no other items can be used.".$this->get_typed($cmd_word, $orig_args));
-      return FALSE;
-    }
-
     // Check if there is an optional modifier item ID available.
     $kit = null;
     $iid = intval(substr($args[0], 1));
     if (!empty($args[0]) && substr($args[0], 0, 1) == 'i' && $iid > 0) {
       $iarg = array_shift($args);
-      $kit = Item::load(array('iid' => $iid, 'gid' => $player->gid, 'type' => ItemType::KIT));
+      $kit = Item::load(array('iid' => $iid, 'gid' => $player->gid, 'type' => ItemType::KIT, 'on_hold' => false));
       if (empty($kit)) {
         $this->respond("This item is not available to use as a modifier. Please choose a different item or remove it.".$this->get_typed($cmd_word, $orig_args));
         return FALSE;
       }
+    }
+
+    // If this is a multiplayer quest and we already have a kit used, don't allow a second.
+    if ($quest->multiplayer && !empty($quest->kit_id) && !empty($kit)) {
+      $this->respond("Another Guild already chose an item to use on this Quest, so no other items can be used.".$this->get_typed($cmd_word, $orig_args));
+      return FALSE;
     }
 
     // Get the adventurers going.
@@ -920,16 +920,17 @@ class RPGSession {
     }
 
     // Assign adventuring group to the quest.
-    $quest->agid = $advgroup->agid;
     $quest_ready = $quest->is_ready(true);
     // If this is single-player, assign guild an deactivate.
     if ($quest->multiplayer == false) {
+      $quest->agid = $advgroup->agid;
       $quest->gid = $player->gid;
       $quest->active = false;
     }
     // If this is multiplayer, only assign the guild if this is the first person to register.
     else if ($quest->multiplayer) {
       if (empty($quest->gid)) $quest->gid = $player->gid;
+      if (empty($quest->agid)) $quest->agid = $advgroup->agid;
       // If the quest is ready now, deactivate it and let the Quest Leader know that they need to confirm the quest.
       // if ($quest_ready) $quest->active = false;
     }
@@ -1629,7 +1630,7 @@ class RPGSession {
     // Check if there is an optional modifier item ID available.
     if (!empty($args) && substr($args[0], 0, 1) == 'i') {
       $iid = substr(array_shift($args), 1);
-      $kit = Item::load(array('iid' => $iid, 'gid' => $player->gid, 'type' => ItemType::KIT));
+      $kit = Item::load(array('iid' => $iid, 'gid' => $player->gid, 'type' => ItemType::KIT, 'on_hold' => false));
       if (empty($kit)) {
         $this->respond("This item is not available to use as a modifier. Please choose a different item or remove it.".$this->get_typed($cmd_word, $orig_args));
         return FALSE;
@@ -2341,6 +2342,12 @@ class RPGSession {
     $champion = $player->get_champion();
     if (empty($champion)) {
       $this->respond("Please choose your Guild's Champion before challenging another Guild. Type `champion` to select one.".$this->get_typed($cmd_word, $orig_args));
+      return FALSE;
+    }
+
+    // Make sure the champion is not already away.
+    if (!empty($champion->agid)) {
+      $this->respond("Your Guild's Champion ".$champion->get_display_name()." is currently busy. Please wait for ".$champion->get_other_pronoun()." to return from ".$champion->get_possessive_pronoun()." current engagement.".$this->get_typed($cmd_word, $orig_args));
       return FALSE;
     }
 
