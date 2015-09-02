@@ -225,16 +225,16 @@ class Location extends RPGEntitySaveable {
 
   protected function calc_star_rating ($distance) {
     // 0 = 0-star
-    // 0.1-5 = 1-star
-    // 5.1-7.5 = 2-star
-    // 7.6-10 = 3-star
-    // 10-13 = 4-star
-    // 13+ = 5-star
+    // 0.1-10 = 1-star
+    // 10.1-15 = 2-star
+    // 15.1-20 = 3-star
+    // 20.1-26 = 4-star
+    // 26.1+ = 5-star
     if ($distance <= 0) return 0;
-    else if ($distance <= 5) return 1;
-    else if ($distance <= 7.5) return 2;
-    else if ($distance <= 10) return 3;
-    else if ($distance <= 13) return 4;
+    else if ($distance <= 10) return 1;
+    else if ($distance <= 15) return 2;
+    else if ($distance <= 20) return 3;
+    else if ($distance <= 26) return 4;
     else return 5;
   }
 

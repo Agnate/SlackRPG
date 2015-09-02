@@ -272,8 +272,6 @@ class Quest extends RPGEntitySaveable {
       // Calculate the exp per adventurer.
       $reward_exp = ceil($this->get_reward_exp($bonus) / $adv_count);
 
-      d(compact('guilds', 'adventurers', 'reward_gold', 'reward_fame', 'reward_exp'));
-
       // Give each Guild its reward.
       foreach ($guilds as $guild) {
         // Set personal message.
@@ -780,15 +778,13 @@ class Quest extends RPGEntitySaveable {
       $data['success_rate'] = 100 - Quest::sum_multiple_randoms($stars, 3, 5);
     }
 
-    $location_exp = $location->get_exploration_exp();
-
     // Set some defaults.
     if (!isset($data['party_size_min'])) $data['party_size_min'] = 1;
     if (!isset($data['party_size_max'])) $data['party_size_max'] = 3;
     $avg_party_size = ($data['party_size_max'] - $data['party_size_min'] / 2) + $data['party_size_min'];
     if (!isset($data['duration'])) $data['duration'] = Quest::sum_multiple_randoms($stars, 2, 4) * $hours;
     if (!isset($data['reward_gold'])) $data['reward_gold'] = Quest::sum_multiple_randoms($stars, 50, 250);
-    if (!isset($data['reward_exp'])) $data['reward_exp'] = $location_exp + Quest::calc_quest_exp($type, $data['duration'], $stars, $avg_party_size);
+    if (!isset($data['reward_exp'])) $data['reward_exp'] = Quest::calc_exploration_exp_reward($location, $data['party_size_max']) + Quest::calc_quest_exp($type, $data['duration'], $stars, $avg_party_size);
     if (!isset($data['reward_fame'])) $data['reward_fame'] = Quest::sum_multiple_randoms($stars, 4, 8);
     if (!isset($data['level'])) $data['level'] = Quest::sum_multiple_randoms(($avg_party_size * $stars), 1, 4);
     if (!isset($data['success_rate'])) $data['success_rate'] = 100 - Quest::sum_multiple_randoms($stars, 1, 4);
@@ -796,17 +792,19 @@ class Quest extends RPGEntitySaveable {
     // Calculate the rewards and information.
     switch ($type) {
       case Quest::TYPE_EXPLORE:
-        $data['reward_gold'] = 0;
-        $data['reward_exp'] = $location_exp;
-        $data['reward_fame'] = 0;
-        $data['duration'] = 0;
-        $data['level'] = 0;
-        $data['success_rate'] = 100;
-        // Bonus reward if you discover a non-empty location.
-        if ($location->type != Location::TYPE_EMPTY) {
-          $data['reward_fame'] += $stars * 3;
-          $data['reward_exp'] += $stars * rand(10, 15);
-        }
+        // THIS ALL HAPPENS IN RPGSession.php
+
+        // $data['reward_gold'] = 0;
+        // $data['reward_exp'] = Quest::calc_exploration_exp_reward($location, $data['party_size_max']);
+        // $data['reward_fame'] = 0;
+        // $data['duration'] = 0;
+        // $data['level'] = 0;
+        // $data['success_rate'] = 100;
+        // // Bonus reward if you discover a non-empty location.
+        // if ($location->type != Location::TYPE_EMPTY) {
+        //   $data['reward_fame'] += $stars * 3;
+        //   $data['reward_exp'] += $stars * rand(10, 15);
+        // }
         break;
 
       case Quest::TYPE_BOSS:
@@ -820,7 +818,7 @@ class Quest extends RPGEntitySaveable {
         $avg_num_guilds = max(1, ceil($data['party_size_max'] / $avg_num_advs_per_guild));
         $data['duration'] = (rand(8, 14) * $stars) * $hours;
         $data['reward_gold'] = Quest::sum_multiple_randoms($stars, 150, 500) * $avg_num_guilds;
-        $data['reward_exp'] = $location_exp + Quest::calc_quest_exp($type, $data['duration'], $stars, $avg_party_size);
+        $data['reward_exp'] = Quest::calc_exploration_exp_reward($location, $data['party_size_max']) + Quest::calc_quest_exp($type, $data['duration'], $stars, $avg_party_size);
         $data['reward_fame'] = (Quest::sum_multiple_randoms($stars, 12, 24) + Quest::MULTIPLAYER_FAME_COST) * $avg_num_guilds;
         $data['success_rate'] = 80 - Quest::sum_multiple_randoms($stars, 8, 12);
         $data['death_rate'] = $stars * rand(5, 8);
@@ -855,6 +853,10 @@ class Quest extends RPGEntitySaveable {
     if ($save_json) Quest::save_quest_names_list($json);
 
     return $quest;
+  }
+
+  public static function calc_exploration_exp_reward ($location, $num_adventurers) {
+    return $location->get_exploration_exp() * $num_adventurers;
   }
 
   public static function types () {

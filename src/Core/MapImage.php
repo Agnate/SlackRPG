@@ -174,7 +174,7 @@ class MapImage {
     $list['fossils'] = array('fossils', 'bones', 'remains');
     $list['graveyard'] = array('graveyard', 'barrow', 'tomb', 'cemetery');
     $list['hill'] = array('hill', 'knoll', 'hillock', 'foothills');
-    $list['hut'] = array('hut', 'witch hut');
+    $list['hut'] = array('hut', 'witch hut', 'witch');
     $list['jungle'] = array('jungle');
     $list['lake'] = array('lake', 'river', 'stream', 'brook', 'creek', 'rill', 'basin', 'spring', 'loch', 'shallows', 'strand', 'cove', 'fjord', 'waterfall');
     $list['lava'] = array('lava lake', 'magma pool');

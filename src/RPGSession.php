@@ -807,6 +807,10 @@ class RPGSession {
         $response[] = 'There are '.abs($adventurer_diff).' too many adventurers for this quest. Please reduce the group to '.$group_size.' adventurer'.($group_size == 1 ? '' : 's').'.';
       }
 
+      $response[] = '';
+      $response[] = '*Adventurers available for Questing*:';
+      $response[] = $this->show_available_adventurers($player);
+      $response[] = '';
       $response[] = $this->get_typed($cmd_word, $orig_args);
       $this->respond($response);
       return FALSE;
@@ -826,11 +830,9 @@ class RPGSession {
       if ($success_rate <= 0) {
         $response[] = 'Your adventuring party has no chance of completing this quest. Please choose stronger adventurer(s).';
         $response[] = '';
-        $response[] = 'Adventurers available for quests:';
-        foreach ($player->get_adventurers() as $adventurer) {
-          if (!empty($adventurer->agid)) continue;
-          $response[] = $adventurer->get_display_name(in_array($adventurer, $adventurers));
-        }
+        $response[] = '*Adventurers available for Questing*:';
+        $response[] = $this->show_available_adventurers($player);
+        $response[] = '';
         $response[] = $this->get_typed($cmd_word, $orig_args);
         $this->respond($response);
         return FALSE;
@@ -1471,11 +1473,31 @@ class RPGSession {
     if (!($player = $this->load_current_player())) return;
 
     $response = array();
-    $response[] = 'To explore a location on the map, type: `explore`';
+    
+    if (empty($args) || empty($args[0])) {
+      $response[] = 'To explore a location on the map, type: `explore`';
+      $response[] = 'To see a list of all location names and their coordinates, type: `map list`';
 
-    $attachment = $this->get_map_attachment();
+      $attachment = $this->get_map_attachment();
+      $this->respond($response, RPGSession::PERSONAL, null, $attachment);
+      return TRUE;
+    }
 
-    $this->respond($response, RPGSession::PERSONAL, null, $attachment);
+    if (strtolower($args[0]) == 'list') {
+      $season = Season::current();
+      $map = $season->get_map();
+
+      $response[] = 'List of all discovered locations:';
+      // Get list of all revealed locations.
+      $types = Location::types();
+      $locations = Location::load_multiple(array('mapid' => $map->mapid, 'type' => $types, 'revealed' => true));
+      foreach ($locations as $location) {
+        $response[] = $location->get_display_name();
+      }
+      if (empty($locations)) $response[] = '_None_';
+
+      $this->respond($response);
+    }
   }
 
 
@@ -1503,13 +1525,8 @@ class RPGSession {
       // Also show the list of available adventurers.
       $response[] = '';
       $response[] = '*Adventurers available for exploring*:';
-      $available_adventurers = array();
-      foreach ($player->get_adventurers() as $adventurer) {
-        if (!empty($adventurer->agid)) continue;
-        $available_adventurers[] = $adventurer;
-        $response[] = $adventurer->get_display_name(false);
-      }
-      if (empty($available_adventurers)) $response[] = '_None';
+      $response[] = $this->show_available_adventurers($player);
+      $response[] = '';
 
       // Also show the list of available item modifiers.
       $response[] = '';
@@ -1594,13 +1611,8 @@ class RPGSession {
       // Also show the list of available adventurers.
       $response[] = '';
       $response[] = '*Adventurers available for exploring*:';
-      $available_adventurers = array();
-      foreach ($player->get_adventurers() as $adventurer) {
-        if (!empty($adventurer->agid)) continue;
-        $available_adventurers[] = $adventurer;
-        $response[] = $adventurer->get_display_name(false);
-      }
-      if (empty($available_adventurers)) $response[] = '_None';
+      $response[] = $this->show_available_adventurers($player);
+      $response[] = '';
       $response[] = $this->get_typed($cmd_word, $orig_args);
       $this->respond($response);
       return FALSE;
@@ -1669,7 +1681,7 @@ class RPGSession {
     }
 
     // Create the exploration "quest".
-    $quest = new Quest (array(
+    $quest_data = array(
       'gid' => $player->gid,
       'locid' => $location->locid,
       'type' => Quest::TYPE_EXPLORE,
@@ -1688,7 +1700,15 @@ class RPGSession {
       'success_rate' => 100,
       'death_rate' => 0,
       'kit' => (isset($kit) ? $kit->iid : 0),
-    ));
+    );
+
+    // Bonus reward if you discover a non-empty location.
+    if ($location->type != Location::TYPE_EMPTY) {
+      $quest_data['reward_fame'] += $location->star_max * 3;
+      $quest_data['reward_exp'] += $location->star_max * rand(10, 15);
+    }
+
+    $quest = new Quest ($quest_data);
     $success = $quest->save();
     if ($success === false) {
       $this->respond('There was a problem saving the exploration quest. Please talk to Paul.');
@@ -1851,7 +1871,7 @@ class RPGSession {
     $count = 0;
     foreach ($guilds as $guild) {
       $count++;
-      $response[] = Display::addOrdinalNumberSuffix($count).': ('.Display::get_fame($guild->get_total_points()).') '.$guild->get_display_name();
+      $response[] = Display::addOrdinalNumberSuffix($count).' — ('.Display::get_fame($guild->get_total_points()).') '.$guild->get_display_name().' — @'.$guild->username;
       if ($count == $max) break;
     }
 
@@ -2265,9 +2285,9 @@ class RPGSession {
       }
 
       // Show help message.
-      $response[] = 'To challenge another Guild, type:';
-      $response[] = '`challenge [FAME WAGER] [GUILD NAME] [6 CHALLENGE MOVES (comma-separated)]`';
-      $response[] = '*Need help?* `challenge help`';
+      $response[] = 'For more information about the Colosseum, type: `challenge help`';
+      $response[] = 'To challenge another Guild, type: `challenge [FAME WAGER] [GUILD NAME] [6 CHALLENGE MOVES (comma-separated)]`';
+      $response[] = 'To cancel challenges you started, type: `challenge cancel`';
       $response[] = '';
       $response[] = 'Moves:';
       $response[] = '`attack` (or `a`) Attack wins against Break, but loses against Defend.';
@@ -2277,27 +2297,11 @@ class RPGSession {
       return TRUE;
     }
 
-    // For more help, show the help.
-    $help = implode(' ', $args);
-    if (strtolower($help) == 'help') {
-      $response[] = '*Colosseum Challenge*';
-      $response[] = '';
-      $response[] = 'Moves:';
-      $response[] = '`attack` Attack wins against Break, but loses against Defend.';
-      $response[] = '`defend` Defend wins against Attack, but loses against Break.';
-      $response[] = '`break` Break wins against Defend, but loses against Attack.';
-      $response[] = '';
-      $response[] = '*Attack-Defend-Break-Miss-Crit*';
-      $response[] = 'Challenging another Guild is very much like a Rock-Paper-Scissors match. Each Guild uses their Champion to fight against the other by typing in a list of actions ("moves") that are used sequentially in a 5-round battle. Each Guild chooses five (5) moves (one for each round) and one (1) tie-breaker move. The tie-breaker move is used if at the end of the 5th round, both Champions are tied in points.';
-      $response[] = '';
-      $response[] = 'Each round consists of both Champions using the chosen move. If both Champions choose the same move, the round is considered a tie and neither Champion receives points. If the Champions choose a different move, whichever move has higher priority wins and the Champion receives 1 point.';
-      $response[] = '';
-      $response[] = 'Where this differs from Rock-Paper-Scissors is that Champions also have a chance to Miss and Crit. If Champions vary in level, the lower-level Champion has an increased chance of Missing their successful move (receiving 0 points instead of 1) and the higher-level Champion has an increased chance of Criting their successful move (receiving 2 points instead of 1).';
-      $response[] = '';
-      $response[] = 'To challenge another Guild, type:';
-      $response[] = '`challenge [FAME WAGER] [GUILD NAME] [6 CHALLENGE MOVES (comma-separated)]`';
-      $response[] = 'Example: `challenge 15 The Aristocats attack,attack,defend,break,attack,defend`';
-      $this->respond($response);
+    // Check if the first argument is a secondary command, pass all of the information off to the secondary functions.
+    $cmd_options = array('help', 'cancel');
+    if (in_array($args[0], $cmd_options)) {
+      $cmd_secondary = array_shift($args);
+      $this->{'cmd_challenge_'.$cmd_secondary}($args);
       return TRUE;
     }
 
@@ -2370,6 +2374,12 @@ class RPGSession {
     // Confirm the wager they typed equals the same amount.
     if (!empty($challenge) && $challenge->wager != $wager) {
       $this->respond("Your opponent wagered ".Display::get_fame($challenge->wager).". To accept their challenge, you need to match the wager and you only wagered ".Display::get_fame($wager).".".$this->get_typed($cmd_word, $orig_args));
+      return FALSE;
+    }
+
+    // Check if the opponent can afford the wager.
+    if ($opponent->fame < $wager) {
+      $this->respond($opponent->get_display_name(). " does not have ".Display::get_fame($wager)." to match your wager. Try a lower amount or check their report to see how much they have (type `report ".$opponent->name."`).".$this->get_typed($cmd_word, $orig_args));
       return FALSE;
     }
 
@@ -2499,6 +2509,152 @@ class RPGSession {
     // Notify everyone.
     $this->respond("You just wagered ".Display::get_fame($wager)." that your Champion can beat ".$opponent->get_display_name()." in the Colosseum! Please wait for them to confirm.");
     $this->respond($player->get_display_name()." has wagered ".Display::get_fame($wager)." that their Champion can beat yours in a match in the Colosseum! Please confirm your Champion and match the wager to agree to this challenge (type: `challenge ".$wager." ".$player->name." [6 CHALLENGE MOVES (comma-separated)]`).", RPGSession::PERSONAL, $opponent);
+  }
+
+
+  /**
+   * Show additional help for the Challenge command.
+   */
+  protected function cmd_challenge_help ($args = array()) {
+    $orig_args = $args;
+    $cmd_word = 'challenge help';
+
+    // Load the player and fail out if they have not created a Guild.
+    if (!($player = $this->load_current_player())) return;
+
+    $response = array();
+
+    // For more help, show the help.
+    $response[] = '*Colosseum Challenge*';
+    $response[] = '';
+    $response[] = 'Moves:';
+    $response[] = '`attack` Attack wins against Break, but loses against Defend.';
+    $response[] = '`defend` Defend wins against Attack, but loses against Break.';
+    $response[] = '`break` Break wins against Defend, but loses against Attack.';
+    $response[] = '';
+    $response[] = '*Attack-Defend-Break-Miss-Crit*';
+    $response[] = 'Challenging another Guild is very much like a Rock-Paper-Scissors match. Each Guild uses their Champion to fight against the other by typing in a list of actions ("moves") that are used sequentially in a 5-round battle. Each Guild chooses five (5) moves (one for each round) and one (1) tie-breaker move. The tie-breaker move is used if at the end of the 5th round, both Champions are tied in points.';
+    $response[] = '';
+    $response[] = 'Each round consists of both Champions using the chosen move. If both Champions choose the same move, the round is considered a tie and neither Champion receives points. If the Champions choose a different move, whichever move has higher priority wins and the Champion receives 1 point.';
+    $response[] = '';
+    $response[] = 'Where this differs from Rock-Paper-Scissors is that Champions also have a chance to Miss and Crit. If Champions vary in level, the lower-level Champion has an increased chance of Missing their successful move (receiving 0 points instead of 1) and the higher-level Champion has an increased chance of Criting their successful move (receiving 2 points instead of 1).';
+    $response[] = '';
+    $response[] = 'To challenge another Guild, type:';
+    $response[] = '`challenge [FAME WAGER] [GUILD NAME] [6 CHALLENGE MOVES (comma-separated)]`';
+    $response[] = 'Example: `challenge 15 The Aristocats attack,attack,defend,break,attack,defend`';
+    $this->respond($response);
+    return TRUE;
+  }
+
+
+
+  /**
+   * Allow the challenger to cancel the Challenge at any time.
+   */
+  protected function cmd_challenge_cancel ($args = array()) {
+    $orig_args = $args;
+    $cmd_word = 'challenge cancel';
+
+    // Load the player and fail out if they have not created a Guild.
+    if (!($player = $this->load_current_player())) return;
+
+    $response = array();
+
+    // If they didn't choose a challenge to cancel, show the list.
+    if (empty($args) || empty($args[0])) {
+      // Show any challenges pending.
+      $your_challenges = Challenge::load_multiple(array('challenger_id' => $player->gid, 'confirmed' => false, 'winner' => 0));
+      if (!empty($your_challenges)) {
+        $response[] = '*Your Challenges*:';
+        foreach ($your_challenges as $challenge) {
+          $response[] = '`c'.$challenge->chid.'` '. $challenge->get_opponent()->get_display_name() .' (you wagered '. Display::get_fame($challenge->wager) .')';
+        }
+        if (empty($your_challenges)) $response[] = '_None_';
+      }
+
+      $response[] = '';
+      $response[] = 'To cancel a challenge, type: `challenge cancel [CHALLENGE ID]` (example: `challenge cancel c12`)';
+      $this->respond($response);
+      return true;
+    }
+
+    // Load up the challenge.
+    $carg = array_shift($args);
+    $ctype = substr($carg, 0, 1);
+    $chid = substr($carg, 1);
+    if ($ctype == 'c') $challenge = Challenge::load(array('chid' => $chid, 'challenger_id' => $player->gid, 'confirmed' => false, 'winner' => 0));
+
+    if (!isset($challenge) || empty($challenge)) {
+      $this->respond("This challenge is not yours or does not exist.".$this->get_typed($cmd_word, $orig_args));
+      return FALSE;
+    }
+
+    // Check the last argument for the confirmation code.
+    $confirmation = false;
+    if (!empty($args) && strpos($args[count($args)-1], 'CONFIRM') === 0) {
+      $confirmation = array_pop($args);
+    }
+
+    // Check for a valid confirmation code.
+    if (!empty($confirmation) && $confirmation != 'CONFIRM') {
+      $response[] = 'The confirmation code "'.$confirmation.'" is invalid. The code should be: `CONFIRM`.';
+      $response[] = '';
+      // Re-display the confirmation text.
+      $confirmation = false;
+    }
+
+    $opponent = $challenge->get_opponent();
+    $wager = $challenge->wager;
+    $champion = $challenge->get_challenger_champ();
+    $move_list = $challenge->get_challenger_moves();
+
+    // Display the confirmation message and code.
+    if (empty($confirmation)) {
+      $response[] = 'The following Colosseum challenge will be *cancelled*:';
+      $response[] = '*Opponent*: '.$opponent->get_display_name();
+      $response[] = '*Wager*: '.Display::get_fame($wager);
+      $response[] = '*Your Champion*: '.$champion->get_display_name();
+      $response[] = '*Your Moves*: ';
+      $mcount = 0;
+      foreach ($move_list as $move) {
+        $mcount++;
+        $response[] = '_'. ($mcount <= 5 ? Display::addOrdinalNumberSuffix($mcount) .': ' : 'Tie-breaker: '). ucwords($move) .'_ ';
+      }
+      $response[] = '';
+      $response[] = '_Are you sure you want to *cancel* this challenge?_';
+      $response[] = '';
+      $response[] = $this->get_confirm($cmd_word, $orig_args);
+      $this->respond($response);
+      return FALSE;
+    }
+
+    // Delete the adventuring group for the challenger.
+    $advgroup = AdventuringGroup::load(array('gid' => $player->gid, 'task_id' => $challenge->chid, 'task_type' => 'Challenge'));
+    if (!empty($advgroup)) {
+      $advgroup->delete();
+    }
+
+    // Remove the champion from their obligation.
+    $champion->agid = 0;
+    $success = $champion->save();
+    if ($success === false) {
+      $this->respond('There was a problem cancelling your Champion from the challenge. Please talk to Paul.');
+      return FALSE;
+    }
+
+    // Add the fame back to the challenger.
+    $player->fame += $wager;
+    $success = $player->save();
+    if ($success === false) {
+      $this->respond('There was a problem giving back your wagered amount from the challenge. Please talk to Paul.');
+      return FALSE;
+    }
+
+    // Delete the challenge.
+    $challenge->delete();
+
+    $this->respond('The Colosseum challenge against '.$opponent->get_display_name().' was successfully cancelled and your wager of '.Display::get_fame($wager).' was returned to you.');
+    $this->respond($player->get_display_name()." cancelled the Colosseum challenge against you.", RPGSession::PERSONAL, $opponent);
   }
 
 
@@ -2742,7 +2898,7 @@ class RPGSession {
 
   protected function cmd_test ($args = array()) {
 
-    return FALSE;
+    // return FALSE;
 
 
 
@@ -2753,13 +2909,14 @@ class RPGSession {
     if (!($player = $this->load_current_player())) return;
 
 
+
+
+
     $season = Season::current();
     $map = $season->get_map();
-    $mapimage = MapImage::generate_image($map);
 
-    // Test random item generation.
-    $items = ItemTemplate::random();
-    d($items);
+    $mapimage = MapImage::generate_image($map);
+    $this->respond('<img class="map" src="'.$mapimage->url.'">');
 
     return FALSE;
 
@@ -3826,14 +3983,14 @@ class RPGSession {
     return $attachment;
   }
 
-  protected function show_available_adventurers ($guild) {
+  protected function show_available_adventurers ($guild, $include_level = true) {
     $response = array();
     $adventurers = $guild->get_adventurers();
     $available_adventurers = array();
     foreach ($adventurers as $adventurer) {
       if (!empty($adventurer->agid)) continue;
       $available_adventurers[] = $adventurer;
-      $response[] = $adventurer->get_display_name(false);
+      $response[] = ($include_level ? '_Level '.$adventurer->get_level().'_ — ' : ''). $adventurer->get_display_name(false);
     }
     if (empty($available_adventurers)) $response[] = '_None_';
     return implode("\n", $response);

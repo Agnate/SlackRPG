@@ -17,7 +17,9 @@ class Challenge extends RPGEntitySaveable {
 
   // Protected
   protected $_challenger;
+  protected $_challenger_champ;
   protected $_opponent;
+  protected $_opponent_champ;
 
   // Private vars
   static $fields_int = array('created', 'wager', 'reward');
@@ -63,6 +65,13 @@ class Challenge extends RPGEntitySaveable {
     if (empty($this->_challenger) && !empty($this->challenger_id)) $this->load_challenger();
     return $this->_challenger;
   }
+  public function load_challenger_champ () {
+    $this->_challenger_champ = Adventurer::load(array('aid' => $this->challenger_champ, 'gid' => $this->challenger_id));
+  }
+  public function get_challenger_champ () {
+    if (empty($this->_challenger_champ) && !empty($this->challenger_champ)) $this->load_challenger_champ();
+    return $this->_challenger_champ;
+  }
   public function get_challenger_moves () {
     return Challenge::convert_moves_to_list($this->challenger_moves);
   }
@@ -76,6 +85,13 @@ class Challenge extends RPGEntitySaveable {
   public function get_opponent () {
     if (empty($this->_opponent) && !empty($this->opponent_id)) $this->load_opponent();
     return $this->_opponent;
+  }
+  public function load_opponent_champ () {
+    $this->_opponent_champ = Adventurer::load(array('agid' => $this->opponent_champ, 'gid' => $this->opponent_id));
+  }
+  public function get_opponent_champ () {
+    if (empty($this->_opponent_champ) && !empty($this->opponent_champ)) $this->load_opponent_champ();
+    return $this->_opponent_champ;
   }
   public function get_opponent_moves () {
     return Challenge::convert_moves_to_list($this->opponent_moves);
@@ -97,8 +113,8 @@ class Challenge extends RPGEntitySaveable {
     $opponent = $this->get_opponent();
 
     // Get the champions.
-    $cchamp = $challenger->get_champion();
-    $ochamp = $opponent->get_champion();
+    $cchamp = $this->get_challenger_champ();
+    $ochamp = $this->get_opponent_champ();
 
     // Get moves.
     $cmoves = $this->get_challenger_moves();
