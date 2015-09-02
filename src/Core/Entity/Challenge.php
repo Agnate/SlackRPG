@@ -87,7 +87,7 @@ class Challenge extends RPGEntitySaveable {
     return $this->_opponent;
   }
   public function load_opponent_champ () {
-    $this->_opponent_champ = Adventurer::load(array('agid' => $this->opponent_champ, 'gid' => $this->opponent_id));
+    $this->_opponent_champ = Adventurer::load(array('aid' => $this->opponent_champ, 'gid' => $this->opponent_id));
   }
   public function get_opponent_champ () {
     if (empty($this->_opponent_champ) && !empty($this->opponent_champ)) $this->load_opponent_champ();

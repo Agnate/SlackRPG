@@ -261,7 +261,7 @@ class Quest extends RPGEntitySaveable {
       // Set channel message.
       if ($this->multiplayer) {
         $channel_data['title'] = 'Multi-Guild '. ucwords($this->type) .' Quest:';
-        $channel_data['text'][] = $this->get_display_name() .' was completed.';
+        $channel_data['text'][] = '_'. $this->get_display_name(false) .'_ was completed.';
         $channel_data['color'] = SlackAttachment::COLOR_GREEN;
       }
 
@@ -342,7 +342,7 @@ class Quest extends RPGEntitySaveable {
       // Set channel message.
       if ($this->multiplayer) {
         $channel_data['title'] = 'Multi-Guild '. ucwords($this->type) .' Quest:';
-        $channel_data['text'][] = $this->get_display_name() .' was unsuccessful...';
+        $channel_data['text'][] = '_'. $this->get_display_name(false) .'_ was unsuccessful...';
         $channel_data['color'] = SlackAttachment::COLOR_RED;
       }
 
@@ -636,6 +636,10 @@ class Quest extends RPGEntitySaveable {
   public function open_spots ($refresh = false) {
     $adventurers = $this->get_registered_adventurers($refresh);
     return ($this->party_size_max - count($adventurers));
+  }
+
+  public function needs_approval ($refresh = false) {
+    return ($this->active && $this->is_ready($refresh));
   }
 
   public function load_keywords () {

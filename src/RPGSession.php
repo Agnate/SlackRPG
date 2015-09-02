@@ -623,7 +623,7 @@ class RPGSession {
         $quest_available[] = $quest;
         $cur_advs = $quest->get_registered_adventurers();
         $adv_count = count($cur_advs);
-        $response[] = '`b'.$quest->qid.'` _'. $quest->get_display_name(false) .'_ — '. Display::get_difficulty_stars($quest->stars, 30) . ($quest->death_rate > 0 ? ' — :skull:' : ''). ' — '. Display::show_adventurer_count($quest->party_size_max, $adv_count);
+        $response[] = '`b'.$quest->qid.'` — '.ucwords($quest->type).' — _'. $quest->get_display_name(false) .'_ — '. Display::get_difficulty_stars($quest->stars, 30) . ($quest->death_rate > 0 ? ' — :skull:' : ''). ' — '. Display::show_adventurer_count($quest->party_size_max, $adv_count);
       }
       if (empty($quest_available)) $response[] = '_None_';
 
@@ -640,7 +640,7 @@ class RPGSession {
         $best_adventurers = $player->get_best_adventurers($quest->party_size_max);
         $best_bonus = Quest::make_bonus($player, $best_adventurers);
         $success_rate = $quest->get_success_rate($best_bonus, $best_adventurers);
-        $response[] = '`q'.$quest->qid.'` _'. $quest->get_display_name(false) .'_ — '. Display::get_difficulty_stars($quest->stars, $success_rate) . ($quest->death_rate > 0 ? ' — :skull:' : ''). ' — '. Display::show_adventurer_count($quest->get_party_size());
+        $response[] = '`q'.$quest->qid.'` — '.ucwords($quest->type).' — _'. $quest->get_display_name(false) .'_ — '. Display::get_difficulty_stars($quest->stars, $success_rate) . ($quest->death_rate > 0 ? ' — :skull:' : ''). ' — '. Display::show_adventurer_count($quest->get_party_size());
       }
       if (empty($private_active_quests)) $response[] = '_None_';
 
@@ -855,6 +855,7 @@ class RPGSession {
       // Set a fake success rate for multi-guild quests
       if (!isset($success_rate)) $success_rate = 30;
       $response[] = '*Quest*: '.$quest->get_display_name(false);
+      $response[] = '*Type*: '.ucwords($quest->type);
       $response[] = '*Rating*: '.Display::get_difficulty_stars($quest->stars, $success_rate);
       if ($quest->multiplayer == false) {
         $response[] = '*Duration*: '.Display::get_duration($duration);
@@ -980,13 +981,25 @@ class RPGSession {
         return FALSE;
       }
 
+      $approval_message = 'The following Multi-Guild Quest had a status update:';
+
       // If this player is not the leader, show the "wait for authorization" message.
       if ($player->gid != $leader->gid) {
         $this->respond($names.' '.($name_count == 1 ? 'is' : 'are').' waiting for the Quest Leader to authorize the team.');
       }
+      // Change the approval message if this is the Quest Leader.
+      else {
+        $approval_message = $names.' '.($name_count == 1 ? 'is' : 'are').' waiting for you (the Quest Leader) to authorize the team.';
+      }
+
+      $attachment = new SlackAttachment ();
+      $attachment->title = 'APPROVAL NEEDED';
+      $attachment->text = 'Multi-Guild Quest named _'.$quest->name.'_ requires the final approval before departure. Please review the Quest to either approve or cancel by typing: `quest approve b'.$quest->qid.'`';
+      $attachment->fallback = $attachment->title .' - '. $attachment->text;
+      $attachment->color = SlackAttachment::COLOR_BLUE;
 
       // Notify the Leader.
-      $this->respond('Multi-Guild Quest named '.$quest->name.' requires the final approval before departure. Please review the Quest to approve or cancel by typing: `quest approve b'.$quest->qid.'`', RPGSession::PERSONAL, $leader);
+      $this->respond($approval_message, RPGSession::PERSONAL, $leader, $attachment);
       return TRUE;
     }
     // Otherwise, just let the user know they registered for the multiplayer quest and more spots need to be filled.
@@ -1010,32 +1023,50 @@ class RPGSession {
     if (!($player = $this->load_current_player())) return;
 
     // Load up all Global Quests.
-    $quests = Quest::load_multiple(array('active' => true, 'multiplayer' => true));
-    // Load up all private Quests.
-    $private_quests = $player->get_quests();
-
+    $quests = Quest::load_multiple(array('multiplayer' => true));
     // Show quests currently on.
     $response[] = '*Multi-Guild Quests underway*:';
     $quest_underway = array();
+    $quest_need_approval = array();
     foreach ($quests as $quest) {
       // Only show Quests that this Guild has participated in.
       if ($quest->is_registered_guild($player) == FALSE) continue;
-      // Skip quests that are full-up but aren't yet confirmed.
-      if ($quest->is_ready()) continue;
+      // Skip quests that need approval.
+      if ($quest->needs_approval()) {
+        $quest_need_approval[] = $quest;
+        continue;
+      }
       
       $quest_underway[] = $quest;
       $queue = $quest->get_queue();
       if (!empty($queue)) {
         $eta = $queue->execute - time();
-        $response[] = '`b'.$quest->qid.'` _'. $name .' (returning '.($eta > 0 ? 'in '.Display::get_duration($eta) : 'now').')_';
+        $response[] = '`b'.$quest->qid.'` _'. $quest->name .' (returning '.($eta > 0 ? 'in '.Display::get_duration($eta) : 'now').')_';
       }
       else {
-        $response[] = '`b'.$quest->qid.'` _'. $name .' (waiting for more Guilds)_';
+        $response[] = '`b'.$quest->qid.'` _'. $quest->name .' (waiting for more Guilds)_';
       }
     }
     if (empty($quest_underway)) $response[] = '_None_';
-    $response[] = '';
 
+
+
+    // Load up any multiplayer Quests that this player is leading.
+    $response[] = '';
+    $response[] = '*Multi-Guild Quests that need approval*:';
+    foreach ($quest_need_approval as $quest) {
+      $quest_bonus = $quest->get_bonus();
+      $adventurers = $quest->get_registered_adventurers();
+      $adv_count = count($adventurers);
+      $success_rate = $quest->get_success_rate($quest_bonus, $adventurers);
+      $response[] = '`b'.$quest->qid.'` _'. $quest->get_display_name(false) .'_ — '. Display::get_difficulty_stars($quest->stars, $success_rate) . ($quest->death_rate > 0 ? ' — :skull:' : ''). ' — '. Display::show_adventurer_count($quest->party_size_max, $adv_count);
+    }
+    if (empty($quest_need_approval)) $response[] = '_None_';
+
+
+    // Load up all private Quests.
+    $private_quests = $player->get_quests();
+    $response[] = '';
     $response[] = '*Quests underway*:';
     $private_underway_quests = array();
     foreach ($private_quests as $quest) {
@@ -1269,11 +1300,12 @@ class RPGSession {
     $count_guilds = count($rguilds);
 
     $attachment = new SlackAttachment ();
-    $attachment->text = $count_guilds.' Guild'.($count_guilds == 1 ? '' : 's').' embarked on the quest of _'.$quest->get_display_name().'_!';
+    $attachment->title = 'Multi-Guild '.ucwords($quest->type).' Quest:';
+    $attachment->text = $count_guilds.' Guild'.($count_guilds == 1 ? '' : 's').' embarked on the quest of _'.$quest->get_display_name(false).'_!';
     $attachment->fallback = $attachment->text;
     $attachment->color = SlackAttachment::COLOR_BLUE;
 
-    $this->respond('Multi-Guild '.ucwords($quest->type).' Quest:', RPGSession::CHANNEL, null, $attachment);
+    $this->respond(null, RPGSession::CHANNEL, null, $attachment);
 
     // Send a message out to every other Guild telling them they are leaving.
     foreach ($rguilds as $rguild) {
@@ -1289,7 +1321,7 @@ class RPGSession {
       $last_name = ($name_count > 1) ? ', and '.array_pop($names) : '';
       $names = implode(', ', $names).$last_name;
       // Message the user to let them know their adventurers are leaving.
-      $this->respond($names.' embark'.($name_count == 1 ? 's' : '').' on the quest of '.$quest->name.' returning in '.Display::get_duration($duration).'.', RPGSession::PERSONAL, $rguild);
+      $this->respond($names.' embark'.($name_count == 1 ? 's' : '').' on the quest of _'.$quest->name.'_ returning in '.Display::get_duration($duration).'.', RPGSession::PERSONAL, $rguild);
     }
   }
 
@@ -2911,6 +2943,39 @@ class RPGSession {
 
 
 
+    // Generate a multiplayer quest.
+    $season = Season::current();
+    $map = $season->get_map();
+
+    // Get list of all revealed locations.
+    $types = Location::types();
+    $locations = Location::load_multiple(array('mapid' => $map->mapid, 'type' => $types, 'revealed' => true));
+    // Get the first location.
+    $location = array_shift($locations);
+
+    $quest = Quest::generate_multiplayer_quest($location);
+
+    return FALSE;
+
+
+
+
+
+
+    // Load up the broken challenge and see why it's broken.
+    $challenge = Challenge::load(array('chid' => 3));
+
+    $cchamp = $challenge->get_challenger_champ();
+    d($cchamp);
+
+    $ochamp = $challenge->get_opponent_champ();
+    d($ochamp);
+
+
+    return FALSE;
+
+
+
 
     $season = Season::current();
     $map = $season->get_map();
@@ -3871,6 +3936,8 @@ class RPGSession {
 
     foreach ($names as $name) {
       $trim_name = trim($name);
+      if (empty($trim_name)) continue;
+
       $data = array(
         'name' => $trim_name,
         'gid' => $guild->gid,

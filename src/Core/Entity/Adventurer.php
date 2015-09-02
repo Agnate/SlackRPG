@@ -243,7 +243,7 @@ class Adventurer extends RPGEntitySaveable {
     $options = array(
       array('bonus' => Bonus::QUEST_SUCCESS, 'value' => 0.01, 'random_quest' => TRUE),
       array('bonus' => Bonus::QUEST_SPEED, 'value' => -0.01, 'random_quest' => TRUE),
-      array('bonus' => Bonus::DEATH_RATE, 'value' => 0.01, 'random_quest' => TRUE),
+      array('bonus' => Bonus::DEATH_RATE, 'value' => -0.01, 'random_quest' => TRUE),
       array('bonus' => Bonus::QUEST_REWARD_GOLD, 'value' => 0.01, 'random_quest' => TRUE),
       array('bonus' => Bonus::QUEST_REWARD_FAME, 'value' => 0.01, 'random_quest' => TRUE),
       array('bonus' => Bonus::QUEST_REWARD_EXP, 'value' => 0.01, 'random_quest' => TRUE),

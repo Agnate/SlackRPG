@@ -303,7 +303,7 @@ class Bonus {
     // Replace tokens.
     $name = str_replace(array_keys($tokens), array_values($tokens), $name);
 
-    return $name .' by '.floor($value * 100).'%';
+    return $name .' by '.floor(abs($value) * 100).'%';
   }
 
   public static function evaluate_for ($for) {
