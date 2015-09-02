@@ -245,7 +245,7 @@ class Bonus {
 
     // 5. Add bonus name to the list.
     switch ($bonus_name) {
-      case Bonus::TRAVEL_SPEED: $name = 'travel speed'; break;
+      case Bonus::TRAVEL_SPEED: $name = 'travel time'; break;
       case Bonus::QUEST_SPEED: $name = 'time to complete !Quest'; break;
       case Bonus::QUEST_SUCCESS: $name = 'chance of completing !Quest'; break;
       case Bonus::DEATH_RATE: $name = 'chance of adventurers dying during !Quest'; break;
@@ -273,30 +273,30 @@ class Bonus {
     // Create any replacement tokens.
     $tokens = array();
 
+    // Default values for !Quest tokens.
+    switch ($bonus_name) {
+      case Bonus::QUEST_SPEED:
+      case Bonus::QUEST_SUCCESS:
+      case Bonus::DEATH_RATE:
+        $tokens['!Quest'] = 'a quest';
+        break;
+
+      case Bonus::QUEST_REWARD_GOLD:
+      case Bonus::QUEST_REWARD_FAME:
+      case Bonus::QUEST_REWARD_EXP:
+      case Bonus::QUEST_REWARD_ITEM:
+      case Bonus::QUEST_REWARD_SPECIAL_ITEM:
+      case Bonus::ITEM_TYPE_FIND_RATE:
+        $tokens['!Quest'] = 'a quest or exploring';
+        break;
+    }
+
     // Specific tokens based on the "for" value.
     if (!empty($for)) {
       switch ($for['for']) {
         case 'Quest':
         case 'ItemType':
           $tokens['!'.$for['for']] = $for['for']::get_type_name($for['type']);
-      }
-    }
-    // Special tokens for default "for" value.
-    else {
-      switch ($bonus_name) {
-        case Bonus::QUEST_SPEED:
-        case Bonus::QUEST_SUCCESS:
-        case Bonus::DEATH_RATE:
-          $tokens['!Quest'] = 'a quest';
-          break;
-
-        case Bonus::QUEST_REWARD_GOLD:
-        case Bonus::QUEST_REWARD_FAME:
-        case Bonus::QUEST_REWARD_EXP:
-        case Bonus::QUEST_REWARD_ITEM:
-        case Bonus::ITEM_TYPE_FIND_RATE:
-          $tokens['!Quest'] = 'a quest or exploring';
-          break;
       }
     }
 
