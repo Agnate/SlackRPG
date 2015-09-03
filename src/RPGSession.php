@@ -2417,7 +2417,7 @@ class RPGSession {
     }
 
     // Check if the opponent can afford the wager.
-    if ($opponent->fame < $wager) {
+    if (empty($challenge) && $opponent->fame < $wager) {
       $this->respond($opponent->get_display_name(). " does not have ".Display::get_fame($wager)." to match your wager. Try a lower amount or check their report to see how much they have (type `report ".$opponent->name."`).".$this->get_typed($cmd_word, $orig_args));
       return FALSE;
     }
