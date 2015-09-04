@@ -36,8 +36,6 @@ class RPGSession {
     $this->register_callback(array('revive'), 'cmd_revive');
     
     $this->register_callback(array('quest'), 'cmd_quest');
-    // $this->register_callback(array('approve'), 'cmd_quest_approve');
-    // $this->register_callback(array('cancel'), 'cmd_quest_cancel');
     $this->register_callback(array('map'), 'cmd_map');
     $this->register_callback(array('explore'), 'cmd_explore');
 
@@ -47,8 +45,7 @@ class RPGSession {
     $this->register_callback(array('leaderboard', 'leader'), 'cmd_leaderboard');
 
 
-    $this->register_callback(array('test'), 'cmd_test');
-    $this->register_callback(array('tsprites'), 'cmd_test_sprites');
+    $this->register_callback(array('admin'), 'cmd_admin');
   }
 
 
@@ -311,7 +308,7 @@ class RPGSession {
     $response[] = '*Adventurers*:'.($guild_is_player ? ' '.$adv_alive.' / '.$guild->adventurer_limit.($adv_undead <= 0 ? '' : ' (+'.$adv_undead.' Undead)') : '');
     foreach ($adventurers as $adventurer) {
       $adv_status = !empty($adventurer->agid) ? ' [Adventuring]' : '';
-      $response[] = $adventurer->get_display_name(false) .($guild_is_player ? $adv_status : '');
+      $response[] = $adventurer->get_display_name(false, true, true, true, true, $guild_is_player).($guild_is_player ? $adv_status : '');
     }
 
     // Show upgrades.
@@ -359,7 +356,7 @@ class RPGSession {
           }
 
           foreach ($gadventurers as $adventurer) {
-            $response[] = '— '.$adventurer->get_display_name(false);
+            $response[] = '— '.$adventurer->get_display_name(false, true, true, true, true, $include_level);
           }
         }
       }
@@ -972,42 +969,54 @@ class RPGSession {
 
       return TRUE;
     }
-    // Send out the final approval message to the Quest leader.
-    else if ($quest->multiplayer && $quest_ready) {
+    else if ($quest->multiplayer) {
       // Get the leader of the quest.
       $season = Season::current();
       $leader = Guild::load(array('gid' => $quest->gid, 'season' => $season->sid));
+
       if (empty($leader)) {
         $this->respond('There was a problem sending the notification to the Quest Leader. Please talk to Paul.');
         return FALSE;
       }
 
-      $approval_message = 'The following Multi-Guild Quest had a status update:';
+      // Send out the final approval message to the Quest leader.
+      if ($quest_ready) {        
+        $approval_message = 'The following Multi-Guild Quest had a status update:';
 
-      // If this player is not the leader, show the "wait for authorization" message.
-      if ($player->gid != $leader->gid) {
-        $this->respond($names.' '.($name_count == 1 ? 'is' : 'are').' waiting for the Quest Leader to authorize the team.');
+        // If this player is not the leader, show the "wait for authorization" message.
+        if ($player->gid != $leader->gid) {
+          $this->respond($names.' '.($name_count == 1 ? 'is' : 'are').' waiting for the Quest Leader to authorize the team.');
+        }
+        // Change the approval message if this is the Quest Leader.
+        else {
+          $approval_message = $names.' '.($name_count == 1 ? 'is' : 'are').' waiting for you (the Quest Leader) to authorize the team.';
+        }
+
+        $attachment = new SlackAttachment ();
+        $attachment->title = 'APPROVAL NEEDED';
+        $attachment->text = 'Multi-Guild Quest named _'.$quest->name.'_ requires the final approval before departure. Please review the Quest to either approve or cancel by typing: `quest approve b'.$quest->qid.'`';
+        $attachment->fallback = $attachment->title .' - '. $attachment->text;
+        $attachment->color = SlackAttachment::COLOR_BLUE;
+
+        // Notify the Leader.
+        $this->respond($approval_message, RPGSession::PERSONAL, $leader, $attachment);
+        return TRUE;
       }
-      // Change the approval message if this is the Quest Leader.
+      // Otherwise, just let the user know they registered for the multiplayer quest and more spots need to be filled.
       else {
-        $approval_message = $names.' '.($name_count == 1 ? 'is' : 'are').' waiting for you (the Quest Leader) to authorize the team.';
+        $open_spots = $quest->open_spots();
+        $this->respond($names.' '.($name_count == 1 ? 'is' : 'are').' waiting for '.$open_spots.' more adventurer'.($open_spots > 1 ? 's' : '').' to join in on the quest of *'.$quest->name.'*.');
+        // Also let the Quest Leader know that someone else registered.
+        if ($player->gid != $leader->gid) {
+          $attachment = new SlackAttachment ();
+          $attachment->title = 'NEW MULTI-GUILD REGISTRATION';
+          $attachment->text = $name_count.' new Adventurer'.($name_count == 1 ? '' : 's').' registered for the Multi-Guild Quest named _'.$quest->name.'_, but there are still '.$open_spots.' open spot'.($open_spots > 1 ? 's' : '').'.';
+          $attachment->fallback = $attachment->text;
+          $attachment->color = SlackAttachment::COLOR_BLUE;
+          $this->respond($approval_message, RPGSession::PERSONAL, $leader, $attachment);
+        }
+        return TRUE;
       }
-
-      $attachment = new SlackAttachment ();
-      $attachment->title = 'APPROVAL NEEDED';
-      $attachment->text = 'Multi-Guild Quest named _'.$quest->name.'_ requires the final approval before departure. Please review the Quest to either approve or cancel by typing: `quest approve b'.$quest->qid.'`';
-      $attachment->fallback = $attachment->title .' - '. $attachment->text;
-      $attachment->color = SlackAttachment::COLOR_BLUE;
-
-      // Notify the Leader.
-      $this->respond($approval_message, RPGSession::PERSONAL, $leader, $attachment);
-      return TRUE;
-    }
-    // Otherwise, just let the user know they registered for the multiplayer quest and more spots need to be filled.
-    else {
-      $open_spots = $quest->open_spots();
-      $this->respond($names.' '.($name_count == 1 ? 'is' : 'are').' waiting for '.$open_spots.' more adventurer'.($open_spots > 1 ? 's' : '').' to join in on the quest of *'.$quest->name.'*.');
-      return TRUE;
     }
   }
 
@@ -1259,7 +1268,7 @@ class RPGSession {
       if (isset($kit)) $response[] = '*Modifier Item*: '. $kit->get_display_name(false);
       
       $response[] = '*Adventuring party ('.count($adventurers).')*:';
-      foreach ($adventurers as $adventurer) $response[] = $adventurer->get_display_name(false);
+      foreach ($adventurers as $adventurer) $response[] = $adventurer->get_display_name(false, true, true, true, true, true);
       $response[] = '';
 
       $response[] = 'To cancel this Quest instead, type: `quest cancel b'.$quest->qid.'`';
@@ -2463,9 +2472,9 @@ class RPGSession {
       $response[] = '*Your Champion*: '.$champion->get_display_name();
       $response[] = '*Your Moves*: ';
       $mcount = 0;
-      foreach ($move_list as $move) {
+      foreach ($move_list as $amove) {
         $mcount++;
-        $response[] = '_'. ($mcount <= 5 ? Display::addOrdinalNumberSuffix($mcount) .': ' : 'Tie-breaker: '). ucwords($move) .'_ ';
+        $response[] = '_'. ($mcount <= 5 ? Display::addOrdinalNumberSuffix($mcount) .': ' : 'Tie-breaker: '). ucwords($amove) .'_ ';
       }
       $response[] = '';
       $response[] = $this->get_confirm($cmd_word, $orig_args);
@@ -2912,18 +2921,43 @@ class RPGSession {
 
 
 
-  protected function cmd_test_sprites ($args = array()) {
-    
-    return FALSE;
-
-
-
+  protected function cmd_admin ($args = array()) {
     $orig_args = $args;
-    $cmd_word = 'test';
-
+    $cmd_word = 'admin';
     // Load the player and fail out if they have not created a Guild.
-    if (!($player = $this->load_current_player())) return;
+    if (!($player = $this->load_current_player()) || $player->admin != true) {
+      if (!empty($args) && empty($args[0])) array_shift($args);
+      array_unshift($args, 'admin');
+      $this->_bad_command($args);
+      return;
+    }
+    $response = array();
 
+    // Command list.
+    $cmd_options = array('test', 'gen_spritesheet', 'gen_map', 'gen_multi_quest', 'gen_quest', 'gen_item');
+
+    if (empty($args) || empty($args[0])) {
+      $response[] = '*List of commands*:';
+      foreach ($cmd_options as $cmd) {
+        $response[] = $cmd;
+      }
+      $this->respond($response);
+      return TRUE;
+    }
+
+    // Delegate the command.
+    if (in_array($args[0], $cmd_options)) {
+      $cmd_secondary = array_shift($args);
+      $this->{'cmd_admin_'.$cmd_secondary}($args, $player);
+      return TRUE;
+    }
+  }
+
+
+  /**
+   * Generate the sprite sheet.
+   */
+  protected function cmd_admin_gen_spritesheet ($args, $player) {
     // Rough spritesheets directory.
     foreach(glob(RPG_SERVER_ROOT.'/icons/rough/*.*') as $file) {
       $file_name = explode('/', $file);
@@ -2933,23 +2967,21 @@ class RPGSession {
     }
   }
 
+  /**
+   * Generate the sprite sheet.
+   */
+  protected function cmd_admin_gen_map ($args, $player) {
+    $season = Season::current();
+    $map = $season->get_map();
 
+    $mapimage = MapImage::generate_image($map);
+    $this->respond('<img class="map" src="'.$mapimage->url.'">');
+  }
 
-  protected function cmd_test ($args = array()) {
-
-    // return FALSE;
-
-
-
-    $orig_args = $args;
-    $cmd_word = 'test';
-
-    // Load the player and fail out if they have not created a Guild.
-    if (!($player = $this->load_current_player())) return;
-
-
-
-
+  /**
+   * Generate the sprite sheet.
+   */
+  protected function cmd_admin_gen_multi_quest ($args, $player) {
     // Generate a multiplayer quest.
     $season = Season::current();
     $map = $season->get_map();
@@ -2962,38 +2994,83 @@ class RPGSession {
 
     $quest = Quest::generate_multiplayer_quest($location);
 
-    return FALSE;
+    $this->respond('Generated mutil-guild quest: _'.$quest->get_display_name(false).'_.');
+  }
 
-
-
-
-
-
-    // Load up the broken challenge and see why it's broken.
-    $challenge = Challenge::load(array('chid' => 3));
-
-    $cchamp = $challenge->get_challenger_champ();
-    d($cchamp);
-
-    $ochamp = $challenge->get_opponent_champ();
-    d($ochamp);
-
-
-    return FALSE;
-
-
-
-
+  /**
+   * Generate the sprite sheet.
+   */
+  protected function cmd_admin_gen_quest ($args, $player) {
     $season = Season::current();
     $map = $season->get_map();
 
-    $mapimage = MapImage::generate_image($map);
-    $this->respond('<img class="map" src="'.$mapimage->url.'">');
+    // Get list of all revealed locations.
+    $types = Location::types();
+    $locations = Location::load_multiple(array('mapid' => $map->mapid, 'type' => $types, 'revealed' => true));
+    // Get the first location.
+    $location = array_shift($locations);
 
+    $quest = Quest::generate_personal_quest($player, $location);
+
+    $this->respond('Generated personal quest: _'.$quest->get_display_name(false).'_.');
+  }
+
+  /**
+   * Generate the sprite sheet.
+   */
+  protected function cmd_admin_gen_item ($args, $player) {
+    // Generate a random non-special item.
+    if (empty($args) || empty($args[0])) {
+      $item_template = ItemTemplate::random();
+      if (empty($item_template)) {
+        $this->respond('There was a problem generating a regular item?...');
+        return FALSE;
+      }
+    }
+    // Check if it's a special item.
+    else if ($args[0] == 'special') {
+      $special_probs = ItemType::SPECIAL_PROBABILITIES();
+      $item_template = ItemTemplate::random(1, 0, 5, array(), array(), $special_probs);
+      if (empty($item_template)) {
+        $this->respond('There was a problem generating a special item?...');
+        return FALSE;
+      }
+    }
+    // Assume it's a template name_id.
+    else {
+      $item_template = ItemTemplate::load(array('name_id' => $args[0]));
+      if (empty($item_template)) {
+        $this->respond('There is no item with the ID of `'.$args[0].'`.');
+        return FALSE;
+      }
+    }
+
+    // Check if there's a receiver.
+    $receiver = $player;
+    if (!empty($args[1])) {
+      $season = Season::current();
+      $receiver = Guild::load(array('name' => $args[1], 'season' => $season->sid), true);
+      if (empty($receiver)) {
+        $this->respond('There is no Guild by the name of "'.$args[1].'"');
+        return FALSE;
+      }
+    }
+
+    // Give the receiver the item.
+    $receiver->add_item($item_template);
+
+    if ($player->gid != $receiver->gid) {
+      $this->respond($receiver->get_display_name(false).' has been given a '.$item_template->get_display_name(false).'.');
+      $this->respond('The RPG gods have bestowed you with a gift: '.$item_template->get_display_name(false), RPGSession::PERSONAL, $receiver);
+    }
+    else {
+      $this->respond('You have been given a '.$item_template->get_display_name(false).'.');
+    }
+  }
+
+
+  protected function cmd_admin_test ($args, $player) {
     return FALSE;
-
-
-
 
     // Test completing a Quest.
     $season = Season::current();
@@ -3765,17 +3842,6 @@ class RPGSession {
 
 
 
-    // Give the player an ore.
-    $item_template = ItemTemplate::load(array('name_id' => 'ore_iron'));
-    
-    $items = &$player->get_items();
-    
-    $player->add_item($item_template);
-    
-    return false;
-
-
-
     // Give the player a powerstone.
     // $item_template = ItemTemplate::load(array('name_id' => 'powerstone_shaman'));
     
@@ -4064,7 +4130,7 @@ class RPGSession {
     foreach ($adventurers as $adventurer) {
       if (!empty($adventurer->agid)) continue;
       $available_adventurers[] = $adventurer;
-      $response[] = ($include_level ? '_Level '.$adventurer->get_level().'_ — ' : ''). $adventurer->get_display_name(false);
+      $response[] = $adventurer->get_display_name(false, true, true, true, true, $include_level);
     }
     if (empty($available_adventurers)) $response[] = '_None_';
     return implode("\n", $response);

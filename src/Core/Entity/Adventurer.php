@@ -59,9 +59,9 @@ class Adventurer extends RPGEntitySaveable {
     $this->calculate_bonus();
   }
 
-  public function get_display_name ($bold = true, $include_champion = true, $include_class = true, $include_gender = true, $include_icon = true) {
+  public function get_display_name ($bold = true, $include_champion = true, $include_class = true, $include_gender = true, $include_icon = true, $include_level = false) {
     $adventurer_class = $this->get_adventurer_class();
-    return ($include_champion && $this->champion ? ':crown:' : '').($include_icon ? $this->icon.' ' : '').($include_class && !empty($adventurer_class) && $adventurer_class->name_id != AdventurerClass::UNDEAD ? $adventurer_class->get_display_name().' ' : '').($bold ? '*' : '').$this->name.($include_gender ? ($this->gender == Adventurer::GENDER_MALE ? ' ♂' : ' ♀') : '').($bold ? '*' : '');
+    return ($include_level ? '_Level '.$this->get_level().'_ — ' : '').($include_champion && $this->champion ? ':crown:' : '').($include_icon ? $this->icon.' ' : '').($include_class && !empty($adventurer_class) && $adventurer_class->name_id != AdventurerClass::UNDEAD ? $adventurer_class->get_display_name().' ' : '').($bold ? '*' : '').$this->name.($include_gender ? ($this->gender == Adventurer::GENDER_MALE ? ' ♂' : ' ♀') : '').($bold ? '*' : '');
   }
 
   public function get_pronoun ($capitalize = false) {

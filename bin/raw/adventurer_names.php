@@ -14,6 +14,7 @@ $first_names = array(
     'Ambrose',
     'Andre',
     'Anthony',
+    'Anubis',
     'Astor',
     'Auberon',
     'Augustus',

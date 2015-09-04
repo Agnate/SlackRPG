@@ -47,7 +47,7 @@ $landmark_names = array('Lava Lake', 'Magma Pool', 'Hollow', 'Thicket', 'Brier',
   'Quagmire', 'Mire', 'Fen', 'Bog', 'Marsh', 'Canyon', 'Gulch', 'Valley', 'Mountain', 'Summit', 'Pass', 'Ridge', 'Gorge', 'Rock', 'Point', 'Basin', 'Lake', 'Spring', 'Weald', 'Tor', 'Loch', 'Vale', 'Dell', 'Moor', 'Knoll', 'Grove', 'Hillock', 'Coppice', 'Glade', 'Glen', 'Cleft', 'Crag', 'Mesa', 'Foothills', 'Bluff', 'Shallows', 'Strand', 'Wetland', 'Heath', 'Comet', 'Crater', 'Ravine', 'Cavern', 'Cove', 'Jungle', 'Grotto', 'Fjord', 'Abyss', 'Crevice', 'Chasm', 'Flatland', 'Savanna', 'Desert', 'Wasteland', 'Prairie', 'Steppes', 'Tundra', 'Barrens', 'Expanse', 'Pit', 'Orchard', 'Wilds', 'Lagoon', 'Volcano', 'Oasis', 'Dunes', 'Waterfall', 'Flower Field', 'Taiga');
 
 
-$structure_names = array('Standing Stone', 'Menhir', 'Monolith', 'Obelisk', 'Mausoleum', 'Sepulcher', 'Tomb', 'Crypt', 'Vault', 'Catacomb', 'Ruins', 'Moai', 'Pillar', 'Pyramid', 'Graveyard', 'Portal', 'Gateway', 'Crystal', 'Mineral', 'Statues', 'Throne', 'Dias', 'Bridge', 'Castle Ruins', 'Shrine', 'Abandoned Mine', 'Tower', 'Fortress Ruins', 'Hollow Tree', 'Cairn', 'Barrow', 'Arch', 'Dolmen', 'Witch Hut', 'Maze', 'Labyrinth', 'Cemetery', 'Necropolis', 'Beanstalk', 'Spire');
+$structure_names = array('Standing Stone', 'Menhir', 'Monolith', 'Obelisk', 'Mausoleum', 'Sepulcher', 'Tomb', 'Crypt', 'Vault', 'Catacomb', 'Ruins', 'Moai', 'Pillar', 'Pyramid', 'Graveyard', 'Portal', 'Gateway', 'Crystal', 'Statues', 'Throne', 'Dias', 'Bridge', 'Castle Ruins', 'Shrine', 'Abandoned Mine', 'Tower', 'Fortress Ruins', 'Hollow Tree', 'Cairn', 'Barrow', 'Arch', 'Dolmen', 'Witch Hut', 'Maze', 'Labyrinth', 'Cemetery', 'Necropolis', 'Beanstalk', 'Spire');
 
 
 $domicile_names_first = array('Aber', 'Ac', 'Ar', 'Ash', 'Ast', 'Auch', 'Bex', 'Brad', 'Bre', 'Cron', 'Crow', 'Can', 'Chu', 'Dun', 'Drum', 'Eccles', 'Ex', 'Fin', 'Ghyll', 'Ho', 'Hal', 'Hil', 'Kin',
@@ -185,7 +185,7 @@ $quest_names = array(
   'fight' => array(
     '!creature' => array('parts' => array($creature_adjectives, $creature_names)),
     'format' => array(
-      'Eliminate the !creature',
+      'Eliminate the !creature last seen near !fullname',
       'Collect a specimen of !creature, last spotted near !fullname, for further study',
     ),
   ),

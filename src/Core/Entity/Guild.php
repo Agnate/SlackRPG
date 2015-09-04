@@ -3,6 +3,7 @@
 class Guild extends RPGEntitySaveable {
   // Fields
   public $gid;
+  public $admin;
   public $season;
   public $username;
   public $slack_user_id;
@@ -39,6 +40,7 @@ class Guild extends RPGEntitySaveable {
     // Add created timestamp if nothing did already.
     if (empty($this->created)) $this->created = time();
     // Add default adventurer limit.
+    if (empty($this->admin)) $this->admin = false;
     if (empty($this->adventurer_limit)) $this->adventurer_limit = Guild::DEFAULT_ADVENTURER_LIMIT;
     if (empty($this->_renown)) $this->_renown = -9999;
 

@@ -21,6 +21,7 @@ function update_version_0_0_0 ($forced = false) {
   // Create Guilds table.
   $guilds_table = array();
   $guilds_table[] = "gid INT(11) UNSIGNED AUTO_INCREMENT";
+  $guilds_table[] = "admin TINYINT(1) NOT NULL";
   $guilds_table[] = "username VARCHAR(255) NOT NULL";
   $guilds_table[] = "slack_user_id VARCHAR(255) NOT NULL";
   $guilds_table[] = "season INT(10) UNSIGNED NOT NULL";
@@ -263,9 +264,12 @@ function update_version_0_0_0 ($forced = false) {
 
   // Add some Upgrades.
   $upgrades = array();
-  $upgrades[] = array(':name_id' => "dorm1", ':name' => "Dormitory 1", ':description' => "increase max to 5 adventurers", ':cost' => 1100, ':duration' => (24 * $hours), ':requires' => '');
-  $upgrades[] = array(':name_id' => "dorm2", ':name' => "Dormitory 2", ':description' => "increase max to 7 adventurers", ':cost' => 6750, ':duration' => (48 * $hours), ':requires' => 'upgrade,dorm1');
-  $upgrades[] = array(':name_id' => "dorm3", ':name' => "Dormitory 3", ':description' => "increase max to 10 adventurers", ':cost' => 12000, ':duration' => (72 * $hours), ':requires' => 'upgrade,dorm2');
+  $upgrades[] = array(':name_id' => "dorm1", ':name' => "Dormitory 1", ':description' => "increase max adventurer limit by 1", ':cost' => 750, ':duration' => (12 * $hours), ':requires' => '');
+  $upgrades[] = array(':name_id' => "dorm2", ':name' => "Dormitory 2", ':description' => "increase max adventurer limit by 1", ':cost' => 1250, ':duration' => (24 * $hours), ':requires' => 'upgrade,dorm1');
+  $upgrades[] = array(':name_id' => "dorm3", ':name' => "Dormitory 3", ':description' => "increase max adventurer limit by 1", ':cost' => 2250, ':duration' => (36 * $hours), ':requires' => 'upgrade,dorm2');
+  $upgrades[] = array(':name_id' => "dorm4", ':name' => "Dormitory 4", ':description' => "increase max adventurer limit by 1", ':cost' => 3500, ':duration' => (48 * $hours), ':requires' => 'upgrade,dorm3');
+  $upgrades[] = array(':name_id' => "dorm5", ':name' => "Dormitory 5", ':description' => "increase max adventurer limit by 1", ':cost' => 5000, ':duration' => (60 * $hours), ':requires' => 'upgrade,dorm4');
+  $upgrades[] = array(':name_id' => "dorm6", ':name' => "Dormitory 6", ':description' => "increase max adventurer limit by 1", ':cost' => 10000, ':duration' => (72 * $hours), ':requires' => 'upgrade,dorm5');
   $upgrades[] = array(':name_id' => "speed1", ':name' => "Transportation: Horse", ':description' => "increase speed by 5%", ':cost' => 3000, ':duration' => (24 * $hours), ':requires' => 'item,animal_horse,4');
   $upgrades[] = array(':name_id' => "speed2", ':name' => "Transportation: Pegasus", ':description' => "increase speed by 5%", ':cost' => 10000, ':duration' => (48 * $hours), ':requires' => 'upgrade,speed1|item,animal_pegasus,4');
   $upgrades[] = array(':name_id' => "speed3", ':name' => "Transportation: Airship", ':description' => "increase speed by 10%", ':cost' => 20000, ':duration' => (72 * $hours), ':requires' => 'upgrade,speed2|item,ore_steel,10|item,ore_iron,10|item,ore_adamantine,3|item,ore_crystal');
