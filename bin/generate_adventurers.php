@@ -18,9 +18,6 @@ require_once(RPG_SERVER_ROOT.'/includes/db.inc');
 require_once(RPG_SERVER_ROOT.'/vendor/autoload.php');
 require_once(RPG_SERVER_ROOT.'/src/autoload.php');
 
-// Load up functions for generating new adventurers.
-require_once(RPG_SERVER_ROOT.'/bin/server/timer_refresh_tavern.php');
-
 // Get the parameters passed in from the PHP command line.
 $shortopts = 'f::'; // Optional
 $longopts = array(
@@ -29,4 +26,4 @@ $longopts = array(
 $opts = getopt($shortopts, $longopts);
 
 // If we need to force the generation of adventurers, do so.
-if (isset($opts['f'])) generate_new_adventurers(true);
+if (isset($opts['f'])) ServerUtils::generate_new_adventurers(true);

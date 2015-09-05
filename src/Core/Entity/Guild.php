@@ -400,7 +400,7 @@ class Guild extends RPGEntitySaveable {
                                      
   ==================================== */
 
-  static function load ($data, $find_partials = false, $load_adventurers = false, $load_items = false) {
+  public static function load ($data, $find_partials = false, $load_adventurers = false, $load_items = false) {
     // Load the Guild.
     $guild = parent::load($data, $find_partials);
 
@@ -417,7 +417,19 @@ class Guild extends RPGEntitySaveable {
     return $guild;
   }
 
-  static function sort ($a, $b) {
+  /**
+   * Get all of the Guilds for this season.
+   */
+  public static function current ($season = null) {
+    if (empty($season)) $season = Season::current();
+
+    $guilds = Guild::load_multiple(array('season' => $season->sid));
+
+    if (empty($guilds)) return array();
+    return $guilds;
+  }
+
+  public static function sort ($a, $b) {
     if ($a->get_total_points() == $b->get_total_points()) {
       if ($a->gold == $b->gold) {
         if ($a->created == $b->created) return 0;

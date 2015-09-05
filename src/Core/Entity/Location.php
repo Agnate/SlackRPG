@@ -39,7 +39,10 @@ class Location extends RPGEntitySaveable {
   const FILENAME_LIST_ORIGINAL = '/bin/json/original/location_names.json';
   const FILENAME_LIST = '/bin/json/location_names.json';
 
-  const TRAVEL_BASE = 5; // 5400 = 1.5 hours/tile (60 * 60 * 1.5)
+  // Used to calculate the exp/tile and represents the tile to travel 1 tile on the map.
+  const TRAVEL_BASE_CALC_VALUE = 1800; // 1800 = 30 mins/tile (60 * 30)
+  // This should always be equal to the TRAVEL_BASE_CALC_VALUE, but for debugging it can be lowered without affected the exp/tile.
+  const TRAVEL_BASE = 5;
   
 
   
@@ -223,36 +226,52 @@ class Location extends RPGEntitySaveable {
     }
   }
 
-  protected function calc_star_rating ($distance) {
-    // 0 = 0-star
-    // 0.1-10 = 1-star
-    // 10.1-15 = 2-star
-    // 15.1-20 = 3-star
-    // 20.1-26 = 4-star
-    // 26.1+ = 5-star
+  public function calc_star_rating ($distance) {
+    // Adjust the exp/tile based on travel time and approximate difficulty.
+    $hours_ratio = Location::TRAVEL_BASE_CALC_VALUE / (60 * 60);
+
+    // Hours of travel for this star rating.
+    $rates = array(
+      '1' => 7,
+      '2' => 12,
+      '3' => 17,
+      '4' => 22,
+    );
+
     if ($distance <= 0) return 0;
-    else if ($distance <= 10) return 1;
-    else if ($distance <= 15) return 2;
-    else if ($distance <= 20) return 3;
-    else if ($distance <= 26) return 4;
-    else return 5;
+
+    // Only checks star ratings 1-4.
+    foreach ($rates as $star => $hours) {
+      if ($distance <= $rates[$star] / $hours_ratio) return intval($star);
+    }
+
+    // Was farther than 4-star rating, so it's a 5-star.
+    return 5;
   }
 
   public function get_exploration_exp ($capital = null) {
-    // 1-star ->  9 exp/tile
-    // 2-star -> 12 exp/tile
-    // 3-star -> 15 exp/tile
-    // 4-star -> 18 exp/tile
-    // 5-star -> 21 exp/tile
+    // Get the distance (aka number of tiles from the Capital).
     $distance = $this->get_distance($capital);
+    // Use the distance to calculate the "difficulty" of the locations in this area.
     $star = $this->calc_star_rating($distance);
-
     if ($star <= 0) return 0;
-    else if ($star == 1) return floor(9 * $distance);
-    else if ($star == 2) return floor(12 * $distance);
-    else if ($star == 3) return floor(15 * $distance);
-    else if ($star == 4) return floor(18 * $distance);
-    else return floor(21 * $distance);
+
+    // 1-star ->  6 exp/hour
+    // 2-star ->  8 exp/hour
+    // 3-star -> 10 exp/hour
+    // 4-star -> 12 exp/hour
+    // 5-star -> 14 exp/hour
+    $rates = array(
+      'star1' => 6,
+      'star2' => 8,
+      'star3' => 10,
+      'star4' => 12,
+      'star5' => 14,
+    );
+
+    // Adjust the exp/tile based on travel time and approximate difficulty.
+    $hours_ratio = Location::TRAVEL_BASE_CALC_VALUE / (60 * 60);
+    return ceil(($rates['star'.$star] * $hours_ratio) * $distance);
   }
 
   

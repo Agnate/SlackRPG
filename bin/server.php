@@ -7,12 +7,8 @@ require_once('config.php');
 require_once('includes/db.inc');
 require_once(RPG_SERVER_ROOT.'/vendor/autoload.php');
 require_once(RPG_SERVER_ROOT.'/src/autoload.php');
+require_once(RPG_SERVER_ROOT.'/src/ServerUtils.php');
 require_once(RPG_SERVER_ROOT.'/src/RPGSession.php');
-
-// Load in any extra resources we need.
-require_once(RPG_SERVER_ROOT.'/bin/server/timer_refresh_tavern.php');
-require_once(RPG_SERVER_ROOT.'/bin/server/timer_refresh_quests.php');
-require_once(RPG_SERVER_ROOT.'/bin/server/timer_leaderboard_standings.php');
 
 // Create API call to start websocket connection.
 use Frlnc\Slack\Http\SlackResponseFactory;
@@ -28,35 +24,84 @@ use Frlnc\Slack\Core\Commander;
                                     
 ===================================== */
 
-$tavern_refresh_time = '23:59:59'; // '4:00:00';
-$next_tavern_refresh = strtotime(date('Y-m-d').' '.$tavern_refresh_time);
+// Every 3 hours
+$tavern_trickle_intervals = array(
+  '02:59:59',
+  '05:59:59',
+  '08:59:59',
+  '11:59:59',
+  '14:59:59',
+  '17:59:59',
+  '20:59:59',
+  '23:59:59',
+);
+$next_tavern_trickle = ServerUtils::get_next_refresh_time($tavern_trickle_intervals);
 
-$quest_refresh_time = '23:59:59'; // '2:00:00';
-$next_quest_refresh = strtotime(date('Y-m-d').' '.$quest_refresh_time);
 
-$leaderboard_standings_time = '23:59:59'; // '8:30:00';
-$next_leaderboard_standings = strtotime(date('Y-m-d').' '.$leaderboard_standings_time);
+// Once a day
+$tavern_reset_intervals = array(
+  '23:59:59',
+);
+$next_tavern_reset = ServerUtils::get_next_refresh_time($tavern_reset_intervals);
+
+
+// Every 4 hours
+$quest_refresh_intervals = array(
+  '03:59:59',
+  '07:59:59',
+  '11:59:59',
+  '15:59:59',
+  '19:59:59',
+  '23:59:59',
+);
+$next_quest_refresh = ServerUtils::get_next_refresh_time($quest_refresh_intervals);
+
+
+// Once a day
+$leaderboard_standings_intervals = array(
+  '08:00:00',
+);
+$next_leaderboard_standings = ServerUtils::get_next_refresh_time($leaderboard_standings_intervals);
+
+
 
 /**
  * Remove available Adventurers from tavern and create new ones.
  */
-function timer_refresh_tavern () {
-  global $logger, $next_tavern_refresh;
+function timer_reset_tavern () {
+  global $logger, $tavern_reset_intervals, $next_tavern_reset;
 
-  //$logger->notice("Next Tavern Refresh: ".$next_tavern_refresh." -- Time: ".time());
+  // $logger->notice("Next Tavern Reset: ".$next_tavern_reset." -- Time: ".time());
 
-  // If we need to refresh the tavern, do so now.
-  if (time() >= $next_tavern_refresh) {
-    // Set the next tavern refresh time.
-    $next_tavern_refresh = strtotime('+1 day', $next_tavern_refresh);
-    
-    // Clean out the tavern of available adventurers.
-    clean_out_tavern();
+  // If we need to reset the tavern, do so now.
+  if (time() >= $next_tavern_reset) {
+    // Set the next tavern reset time.
+    $next_tavern_reset = ServerUtils::get_next_refresh_time($tavern_reset_intervals);
 
-    // Generate new adventurers from the tavern.
-    generate_new_adventurers();
+    // Clean out the tavern of available adventurers and add new ones.
+    ServerUtils::reset_tavern();
 
-    $logger->notice("Tavern refreshed! Next Tavern Refresh: ".$next_tavern_refresh);
+    $logger->notice("Tavern reset! Next Tavern Reset: ".date('Y-m-d H:i:s', $next_tavern_reset));
+  }
+}
+
+/**
+ * Trickle some new Adventurers into the tavern.
+ */
+function timer_trickle_tavern () {
+  global $logger, $tavern_trickle_intervals, $next_tavern_trickle;
+
+  //$logger->notice("Next Tavern Trickle: ".$next_tavern_trickle." -- Time: ".time());
+
+  // If we need to do a trickle into the tavern, do so now.
+  if (time() >= $next_tavern_trickle) {
+    // Set the next tavern trickle time.
+    $next_tavern_trickle = ServerUtils::get_next_refresh_time($tavern_trickle_intervals);
+
+    // Trickle some new Adventurers into the tavern.
+    ServerUtils::trickle_tavern();
+
+    $logger->notice("Tavern refreshed! Next Tavern Trickle: ".date('Y-m-d H:i:s', $next_tavern_trickle));
   }
 }
 
@@ -64,22 +109,25 @@ function timer_refresh_tavern () {
  * Remove available Quests and create new ones.
  */
 function timer_refresh_quests () {
-  global $logger, $next_quest_refresh;
+  global $logger, $quest_refresh_intervals, $next_quest_refresh;
 
   //$logger->notice("Next Quest Refresh: ".$next_quest_refresh." -- Time: ".time());
 
   // If we need to refresh the quests, do so now.
   if (time() >= $next_quest_refresh) {
     // Set the next quest refresh time.
-    $next_quest_refresh = strtotime('+1 day', $next_quest_refresh);
+    $next_quest_refresh = ServerUtils::get_next_refresh_time($quest_refresh_intervals);
     
     // Remove the available quests.
-    // remove_available_quests();
+    // ServerUtils::remove_available_quests();
 
+    // Randomize if a multi-guild quest should generate.
+    $chance_of_multi = 13;
+    $num_multi_quests = (rand(1, 100) <= $chance_of_multi) ? 1 : 0;
     // Generate new quests.
-    generate_new_quests();
+    ServerUtils::generate_new_quests(false, 1, $num_multi_quests);
 
-    $logger->notice("Quests refreshed! Next Quest Refresh: ".$next_quest_refresh);
+    $logger->notice("Quests refreshed! Next Quest Refresh: ".date('Y-m-d H:i:s', $next_quest_refresh));
   }
 }
 
@@ -87,20 +135,20 @@ function timer_refresh_quests () {
  * Remove available Quests and create new ones.
  */
 function timer_leaderboard_standings () {
-  global $logger, $next_leaderboard_standings;
+  global $logger, $leaderboard_standings_intervals, $next_leaderboard_standings;
 
   //$logger->notice("Next Leaderboard Standings: ".$next_leaderboard_standings." -- Time: ".time());
 
   // If we need to refresh the quests, do so now.
   if (time() >= $next_leaderboard_standings) {
     // Set the next quest refresh time.
-    $next_leaderboard_standings = strtotime('+1 day', $next_leaderboard_standings);
+    $next_leaderboard_standings = ServerUtils::get_next_refresh_time($leaderboard_standings_intervals);
     
     // Show leaderboard standings.
-    $message = show_leaderboard_standings();
+    $message = ServerUtils::show_leaderboard_standings();
     send_message($message);
 
-    $logger->notice("Leaderboard shown! Next Leaderboard Standings: ".$next_leaderboard_standings);
+    $logger->notice("Leaderboard shown! Next Leaderboard Standings: ".date('Y-m-d H:i:s', $next_leaderboard_standings));
   }
 }
 
@@ -213,6 +261,27 @@ function gather_user_list (&$commander) {
   return $list;
 }
 
+/**
+ * Call this function when a "user_change" event is passed in from Slack.
+ */
+function update_user ($slack_data) {
+  // Get their user_id, as this never changes.
+  $user_id = $slack_data['user']['id'];
+
+  // Get new credentials (currently we only store username).
+  $username = $slack_data['user']['name'];
+
+  // Find all Guilds they have created (even old ones) and update the information.
+  $guilds = Guild::load_multiple(array('slack_user_id' => $user_id));
+  if (!empty($guilds)) {
+    foreach ($guilds as $guild) {
+      if (empty($guild)) continue;
+      $guild->username = $username;
+      $guild->save();
+    }
+  }
+}
+
 /* =====================================================
    _________    __  _________   __    ____  ____  ____ 
   / ____/   |  /  |/  / ____/  / /   / __ \/ __ \/ __ \
@@ -263,11 +332,10 @@ $loop = \React\EventLoop\Factory::create();
 
 // Add any timers necessary.
 $loop->addPeriodicTimer(2, 'timer_process_queue');
-$loop->addPeriodicTimer(31, 'timer_refresh_tavern');
-$loop->addPeriodicTimer(32, 'timer_refresh_quests');
-$loop->addPeriodicTimer(33, 'timer_leaderboard_standings');
-
-
+$loop->addPeriodicTimer(31, 'timer_reset_tavern');
+$loop->addPeriodicTimer(32, 'timer_trickle_tavern');
+$loop->addPeriodicTimer(33, 'timer_refresh_quests');
+$loop->addPeriodicTimer(34, 'timer_leaderboard_standings');
 
 
 $logger = new \Zend\Log\Logger();
@@ -292,6 +360,8 @@ $client->on("message", function($message) use ($client, $logger) {
   // Only keep track of messages and reactions.
   $data = json_decode($message->getData(), true);
 
+  // $logger->notice($data);
+
   // If a new IM channel is opened, refresh the list.
   if (isset($data['type']) && $data['type'] == 'im_created') {
     global $im_channels, $commander;
@@ -303,6 +373,12 @@ $client->on("message", function($message) use ($client, $logger) {
   else if (isset($data['type']) && $data['type'] == 'team_join') {
     global $im_channels, $commander;
     $user_list = gather_user_list($commander);
+    return;
+  }
+
+  // If a user changes their username, update their Guild.
+  else if (isset($data['type']) && $data['type'] == 'user_change') {
+    update_user($data);
     return;
   }
   

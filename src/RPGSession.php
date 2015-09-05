@@ -1270,9 +1270,13 @@ class RPGSession {
       $response[] = '*Adventuring party ('.count($adventurers).')*:';
       foreach ($adventurers as $adventurer) $response[] = $adventurer->get_display_name(false, true, true, true, true, true);
       $response[] = '';
-
       $response[] = 'To cancel this Quest instead, type: `quest cancel b'.$quest->qid.'`';
       $response[] = '';
+
+      if ($quest->is_ready() == false) {
+        $response[] = '*NOTE: This quest does not have the maximum number of adventurer spots filled. If you approve now, you may be attempting the Multi-Guild Quest without the optimal number of adventurers.';
+        $response[] = '';
+      }
 
       $response[] = $this->get_confirm($cmd_word, $orig_args);
       $this->respond($response);
@@ -2921,6 +2925,14 @@ class RPGSession {
 
 
 
+  /**
+        ___    ____  __  ________   __
+       /   |  / __ \/  |/  /  _/ | / /
+      / /| | / / / / /|_/ // //  |/ / 
+     / ___ |/ /_/ / /  / // // /|  /  
+    /_/  |_/_____/_/  /_/___/_/ |_/   
+                                      
+  */
   protected function cmd_admin ($args = array()) {
     $orig_args = $args;
     $cmd_word = 'admin';
@@ -2934,7 +2946,10 @@ class RPGSession {
     $response = array();
 
     // Command list.
-    $cmd_options = array('test', 'gen_spritesheet', 'gen_map', 'gen_multi_quest', 'gen_quest', 'gen_item');
+    $cmd_options = array(
+      'test',
+      'gen_spritesheets', 'gen_map_spritesheet', 'gen_map', 'gen_multi_quest', 'gen_quest', 'gen_item',
+      'reset_tavern', 'trickle_tavern');
 
     if (empty($args) || empty($args[0])) {
       $response[] = '*List of commands*:';
@@ -2955,9 +2970,19 @@ class RPGSession {
 
 
   /**
+   * Generate the map sprite sheet.
+   */
+  protected function cmd_admin_gen_map_spritesheet ($args, $player) {
+    // Create the sprite sheet.
+    $spritesheet = SpriteSheet::generate(true);
+    $this->respond('<img class="map" src="'.$spritesheet['debug'].'">');
+  }
+
+
+  /**
    * Generate the sprite sheet.
    */
-  protected function cmd_admin_gen_spritesheet ($args, $player) {
+  protected function cmd_admin_gen_spritesheets ($args, $player) {
     // Rough spritesheets directory.
     foreach(glob(RPG_SERVER_ROOT.'/icons/rough/*.*') as $file) {
       $file_name = explode('/', $file);
@@ -3068,9 +3093,55 @@ class RPGSession {
     }
   }
 
+  /**
+   * Remove all adventurers in the tavern and generate new ones.
+   */
+  protected function cmd_admin_reset_tavern ($args, $player) {
+    ServerUtils::reset_tavern();
+    $this->respond('Tavern has been reset.');
+  }
+
+  /**
+   * Trickle in some new adventurers into the tavern if it's low.
+   */
+  protected function cmd_admin_trickle_tavern ($args, $player) {
+    ServerUtils::trickle_tavern();
+    $this->respond('Tavern has been trickled.');
+  }
+
 
   protected function cmd_admin_test ($args, $player) {
+
+    for ($i = 0; $i < 5; $i++) {
+      $list = array();
+      for ($t = 0; $t < 6; $t++) {
+        $list[] = rand(1, 100) <= 13;
+      }
+      d($list);
+    }
+
     return FALSE;
+    
+
+    // Test location distance and exp.
+    $season = Season::current();
+    $map = $season->get_map();
+
+    // Get list of all revealed locations.
+    $types = Location::types();
+    $locations = Location::load_multiple(array('mapid' => $map->mapid, 'type' => $types, 'revealed' => true));
+    // Get the first location.
+    $location = array_shift($locations);
+
+    $dist = $location->get_distance();
+    d($dist);
+    d($location->calc_star_rating($dist));
+    d($location->get_exploration_exp());
+
+    return FALSE;
+
+
+
 
     // Test completing a Quest.
     $season = Season::current();

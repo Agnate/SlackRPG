@@ -18,9 +18,6 @@ require_once(RPG_SERVER_ROOT.'/includes/db.inc');
 require_once(RPG_SERVER_ROOT.'/vendor/autoload.php');
 require_once(RPG_SERVER_ROOT.'/src/autoload.php');
 
-// Load up functions for generating a new season.
-require_once(RPG_SERVER_ROOT.'/bin/server/start_new_season.php');
-
 // Get the parameters passed in from the PHP command line.
 $shortopts = 'f::'; // Optional
 $longopts = array(
@@ -29,4 +26,4 @@ $longopts = array(
 $opts = getopt($shortopts, $longopts);
 
 // If we need to force the generation of a season, do so.
-if (isset($opts['f'])) start_new_season(true);
+if (isset($opts['f'])) ServerUtils::start_new_season(true);

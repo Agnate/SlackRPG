@@ -18,9 +18,6 @@ require_once(RPG_SERVER_ROOT.'/includes/db.inc');
 require_once(RPG_SERVER_ROOT.'/vendor/autoload.php');
 require_once(RPG_SERVER_ROOT.'/src/autoload.php');
 
-// Load up functions for removing adventurers.
-require_once(RPG_SERVER_ROOT.'/bin/server/timer_refresh_tavern.php');
-
 // Get the parameters passed in from the PHP command line.
 $shortopts = 'f::'; // Optional
 $longopts = array(
@@ -29,4 +26,4 @@ $longopts = array(
 $opts = getopt($shortopts, $longopts);
 
 // If we need to force the removal of adventurers, do so.
-if (isset($opts['f'])) clean_out_tavern(true);
+if (isset($opts['f'])) ServerUtils::clean_out_tavern(true);
