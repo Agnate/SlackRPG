@@ -358,32 +358,21 @@ class ServerUtils {
       return FALSE;
     }
 
-    // Get the map.
-    $map = $season->get_map();
-    
     // Load up the list of quest names.
     $json = Quest::load_quest_names_list();
     $original_json = Quest::load_quest_names_list(true);
 
     // Get list of all revealed locations.
-    $types = Location::types();
-    $locations = Location::load_multiple(array('mapid' => $map->mapid, 'type' => $types, 'revealed' => true));
+    $locations = Location::get_all_unique_locations();
     
     // If there are no revealed locations, we can't generate quests yet.
     if (empty($locations)) {
       if ($output_information) print "No new quests were created because no locations have been revealed.\n";
-      return;
+      return FALSE;
     }
 
     // Sort out locations by star-rating.
-    $all_locations = array('all' => $locations);
-    foreach ($locations as &$location) {
-      for ($star = $location->star_min; $star <= $location->star_max; $star++) {
-        if ($star == 0) continue;
-        if (!isset($all_locations[$star])) $all_locations[$star] = array();
-        $all_locations[$star]['loc'.$location->locid] = $location;
-      }
-    }
+    $all_locations = Location::sort_locations_by_star($locations);
 
     // Get all the active Guilds this season.
     $guilds = Guild::load_multiple(array('season' => $season->sid));
@@ -395,6 +384,7 @@ class ServerUtils {
 
     // Generate quests for each Guild.
     $guild_count = 0;
+    $guilds_with_quests = array();
     foreach ($guilds as $guild) {
       // Check the number of current quests, as we do not want to exceed the max quest allowance.
       $cur_quests = $guild->get_quests();
@@ -408,17 +398,10 @@ class ServerUtils {
 
       // Determine the location list that the generator should pull from,
       // choosing lower-star locations for Guilds with weaker adventurers.
-      $level = $guild->calculate_adventurer_level_info();
-      $star = Quest::calculate_appropriate_star_range($level['lo'], $level['hi']);
-      $original_locations = array();
-      // Loop through all locations and merge together the viable locations.
-      for ($s = $star['lo']; $s <= $star['hi']; $s++) {
-        if (!isset($all_locations[$s])) continue;
-        $original_locations = array_merge($original_locations, $all_locations[$s]);
-      }
+      $original_locations = ServerUtils::get_appropriate_locations_for_guild($all_locations, $guild);
 
-      // If there are no locations for this star range (for whatever reason), default to all locations.
-      if (empty($original_locations)) $original_locations = $all_locations['all'];
+      // Unset locations to prevent the previous Guild's level-appropriate
+      // quests from bleeding into the next Guild's.
       unset($locations);
 
       $quests = array();
@@ -436,6 +419,7 @@ class ServerUtils {
       }
 
       $guild_count++;
+      $guilds_with_quests[] = $guild;
 
       if ($output_information) print 'Generated '.count($quests).' quest(s) for '.$guild->name.".\n";
     }
@@ -475,5 +459,58 @@ class ServerUtils {
 
     // Output the quests that were created.
     if ($output_information) print 'Created new quests for '.$guild_count." Guild(s).\n";
+
+    return $guilds_with_quests;
+  }
+
+  /**
+   * Get locations that are appropriate for this Guild (based on star rating and adventurer levels).
+   *
+   * @return -> Returns a list of level-appropriate locations. If none exist, it returns all locations.
+   */
+  public static function get_appropriate_locations_for_guild ($sorted_locations, $guild) {
+    // Determine the location list that the generator should pull from,
+    // choosing lower-star locations for Guilds with weaker adventurers.
+    $level = $guild->calculate_adventurer_level_info();
+    $star = Quest::calculate_appropriate_star_range($level['lo'], $level['hi']);
+    $locations = array();
+    // Loop through all locations and merge together the viable locations.
+    for ($s = $star['lo']; $s <= $star['hi']; $s++) {
+      if (!isset($sorted_locations[$s])) continue;
+      $locations = array_merge($locations, $sorted_locations[$s]);
+    }
+
+    // If there are no locations for this star range (for whatever reason), default to all locations.
+    if (empty($locations)) $locations = $sorted_locations['all'];
+
+    return $locations;
+  }
+
+  public static function get_quest_is_generated_message ($guild, $attachment_only = false) {
+    $attachment = new SlackAttachment ();
+    $attachment->title = 'Guild Update';
+    $attachment->text = 'You have a new quest. Type `quest` to view it.';
+    $attachment->fallback = $attachment->title .' - '. $attachment->text;
+    $attachment->color = SlackAttachment::COLOR_BLUE;
+    if ($attachment_only) return $attachment;
+
+    $message = new SlackMessage (array('player' => $guild));
+    $message->add_attachment($attachment);
+
+    return $message;
+  }
+
+  public static function get_boss_quest_is_generated_message ($attachment_only = false) {
+    $attachment = new SlackAttachment ();
+    $attachment->title = 'Boss Approaching';
+    $attachment->text = 'A new boss has appeared and is spreading mayhem across the countryside! Type `quest` to view it.';
+    $attachment->fallback = $attachment->title .' - '. $attachment->text;
+    $attachment->color = SlackAttachment::COLOR_BLUE;
+    if ($attachment_only) return $attachment;
+
+    $message = new SlackMessage ();
+    $message->add_attachment($attachment);
+
+    return $message;
   }
 }

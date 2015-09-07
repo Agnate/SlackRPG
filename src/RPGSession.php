@@ -236,14 +236,13 @@ class RPGSession {
     }
 
     // Check if we should add a starting Quest (based on whether or not there are revealed locations).
-    $season = Season::current();
-    $map = $season->get_map();
-    // Get list of all revealed locations.
-    $types = Location::types();
-    $locations = Location::load_multiple(array('mapid' => $map->mapid, 'type' => $types, 'revealed' => true));
-    // Looks like there's some revealed locations, so let's generate a personal quest for this new Guild.
-    if (!empty($locations)) {
-      $location = $locations[array_rand($locations)];
+    $locations = Location::get_all_unique_locations();
+    $sorted_locations = Location::sort_locations_by_star($locations);
+    $appropriate_locations = ServerUtils::get_appropriate_locations_for_guild($sorted_locations, $player);
+    // Looks like there's some revealed locations that are appropriate,
+    // so let's generate a personal quest for this new Guild.
+    if (!empty($appropriate_locations)) {
+      $location = $appropriate_locations[array_rand($appropriate_locations)];
       if (!empty($location)) {
         $new_quest = Quest::generate_personal_quest($player, $location);
       }
@@ -602,81 +601,15 @@ class RPGSession {
 
     // If no Quest is selected, list the available ones.
     if (empty($args) || empty($args[0])) {
-      // Load up all Global Quests.
-      $quests = Quest::load_multiple(array('active' => true, 'multiplayer' => true));
-      // Load up all private Quests.
-      $private_quests = $player->get_quests();
-
-      if (empty($quests) && empty($private_quests)) {
-        $this->respond("There are no quests to undertake.\n\nTo open up quests, new locations need to be discovered. Type `explore` to start exploring the map.");
-        return FALSE;
-      }
-
-      $response[] = '*Multi-Guild Quests available* (costs '.Display::get_fame(Quest::MULTIPLAYER_FAME_COST).' per Guild to register):';
-      $quest_available = array();
-      foreach ($quests as $quest) {
-        // Skip quests that are full-up but aren't yet confirmed.
-        if ($quest->is_ready()) continue;
-        $quest_available[] = $quest;
-        $cur_advs = $quest->get_registered_adventurers();
-        $adv_count = count($cur_advs);
-        $response[] = '`b'.$quest->qid.'` — '.ucwords($quest->type).' — _'. $quest->get_display_name(false) .'_ — '. Display::get_difficulty_stars($quest->stars, 30) . ($quest->death_rate > 0 ? ' — :skull:' : ''). ' — '. Display::show_adventurer_count($quest->party_size_max, $adv_count);
-      }
-      if (empty($quest_available)) $response[] = '_None_';
-
-      $private_active_quests = array();
-      foreach ($private_quests as $quest) {
-        if ($quest->active == false || !empty($quest->agid)) continue;
-        $private_active_quests[] = $quest;
-      }
-
-      $response[] = '';
-      $response[] = '*Quests available* ('.count($private_active_quests).' / '.Quest::MAX_COUNT.'):';
-      foreach ($private_active_quests as $quest) {
-        // Get the best adventurers available for questing.
-        $best_adventurers = $player->get_best_adventurers($quest->party_size_max);
-        $best_bonus = Quest::make_bonus($player, $best_adventurers);
-        $success_rate = $quest->get_success_rate($best_bonus, $best_adventurers);
-        $response[] = '`q'.$quest->qid.'` — '.ucwords($quest->type).' — _'. $quest->get_display_name(false) .'_ — '. Display::get_difficulty_stars($quest->stars, $success_rate) . ($quest->death_rate > 0 ? ' — :skull:' : ''). ' — '. Display::show_adventurer_count($quest->get_party_size());
-      }
-      if (empty($private_active_quests)) $response[] = '_None_';
-
-      // Also show the list of available adventurers.
-      $response[] = '';
-      $response[] = '*Adventurers available for Questing*:';
-      $response[] = $this->show_available_adventurers($player);
-
-      // Also show the list of available item modifiers.
-      $response[] = '';
-      $response[] = '*Modifier items*:';
-      // Compact same-name items.
-      $items = $player->get_items();
-      $compact_items = $this->compact_items($items);
-      foreach ($compact_items as $citemid => $citems) {
-        $count = count($citems);
-        if ($count <= 0) continue;
-        if ($citems[0]->type != ItemType::KIT) continue;
-        $kits[] = $citems[0];
-        $response[] = '`i'.$citems[0]->iid.'` '. ($count > 1 ? $count.'x ' : ''). $citems[0]->get_display_name(false);
-      }
-      if (empty($kits)) $response[] = '_None_';
-
-      $response[] = '';
-      $response[] = 'To embark on a Quest, type: `quest [QUEST ID] [MODIFIER ITEM ID (optional)] [ADVENTURER NAMES (comma-separated)]` (example: `quest q23 `)';
-      $response[] = 'To see a list of Quests you\'re participating in, type: `quest underway`';
-      $response[] = 'To dismiss a Quest, type: `quest dismiss [QUEST ID]`';
-      $response[] = 'To approve a Multi-Guild Quest, type: `quest approve [QUEST ID]`';
-      $response[] = 'To cancel a Multi-Guild Quest, type: `quest cancel [QUEST ID]`';
-
-      $this->respond($response);
+      $this->cmd_quest_empty($args, $player);
       return FALSE;
     }
 
     // Check if the first argument is a secondary command, pass all of the information off to the secondary functions.
-    $cmd_options = array('dismiss', 'approve', 'cancel', 'underway');
+    $cmd_options = array('help', 'dismiss', 'approve', 'cancel', 'underway');
     if (in_array($args[0], $cmd_options)) {
       $cmd_secondary = array_shift($args);
-      $this->{'cmd_quest_'.$cmd_secondary}($args);
+      $this->{'cmd_quest_'.$cmd_secondary}($args, $player);
       return TRUE;
     }
 
@@ -865,8 +798,7 @@ class RPGSession {
 
       if (isset($kit)) $response[] = '*Modifier Item*: '. $kit->get_display_name(false);
       
-      $response[] = '*Adventuring party ('.count($adventurers).')*:';
-      foreach ($adventurers as $adventurer) $response[] = $adventurer->get_display_name(false);
+      $response[] = $this->show_adventuring_party($adventurers, $player);
       $response[] = '';
       
       // Add a multiplayer note.
@@ -980,9 +912,8 @@ class RPGSession {
       }
 
       // Send out the final approval message to the Quest leader.
+      $approval_message = 'The following Multi-Guild Quest had a status update:';
       if ($quest_ready) {        
-        $approval_message = 'The following Multi-Guild Quest had a status update:';
-
         // If this player is not the leader, show the "wait for authorization" message.
         if ($player->gid != $leader->gid) {
           $this->respond($names.' '.($name_count == 1 ? 'is' : 'are').' waiting for the Quest Leader to authorize the team.');
@@ -1005,7 +936,7 @@ class RPGSession {
       // Otherwise, just let the user know they registered for the multiplayer quest and more spots need to be filled.
       else {
         $open_spots = $quest->open_spots();
-        $this->respond($names.' '.($name_count == 1 ? 'is' : 'are').' waiting for '.$open_spots.' more adventurer'.($open_spots > 1 ? 's' : '').' to join in on the quest of *'.$quest->name.'*.');
+        $this->respond($names.' '.($name_count == 1 ? 'is' : 'are').' waiting for '.$open_spots.' more adventurer'.($open_spots > 1 ? 's' : '').' to join in on the quest of _'.$quest->name.'_.');
         // Also let the Quest Leader know that someone else registered.
         if ($player->gid != $leader->gid) {
           $attachment = new SlackAttachment ();
@@ -1022,15 +953,115 @@ class RPGSession {
 
 
   /**
+   * If an empty argument is sent to the quest command, this is the response shown.
+   */
+  protected function cmd_quest_empty ($args, $player) {
+    $orig_args = $args;
+    $cmd_word = 'quest';
+    $response = array();
+
+    // Load up all Global Quests.
+    $quests = Quest::load_multiple(array('active' => true, 'multiplayer' => true));
+    // Load up all private Quests.
+    $private_quests = $player->get_quests();
+
+    if (empty($quests) && empty($private_quests)) {
+      $this->respond("There are no quests to undertake.\n\nTo open up quests, new locations need to be discovered. Type `explore` to start exploring the map.");
+      return FALSE;
+    }
+
+    $response[] = '*Multi-Guild Quests available* (costs '.Display::get_fame(Quest::MULTIPLAYER_FAME_COST).' per Guild to register):';
+    $quest_available = array();
+    foreach ($quests as $quest) {
+      // Skip quests that are full-up but aren't yet confirmed.
+      if ($quest->is_ready()) continue;
+      $quest_available[] = $quest;
+      $cur_advs = $quest->get_registered_adventurers();
+      $adv_count = count($cur_advs);
+      $response[] = '`b'.$quest->qid.'` — '.ucwords($quest->type).' — _'. $quest->get_display_name(false) .'_ — '. Display::get_difficulty_stars($quest->stars, 30) . ($quest->death_rate > 0 ? ' — :skull:' : ''). ' — '. Display::show_adventurer_count($quest->party_size_max, $adv_count);
+    }
+    if (empty($quest_available)) $response[] = '_None_';
+
+    $private_active_quests = array();
+    foreach ($private_quests as $quest) {
+      if ($quest->active == false || !empty($quest->agid)) continue;
+      $private_active_quests[] = $quest;
+    }
+
+    $response[] = '';
+    $response[] = '*Quests available* ('.count($private_active_quests).' / '.Quest::MAX_COUNT.'):';
+    foreach ($private_active_quests as $quest) {
+      // Get the best adventurers available for questing.
+      $best_adventurers = $player->get_best_adventurers($quest->party_size_max);
+      $best_bonus = Quest::make_bonus($player, $best_adventurers);
+      $success_rate = $quest->get_success_rate($best_bonus, $best_adventurers);
+      $response[] = '`q'.$quest->qid.'` — '.ucwords($quest->type).' — _'. $quest->get_display_name(false) .'_ — '. Display::get_difficulty_stars($quest->stars, $success_rate) . ($quest->death_rate > 0 ? ' — :skull:' : ''). ' — '. Display::show_adventurer_count($quest->get_party_size());
+    }
+    if (empty($private_active_quests)) $response[] = '_None_';
+
+    // Also show the list of available adventurers.
+    $response[] = '';
+    $response[] = '*Adventurers available for Questing*:';
+    $response[] = $this->show_available_adventurers($player);
+
+    // Also show the list of available item modifiers.
+    $response[] = '';
+    $response[] = '*Modifier items*:';
+    // Compact same-name items.
+    $items = $player->get_items();
+    $compact_items = $this->compact_items($items);
+    foreach ($compact_items as $citemid => $citems) {
+      $count = count($citems);
+      if ($count <= 0) continue;
+      if ($citems[0]->type != ItemType::KIT) continue;
+      $kits[] = $citems[0];
+      $response[] = '`i'.$citems[0]->iid.'` '. ($count > 1 ? $count.'x ' : ''). $citems[0]->get_display_name(false);
+    }
+    if (empty($kits)) $response[] = '_None_';
+
+    $response[] = '';
+    $response[] = 'To embark on a Quest, type: `quest [QUEST ID] [MODIFIER ITEM ID (optional)] [ADVENTURER NAMES (comma-separated)]` (example: `quest q23 `)';
+    $response[] = 'For more help about what the various icons mean, type: `quest help`';
+    $response[] = 'To see a list of Quests you\'re participating in, type: `quest underway`';
+    $response[] = 'To dismiss a Quest, type: `quest dismiss [QUEST ID]`';
+    $response[] = 'To approve a Multi-Guild Quest, type: `quest approve [QUEST ID]`';
+    $response[] = 'To cancel a Multi-Guild Quest, type: `quest cancel [QUEST ID]`';
+
+    $this->respond($response);
+  }
+
+
+  /**
+   * Display more information about quests.
+   */
+  protected function cmd_quest_help ($args, $player) {
+    $orig_args = $args;
+    $cmd_word = 'quest';
+    $response = array();
+
+    $response[] = '*Quests*';
+    $response[] = '_Legend_';
+    $response[] = ':skull: — Indicates there is a chance of adventurers dying if they fail the quest.';
+    $response[] = '## :rpg-star-yellow: — The ## indicates the difficulty of the quest (1-star is easy and 5-star is hard). The colour of the star indicates how difficult it is for your current adventurers.';
+    $response[] = '';
+    $response[] = '_Star Colours_';
+    $response[] = ':rpg-star-green: — *Easy*: Green star indicates the quest is very easy for your current roster of adventurers.';
+    $response[] = ':rpg-star-yellow: — *Moderate*: Yellow star indicates the quest is easy enough for your current roster of adventurers.';
+    $response[] = ':rpg-star-orange: — *Challenging*: Orange star indicates the quest is challenging for your current roster of adventurers.';
+    $response[] = ':rpg-star-red: — *Difficult*: Red star indicates the quest is very difficult for your current roster of adventurers.';
+    $response[] = ':rpg-star-black: — *Impossible*: Red star indicates the quest is actually impossible for your current roster of adventurers.';
+
+    $this->respond($response);
+  }
+
+
+  /**
    * Show a list of Quests that the Guild is participating in.
    */
-  protected function cmd_quest_underway ($args = array()) {
+  protected function cmd_quest_underway ($args, $player) {
     $orig_args = $args;
     $cmd_word = 'quest underway';
     $response = array();
-
-    // Load the player and fail out if they have not created a Guild.
-    if (!($player = $this->load_current_player())) return;
 
     // Load up all Global Quests.
     $quests = Quest::load_multiple(array('multiplayer' => true));
@@ -1095,13 +1126,10 @@ class RPGSession {
   /**
    * Allow Guilds to dismiss a Quest and remove it from their Quest list.
    */
-  protected function cmd_quest_dismiss ($args = array()) {
+  protected function cmd_quest_dismiss ($args, $player) {
     $orig_args = $args;
     $cmd_word = 'quest dismiss';
     $response = array();
-
-    // Load the player and fail out if they have not created a Guild.
-    if (!($player = $this->load_current_player())) return;
 
     // Info must be submitted to properly dismiss.
     if (empty($args) || empty($args[0])) {
@@ -1191,13 +1219,10 @@ class RPGSession {
   /**
    * Approve multi-guild quests.
    */
-  protected function cmd_quest_approve ($args = array()) {
+  protected function cmd_quest_approve ($args, $player) {
     $orig_args = $args;
     $cmd_word = 'quest approve';
     $response = array();
-
-    // Load the player and fail out if they have not created a Guild.
-    if (!($player = $this->load_current_player())) return;
 
     // Info must be submitted to properly approve.
     if (empty($args) || empty($args[0])) {
@@ -1267,14 +1292,13 @@ class RPGSession {
 
       if (isset($kit)) $response[] = '*Modifier Item*: '. $kit->get_display_name(false);
       
-      $response[] = '*Adventuring party ('.count($adventurers).')*:';
-      foreach ($adventurers as $adventurer) $response[] = $adventurer->get_display_name(false, true, true, true, true, true);
+      $response[] = $this->show_adventuring_party($adventurers, $player);
       $response[] = '';
       $response[] = 'To cancel this Quest instead, type: `quest cancel b'.$quest->qid.'`';
       $response[] = '';
 
       if ($quest->is_ready() == false) {
-        $response[] = '*NOTE: This quest does not have the maximum number of adventurer spots filled. If you approve now, you may be attempting the Multi-Guild Quest without the optimal number of adventurers.';
+        $response[] = '*NOTE: This quest does not have the maximum number of adventurer spots filled. If you approve now, you may be attempting the Multi-Guild Quest without the optimal number of adventurers.*';
         $response[] = '';
       }
 
@@ -1344,13 +1368,10 @@ class RPGSession {
   /**
    * Cancel multi-guild quests.
    */
-  protected function cmd_quest_cancel ($args = array()) {
+  protected function cmd_quest_cancel ($args, $player) {
     $orig_args = $args;
     $cmd_word = 'quest cancel';
     $response = array();
-
-    // Load the player and fail out if they have not created a Guild.
-    if (!($player = $this->load_current_player())) return;
 
     // Info must be submitted to properly cancel.
     if (empty($args) || empty($args[0])) {
@@ -1423,8 +1444,7 @@ class RPGSession {
 
       if (isset($kit)) $response[] = '*Modifier Item*: '. $kit->get_display_name(false);
       
-      $response[] = '*Adventuring party ('.count($adventurers).')*:';
-      foreach ($adventurers as $adventurer) $response[] = $adventurer->get_display_name(false);
+      $response[] = $this->show_adventuring_party($adventurers, $player);
       $response[] = '';
 
       $response[] = 'Are you sure you wish to *CANCEL* this Quest?';
@@ -1716,10 +1736,7 @@ class RPGSession {
       $response[] = '*Quest*: Exploration';
       if (isset($kit)) $response[] = '*Modifier Item*: '. $kit->get_display_name(false);
       $response[] = '*Duration*: '.Display::get_duration($duration);
-      $response[] = '*Adventuring party ('.count($adventurers).')*:';
-      foreach ($adventurers as $adventurer) {
-        $response[] = $adventurer->get_display_name(false);
-      }
+      $response[] = $this->show_adventuring_party($adventurers, $player);
       $response[] = '';
       $response[] = $this->get_confirm($cmd_word, $orig_args);
       $this->respond($response);
@@ -4204,6 +4221,53 @@ class RPGSession {
       $response[] = $adventurer->get_display_name(false, true, true, true, true, $include_level);
     }
     if (empty($available_adventurers)) $response[] = '_None_';
+    return implode("\n", $response);
+  }
+
+  /**
+   * $adventurers -> Can be a single Adventurer or an array of Adventurers.
+   * $guilds -> Can be a single Guild or an array of Guilds.
+   */
+  protected function show_adventuring_party ($adventurers, $guilds) {
+    if (!is_array($guilds)) $guilds = array($guilds);
+    if (!is_array($adventurers)) $adventurers = array($adventurers);
+
+    // Index the Guilds by their gid.
+    $sorted_guilds = array();
+    foreach ($guilds as $guild) {
+      $sorted_guilds[$guild->gid] = $guild;
+    }
+
+    // Sort adventurers by their Guild.
+    $sorted_advs = array();
+    foreach ($adventurers as $adventurer) {
+      if (!isset($sorted_advs[$adventurer->gid])) {
+        $sorted_advs[$adventurer->gid] = array();
+        if (!isset($sorted_guilds[$adventurer->gid])) $sorted_guilds[$adventurer->gid] = Guild::load(array('gid' => $adventurer->gid));
+      }
+      $sorted_advs[$adventurer->gid][] = $adventurer;
+    }
+
+    $guild_count = count($sorted_guilds);
+
+    $response = array();
+    $response[] = '*Adventuring party ('.count($adventurers).')*:';
+    $count = 0;
+    foreach ($sorted_guilds as $guild) {
+      // Skip any guilds who do not have adventurers in the party.
+      if (!isset($sorted_advs[$guild->gid])) continue;
+      
+      // Only putput guild names if there's more than 1 guild.
+      if ($guild_count > 1) $response[] = '_'.$guild->get_display_name(false).'_:';
+
+      foreach ($sorted_advs[$guild->gid] as $adventurer) {
+        $response[] = '- '.$adventurer->get_display_name(false, true, true, true, true, true);
+      }
+
+      $count++;
+      if ($count < $guild_count) $response[] = '';
+    }
+
     return implode("\n", $response);
   }
 

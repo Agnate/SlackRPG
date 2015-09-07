@@ -407,6 +407,33 @@ class Location extends RPGEntitySaveable {
     return $name;
   }
 
+  public static function get_all_unique_locations ($revealed_only = true) {
+    // Get the current season.
+    $season = Season::current();
+    if (empty($season)) return FALSE;
+    $map = $season->get_map();
+    
+    // Get list of all locations.
+    $types = Location::types();
+    $data = array('mapid' => $map->mapid, 'type' => $types);
+    if ($revealed_only) $data['revealed'] = true;
+    return Location::load_multiple($data);
+  }
+
+  public static function sort_locations_by_star ($locations) {
+    // Sort out locations by star-rating.
+    $all_locations = array('all' => $locations);
+    foreach ($locations as &$location) {
+      for ($star = $location->star_min; $star <= $location->star_max; $star++) {
+        if ($star == 0) continue;
+        if (!isset($all_locations[$star])) $all_locations[$star] = array();
+        $all_locations[$star]['loc'.$location->locid] = $location;
+      }
+    }
+
+    return $all_locations;
+  }
+
   /**
    * Load up the list of location names that are still available.
    */

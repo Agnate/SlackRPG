@@ -124,8 +124,22 @@ function timer_refresh_quests () {
     // Randomize if a multi-guild quest should generate.
     $chance_of_multi = 13;
     $num_multi_quests = (rand(1, 100) <= $chance_of_multi) ? 1 : 0;
-    // Generate new quests.
-    ServerUtils::generate_new_quests(false, 1, $num_multi_quests);
+    // Generate new quests. Returns a list of Guilds who had quests generated.
+    $guilds = ServerUtils::generate_new_quests(false, 1, $num_multi_quests);
+
+    // Message every guild who had a quest generated for them.
+    if (!empty($guilds)) {
+      foreach ($guilds as $guild) {
+        $message = ServerUtils::get_quest_is_generated_message($guild);
+        send_message($message);
+      }
+    }
+
+    // Send out a channel message if a boss quest was generated.
+    if ($num_multi_quests > 0) {
+      $bmessage = ServerUtils::get_boss_quest_is_generated_message();
+      send_message($bmessage);
+    }
 
     $logger->notice("Quests refreshed! Next Quest Refresh: ".date('Y-m-d H:i:s', $next_quest_refresh));
   }
@@ -196,6 +210,9 @@ function timer_process_queue () {
   }
 }
 
+/**
+ * $message -> a SlackMessage object.
+ */
 function send_message ($message) {
   global $commander, $logger;
 
