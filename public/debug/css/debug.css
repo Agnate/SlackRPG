@@ -1,5 +1,6 @@
 body {
 	/*background-color: white;*/
+	position: relative;
 	background-color: #DDD;
 	color: #3D3C40;
 	font-family: Lato, sans-serif;
@@ -43,4 +44,35 @@ img.map {
   padding-left: 10px;
   margin-top: 10px;
 	border-left: 5px solid black;
+}
+
+
+/* Content container */
+
+#output {
+	margin-bottom: 50px;
+}
+
+/* Input interface */
+
+#interface {
+	position: fixed;
+	left: 0;
+	bottom: 0;
+	width: 100%;
+	background-color: white;
+	color: black;
+}
+
+#interface-form {
+	width: 500px;
+	margin: 10px auto;
+}
+
+#text {
+	width: 330px;
+}
+
+#profile {
+	width: 100px;
 }

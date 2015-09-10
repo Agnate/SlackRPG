@@ -170,20 +170,60 @@ class Quest extends RPGEntitySaveable {
     return ceil($exp * $mod);
   }
 
-  public function get_reward_items ($bonus, $default_chance = 10) {
-    $mod_diff = empty($bonus) ? 0 : $bonus->get_mod(Bonus::QUEST_REWARD_ITEM, $this, Bonus::MOD_HUNDREDS);
-    // Add the bonus mod to the default rate.
-    $chance_of_item = $default_chance + $mod_diff;
-    // Check if any items were found.
-    $items = array();
-    if (rand(1, 100) <= $chance_of_item) {
-      $rarity_min = ($this->stars - 1);
-      $rarity_max = $this->stars;
-      $item_probabilities = $this->get_item_probabilities($bonus);
-      // Generate an item to be found, with the rarity relating to the Quest star rating.
-      $items = ItemTemplate::random(1, $rarity_min, $rarity_max, array(), array(), $item_probabilities);
+  public function get_reward_items ($bonus, $chances = null) {
+    // Chances to find items of different star-ratings.
+    if (!is_array($chances)) {
+      // Non-exploration quests have a 15% higher chance of finding items since they
+      // happen much less frequently.
+      $adjustment = ($this->type != Quest::TYPE_EXPLORE ? 15 : 0);
+      $chances = array(
+        '1' => 35, // 50
+        '2' => 25, // 40
+        '3' => 15, // 30
+        '4' => 10, // 25
+        '5' => 5,  // 20
+      );
+      foreach ($chances as $key => $chance) {
+        $chances[$key] = $chance + $adjustment;
+      }
     }
+
+    // Sort the chances array so that the lowest number is at the top.
+    asort($chances);
+
+    // Get any item-generating info we need.
+    $mod_diff = empty($bonus) ? 0 : $bonus->get_mod(Bonus::QUEST_REWARD_ITEM, $this, Bonus::MOD_HUNDREDS);
+    $item_probabilities = Quest::get_item_probabilities($bonus);
+    $items = array();
+
+    // Roll their RNG number.
+    $roll = rand(1, 100);
+    $found_item = false;
+
+    // Loop through the chances, apply the bonus, and check if an item was found.
+    foreach ($chances as $star => $chance) {
+      // Low-level quests cannot drop high-level items, so skip these ratings.
+      $star = intval($star);
+      if ($star > $this->stars) continue;
+
+      // Add the bonus mod to the default rate.
+      $chances[$key] = $chance + $mod_diff;
+      if ($roll <= $chances[$key]) {
+        $items = ItemTemplate::random(1, $star, $star, array(), array(), $item_probabilities);
+        // If we generated an item, we're done.
+        if (!empty($items)) break;
+        // Otherwise, we should proceed to the next range.
+      }
+    }
+
     return $items;
+  }
+
+  public function generate_reward_item ($bonus, $num_items = 1) {
+    $rarity_min = ($this->stars - 1);
+    $rarity_max = $this->stars;
+    $item_probabilities = Quest::get_item_probabilities($bonus);
+    return ItemTemplate::random($num_items, $rarity_min, $rarity_max, array(), array(), $item_probabilities);
   }
 
   public function get_reward_special_items ($bonus, $default_chance = 0) {
@@ -196,23 +236,11 @@ class Quest extends RPGEntitySaveable {
       $rarity_min = ($this->stars - 1);
       $rarity_max = $this->stars;
       // Get the special probabilities.
-      $item_probabilities = $this->get_item_probabilities($bonus, ItemType::SPECIAL_PROBABILITIES());
+      $item_probabilities = Quest::get_item_probabilities($bonus, ItemType::SPECIAL_PROBABILITIES());
       // Generate an item to be found, with the rarity relating to the Quest star rating.
       $items = ItemTemplate::random(1, $rarity_min, $rarity_max, array(), array(), $item_probabilities);
     }
     return $items;
-  }
-
-  public function get_item_probabilities ($bonus, $probs = NULL) {
-    if ($probs === NULL) $probs = ItemType::PROBABILITIES();
-    // Loop through each ItemType and modify the probability.
-    foreach ($probs as $type => $value) {
-      $mod = empty($bonus) ? 0 : $bonus->get_mod(Bonus::ITEM_TYPE_FIND_RATE, "ItemType->".$type, Bonus::MOD_DIFF);
-      // Add to the existing probability.
-      $probs[$type] = ($value + $mod);
-    }
-    
-    return $probs;
   }
 
   public function queue_process ($queue = null) {
@@ -280,11 +308,19 @@ class Quest extends RPGEntitySaveable {
         $quest_data[$guild->gid]['success_msg'] = 'SUCCESS!';
         $quest_data[$guild->gid]['text'][] = $this->name .' was completed.';
 
-        // Randomize some items for this Guild.
-        $reward_items = $this->get_reward_items($bonus);
         // Special items rate is usually 0, but some bonuses can increase this.
         // If this is a Boss quest, increase the rate of a special item.
         $reward_special_items = $this->get_reward_special_items($bonus, ($this->type == Quest::TYPE_BOSS ? 10 : 0));
+
+        // If this is a Boss quest and there were no special rewards, just generate one item.
+        if ($this->type == Quest::TYPE_BOSS && empty($reward_special_items)) {
+          $reward_items = $this->generate_reward_item($bonus);
+        }
+        // Otherwise, randomize some items for this Guild. Boss quests have a chance to generate
+        // both a special and normal item, which is why they get a double-draw here.
+        else if (empty($reward_special_items) || $this->type == Quest::TYPE_BOSS) {
+          $reward_items = $this->get_reward_items($bonus);
+        }
 
         if ($reward_gold > 0) {
           $guild->gold += $reward_gold;
@@ -1162,6 +1198,18 @@ class Quest extends RPGEntitySaveable {
     else $star['hi'] = 4;
 
     return $star;
+  }
+
+  public static function get_item_probabilities ($bonus, $probs = NULL) {
+    if ($probs === NULL) $probs = ItemType::PROBABILITIES();
+    // Loop through each ItemType and modify the probability.
+    foreach ($probs as $type => $value) {
+      $mod = empty($bonus) ? 0 : $bonus->get_mod(Bonus::ITEM_TYPE_FIND_RATE, "ItemType->".$type, Bonus::MOD_DIFF);
+      // Add to the existing probability.
+      $probs[$type] = ($value + $mod);
+    }
+    
+    return $probs;
   }
 
 }

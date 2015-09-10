@@ -355,7 +355,7 @@ class RPGSession {
           }
 
           foreach ($gadventurers as $adventurer) {
-            $response[] = '— '.$adventurer->get_display_name(false, true, true, true, true, $include_level);
+            $response[] = '— '.$adventurer->get_display_name(false, true, true, true, true, $guild_is_player);
           }
         }
       }
@@ -3061,15 +3061,33 @@ class RPGSession {
    * Generate the sprite sheet.
    */
   protected function cmd_admin_gen_item ($args, $player) {
+    $response = array();
+
     // Generate a random non-special item.
     if (empty($args) || empty($args[0])) {
+      $response[] = '*Items to generate*:';
+
+      // Load up all the item templates.
+      $items = ItemTemplate::load_multiple(array());
+      if (!empty($items)) {
+        foreach ($items as $item) {
+          $response[] = $item->get_display_name(false) . ' — `'.$item->name_id.'`';
+        }
+      }
+
+      $this->respond($response);
+
+      return FALSE;
+    }
+    // Check if it's a random item.
+    else if ($args[0] == 'random') {
       $item_template = ItemTemplate::random();
       if (empty($item_template)) {
         $this->respond('There was a problem generating a regular item?...');
         return FALSE;
       }
     }
-    // Check if it's a special item.
+    // Check if it's a random special item.
     else if ($args[0] == 'special') {
       $special_probs = ItemType::SPECIAL_PROBABILITIES();
       $item_template = ItemTemplate::random(1, 0, 5, array(), array(), $special_probs);
@@ -3129,33 +3147,39 @@ class RPGSession {
 
   protected function cmd_admin_test ($args, $player) {
 
-    for ($i = 0; $i < 5; $i++) {
-      $list = array();
-      for ($t = 0; $t < 6; $t++) {
-        $list[] = rand(1, 100) <= 13;
-      }
-      d($list);
-    }
+    // Generate a kit item.
+    $item_template = ItemTemplate::load(array('name_id' => 'kit_shepherd'));
+    $kit = new Item (array(), $item_template);
+    d($kit);
 
-    return FALSE;
-    
+    $star = 2;
+    $item_probabilities = Quest::get_item_probabilities($kit->get_bonus());
+    $items = ItemTemplate::random(10, $star, $star, array(), array(), $item_probabilities);
 
-    // Test location distance and exp.
-    $season = Season::current();
-    $map = $season->get_map();
+    d($star);
+    d($item_probabilities);
+    d($items);
 
-    // Get list of all revealed locations.
-    $types = Location::types();
-    $locations = Location::load_multiple(array('mapid' => $map->mapid, 'type' => $types, 'revealed' => true));
-    // Get the first location.
-    $location = array_shift($locations);
+    return false;
 
-    $dist = $location->get_distance();
-    d($dist);
-    d($location->calc_star_rating($dist));
-    d($location->get_exploration_exp());
 
-    return FALSE;
+
+    // // Test location distance and exp.
+    // $season = Season::current();
+    // $map = $season->get_map();
+
+    // // Get list of all revealed locations.
+    // $types = Location::types();
+    // $locations = Location::load_multiple(array('mapid' => $map->mapid, 'type' => $types, 'revealed' => true));
+    // // Get the first location.
+    // $location = array_shift($locations);
+
+    // $dist = $location->get_distance();
+    // d($dist);
+    // d($location->calc_star_rating($dist));
+    // d($location->get_exploration_exp());
+
+    // return FALSE;
 
 
 
@@ -3170,8 +3194,8 @@ class RPGSession {
     // Get the first location.
     $location = array_shift($locations);
 
-    d($location->get_distance());
-    d($location->get_exploration_exp());
+    // d($location->get_distance());
+    // d($location->get_exploration_exp());
 
     $quest = Quest::generate_personal_quest($player, $location);
 
@@ -3220,7 +3244,7 @@ class RPGSession {
     // Process the "completed" quest.
     $response = $quest->queue_process();
 
-    d($response);
+    // d($response);
 
     return FALSE;
 
@@ -4426,10 +4450,10 @@ class RPGSession {
 
     // If this is debug mode through the browser, just spit it out.
     if (isset($this->data['forced_debug_mode']) && $this->data['forced_debug_mode'] == 'true') {
-      if (!isset($this->response['added_debug_head'])) {
-        $this->response['added_debug_head'] = true;
-        echo '<head><link rel="stylesheet" type="text/css" href="debug/css/debug.css"></head>';
-      }
+      // if (!isset($this->response['added_debug_head'])) {
+      //   $this->response['added_debug_head'] = true;
+      //   echo '<head><link rel="stylesheet" type="text/css" href="debug/css/debug.css"></head>';
+      // }
       echo '<u>CHANNEL: '. $location .($player != null ? ' ('.$player->username.')' : '').'</u><br><br>';
       if (!empty($text)) echo '<div class="channel-'.$location.'">'.$this->_convert_to_markup($text);
       if (!empty($attachment)) {

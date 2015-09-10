@@ -37,10 +37,10 @@ class ItemType {
    */
   public static function PROBABILITIES () {
     $types = array();
-    $types[ItemType::ORE] = 0.68;
+    $types[ItemType::ORE] = 0.48;
     $types[ItemType::POWERSTONE] = 0.05;
-    $types[ItemType::ANIMAL] = 0.10;
-    $types[ItemType::HERB] = 0.15;
+    $types[ItemType::ANIMAL] = 0.20;
+    $types[ItemType::HERB] = 0.25;
     $types[ItemType::REVIVAL] = 0.02;
     $types[ItemType::KIT] = 0;
     $types[ItemType::RELIC] = 0;
