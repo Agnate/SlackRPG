@@ -292,6 +292,9 @@ class RPGSession {
     }
 
     $adventurers = $guild->get_adventurers();
+    $adv_total = $guild->get_adventurers_count();
+    $adv_alive = $guild->get_adventurers_count(false);
+    $adv_undead = $adv_total - $adv_alive;
     
     $response = array();
     $response[] = '*Guild name*: '.$guild->get_display_name(false);
@@ -299,66 +302,93 @@ class RPGSession {
     $response[] = '*Founder:* @'.$guild->username;
     $response[] = '*Founded on:* '.date('F j, Y \a\t g:i A', $guild->created);
     if ($guild_is_player) $response[] = '*Gold*: '.Display::get_currency($guild->gold);
+    $response[] = '*Adventurers*: '.$adv_alive;
+    if ($guild_is_player) $response[] = '*Adventurer Limit*: '.$guild->adventurer_limit;
+    if ($guild_is_player && $adv_undead > 0) $response[] = '*Undead Adventurers*: '.$adv_undead;
 
-    // Show adventurers.
-    $adv_total = $guild->get_adventurers_count();
-    $adv_alive = $guild->get_adventurers_count(false);
-    $adv_undead = $adv_total - $adv_alive;
-    $response[] = '*Adventurers*:'.($guild_is_player ? ' '.$adv_alive.' / '.$guild->adventurer_limit.($adv_undead <= 0 ? '' : ' (+'.$adv_undead.' Undead)') : '');
-    foreach ($adventurers as $adventurer) {
-      $adv_status = !empty($adventurer->agid) ? ' [Adventuring]' : '';
-      $response[] = $adventurer->get_display_name(false, true, true, true, true, $guild_is_player).($guild_is_player ? $adv_status : '');
+    // If this is not the owner of the Guild, just show the list of adventurers.
+    if (!$guild_is_player) {
+      $response[] = '';
+      $response[] = '*Adventurers*:';
+      foreach ($adventurers as $adventurer) {
+        $response[] = $adventurer->get_display_name(false, true, true, true, true, $guild_is_player);
+      }
+    }
+    // Show where the adventurers are for the owner.
+    else {
+      // Show idle adventurers.
+      $response[] = '';
+      $response[] = '*Awaiting orders*:';
+
+      $idle_adventurers = array();
+      foreach ($adventurers as $adventurer) {
+        if (!empty($adventurer->agid)) continue;
+        $idle_adventurers[] = $adventurer;
+        $response[] = $adventurer->get_display_name(false, true, true, true, true, $guild_is_player);
+      }
+      if (empty($idle_adventurers)) $response[] = '_None_';
+
+
+      // Show exploration/quests/challenges the adventurers are currently on.
+      $groups = AdventuringGroup::load_multiple(array('gid' => $guild->gid));
+      if (!empty($groups)) {
+        $expeditions = array();
+        foreach ($groups as $group) {
+          if (!isset($expeditions[$group->task_type])) $expeditions[$group->task_type] = array();
+          $expeditions[$group->task_type][] = $group;
+        }
+
+        foreach ($expeditions as $exped => $list) {
+          $response[] = '';
+          $response[] = '*Current '.$exped.'s*:';
+          foreach ($list as $group) {
+            $task = $group->get_task();
+            if (empty($task)) continue;
+            $gadventurers = $group->get_adventurers();
+            
+            if ($exped == 'Quest' && $task->type == Quest::TYPE_EXPLORE) {
+              $location = $task->get_location();
+              $name = 'Exploring the map at '.$location->get_coord_name();
+            }
+            else {
+              $name = $task->get_display_name(false);
+            }
+
+            $queue = $task->get_queue();
+            if (!empty($queue)) {
+              $eta = $queue->execute - time();
+              $response[] = $name .' _(returning '.($eta > 0 ? 'in '.Display::get_duration($eta) : 'now').')_';
+            }
+            else {
+              $response[] = $name .($exped == 'Quest' ? ' _(waiting for more Guilds)_' : ' _(waiting for opponent to respond)_');
+            }
+
+            foreach ($gadventurers as $adventurer) {
+              // Unicode character is a down-right arrow.
+              $response[] = '↳ '.$adventurer->get_display_name(false, true, true, true, true, $guild_is_player);
+            }
+          }
+        }
+      }
     }
 
     // Show upgrades.
-    $upgrades = $guild->get_upgrades();
-    if ($guild_is_player && count($upgrades) > 0) {
+    if ($guild_is_player) {
+      $upgrades = $guild->get_upgrades();
+
       $response[] = '';
       $response[] = '*Upgrades*:';
       foreach ($upgrades as $upgrade) {
         $response[] = $upgrade->get_display_name(true, false);
       }
+      if (empty($upgrades)) $response[] = '_None_';
     }
 
-    // Show exploration/quests/challenges the adventurers are currently on.
-    $groups = AdventuringGroup::load_multiple(array('gid' => $guild->gid));
-    if (!empty($groups)) {
-      $expeditions = array();
-      foreach ($groups as $group) {
-        if (!isset($expeditions[$group->task_type])) $expeditions[$group->task_type] = array();
-        $expeditions[$group->task_type][] = $group;
-      }
-
-      foreach ($expeditions as $exped => $list) {
-        $response[] = '';
-        $response[] = '*Current '.$exped.'s*:';
-        foreach ($list as $group) {
-          $task = $group->get_task();
-          if (empty($task)) continue;
-          $gadventurers = $group->get_adventurers();
-          
-          if ($exped == 'Quest' && $task->type == Quest::TYPE_EXPLORE) {
-            $location = $task->get_location();
-            $name = 'Exploring the map at '.$location->get_coord_name();
-          }
-          else {
-            $name = $task->get_display_name();
-          }
-
-          $queue = $task->get_queue();
-          if (!empty($queue)) {
-            $eta = $queue->execute - time();
-            $response[] = $name .' _(returning '.($eta > 0 ? 'in '.Display::get_duration($eta) : 'now').')_';
-          }
-          else {
-            $response[] = $name .($exped == 'Quest' ? ' _(waiting for more Guilds)_' : ' _(waiting for opponent to respond)_');
-          }
-
-          foreach ($gadventurers as $adventurer) {
-            $response[] = '— '.$adventurer->get_display_name(false, true, true, true, true, $guild_is_player);
-          }
-        }
-      }
+    // Show inventory.
+    if ($guild_is_player) {
+      $response[] = '';
+      $response[] = '*Inventory*:';
+      $response[] = $this->show_guild_inventory($player, false);
     }
 
     $this->respond($response);
@@ -664,10 +694,10 @@ class RPGSession {
 
     // Check if there is an optional modifier item ID available.
     $kit = null;
-    $iid = intval(substr($args[0], 1));
-    if (!empty($args[0]) && substr($args[0], 0, 1) == 'i' && $iid > 0) {
+    $itid = intval(substr($args[0], 1));
+    if (!empty($args[0]) && substr($args[0], 0, 1) == 'i' && $itid > 0) {
       $iarg = array_shift($args);
-      $kit = Item::load(array('iid' => $iid, 'gid' => $player->gid, 'type' => ItemType::KIT, 'on_hold' => false));
+      $kit = Item::load(array('itid' => $itid, 'gid' => $player->gid, 'type' => ItemType::KIT, 'on_hold' => false));
       if (empty($kit)) {
         $this->respond("This item is not available to use as a modifier. Please choose a different item or remove it.".$this->get_typed($cmd_word, $orig_args));
         return FALSE;
@@ -1015,7 +1045,7 @@ class RPGSession {
       if ($count <= 0) continue;
       if ($citems[0]->type != ItemType::KIT) continue;
       $kits[] = $citems[0];
-      $response[] = '`i'.$citems[0]->iid.'` '. ($count > 1 ? $count.'x ' : ''). $citems[0]->get_display_name(false);
+      $response[] = '`i'.$citems[0]->itid.'` '. ($count > 1 ? $count.'x ' : ''). $citems[0]->get_display_name(false);
     }
     if (empty($kits)) $response[] = '_None_';
 
@@ -1605,7 +1635,7 @@ class RPGSession {
         if ($count <= 0) continue;
         if ($citems[0]->type != ItemType::KIT) continue;
         $kits[] = $citems[0];
-        $response[] = '`i'.$citems[0]->iid.'` '. ($count > 1 ? $count.'x ' : ''). $citems[0]->get_display_name(false);
+        $response[] = '`i'.$citems[0]->itid.'` '. ($count > 1 ? $count.'x ' : ''). $citems[0]->get_display_name(false);
       }
       if (empty($kits)) $response[] = '_None_';
 
@@ -1662,8 +1692,8 @@ class RPGSession {
 
     // Check if there is an optional modifier item ID available.
     if (!empty($args) && substr($args[0], 0, 1) == 'i') {
-      $iid = substr(array_shift($args), 1);
-      $kit = Item::load(array('iid' => $iid, 'gid' => $player->gid, 'type' => ItemType::KIT, 'on_hold' => false));
+      $itid = substr(array_shift($args), 1);
+      $kit = Item::load(array('itid' => $itid, 'gid' => $player->gid, 'type' => ItemType::KIT, 'on_hold' => false));
       if (empty($kit)) {
         $this->respond("This item is not available to use as a modifier. Please choose a different item or remove it.".$this->get_typed($cmd_word, $orig_args));
         return FALSE;
@@ -2123,19 +2153,8 @@ class RPGSession {
 
     // If there's no item name, show the whole inventory.
     if (empty($args) || empty($args[0])) {
-      // Get the Guild's items.
-      $items = $player->get_items();
       $response[] = 'Your inventory:';
-      // Compact same-name items.
-      $compact_items = $this->compact_items($items);
-      foreach ($compact_items as $citemid => $citems) {
-        $count = count($citems);
-        if ($count <= 0) continue;
-        $response[] = ($count > 1 ? $count.'x ' : ''). $citems[0]->get_display_name();
-      }
-
-      if (empty($compact_items)) $response[] = '_Empty_';
-
+      $response[] = $this->show_guild_inventory($player);
       $this->respond($response);
       return TRUE;
     }
@@ -2153,6 +2172,25 @@ class RPGSession {
     $response[] = $this->show_item_information($item);
 
     $this->respond($response);
+  }
+
+  protected function show_guild_inventory ($guild, $bold = true, $sellable_only = false) {
+    $response = array();
+
+    // Get the Guild's items.
+    $items = $guild->get_items();
+    // Compact same-name items.
+    $compact_items = $this->compact_items($items);
+    foreach ($compact_items as $citemid => $citems) {
+      $count = count($citems);
+      if ($count <= 0) continue;
+      if ($sellable_only && $citems[0]->get_sell_value() <= 0) continue;
+      $response[] = ($count > 1 ? $count.'x ' : ''). $citems[0]->get_display_name($bold) .($sellable_only ? ' — '.Display::get_currency($citems[0]->get_sell_value()) : '');
+    }
+
+    if (empty($compact_items)) $response[] = '_None_';
+
+    return implode("\n", $response);
   }
 
   /**
@@ -2863,9 +2901,10 @@ class RPGSession {
     if (empty($args) || empty($args[0])) {
       $response[] = 'Welcome to the *Shop*';
       $response[] = '';
-      $response[] = '_Note: All items are one-time use._';
+      $response[] = '_Note: All items for sale are one-time use._';
       $response[] = '';
       $response[] = 'To purchase an item, type: `shop [ITEM NAME]` (example: `shop Shepherd`)';
+      $response[] = 'To sell an item, type: `shop sell [ITEM NAME]` (example: `shop sell Iron Ore`)';
       $response[] = '';
       $response[] = 'Items for sale:';
 
@@ -2879,6 +2918,14 @@ class RPGSession {
       
       $this->respond($response);
       return FALSE;
+    }
+
+    // Check if the first argument is a secondary command, pass all of the information off to the secondary functions.
+    $cmd_options = array('sell');
+    if (in_array($args[0], $cmd_options)) {
+      $cmd_secondary = array_shift($args);
+      $this->{'cmd_shop_'.$cmd_secondary}($args, $player);
+      return TRUE;
     }
 
     // Check the last argument for the confirmation code.
@@ -2938,6 +2985,85 @@ class RPGSession {
     }
     
     $this->respond("You purchased a ".$item_template->get_display_name()." for ".Display::get_currency($item_template->cost).".");
+  }
+
+
+  /**
+   * Sell items to shop.
+   */
+  protected function cmd_shop_sell ($args, $player) {
+    $orig_args = $args;
+    $cmd_word = 'shop sell';
+    $response = array();
+
+    // Show the list of items you own and their worth if sold.
+    if (empty($args) || empty($args[0])) {
+      $response[] = 'To sell an item, type: `shop sell [ITEM NAME]` (example: `shop sell Iron Ore`)';
+      $response[] = '';
+      $response[] = '*Items for sale*:';
+      $response[] = $this->show_guild_inventory($player, false, true);
+      $this->respond($response);
+      return FALSE;
+    }
+
+    // Check the last argument for the confirmation code.
+    $confirmation = false;
+    if (!empty($args) && strpos($args[count($args)-1], 'CONFIRM') === 0) {
+      $confirmation = array_pop($args);
+    }
+
+    // Get the item name.
+    $item_name = implode(' ', $args);
+    $item = Item::load(array('gid' => $player->gid, 'name' => $item_name), true);
+    if (empty($item)) {
+      $response[] = 'You do not own an item named "'.$item_name.'".';
+      $response[] = $this->get_typed($cmd_word, $orig_args);
+      $this->respond($response);
+      return FALSE;
+    }
+
+    // Check if the item has a value.
+    $value = $item->get_sell_value();
+    if ($value <= 0) {
+      $this->respond($item->get_display_name()." has no sell value and thus cannot be sold.");
+      return FALSE;
+    }
+
+    // Check for a valid confirmation code.
+    if (!empty($confirmation) && $confirmation != 'CONFIRM') {
+      $response[] = 'The confirmation code "'.$confirmation.'" is invalid. The code should be: `CONFIRM`.';
+      $response[] = '';
+      // Re-display the confirmation text.
+      $confirmation = false;
+    }
+
+    // Display the confirmation message and code.
+    if (empty($confirmation)) {
+      $response[] = "Are you sure you want to _sell_ your ".$item->get_display_name()."?";
+      $response[] = '';
+      $response[] = $this->show_item_information($item, false, true);
+      $response[] = '';
+      $response[] = $this->get_confirm($cmd_word, $orig_args);
+      $this->respond($response);
+      return FALSE;
+    }
+
+    // Sell the item.
+    $player->gold += $value;
+    $success = $player->save();
+    if ($success === false) {
+      $this->respond('There was a problem saving your Guild information after selling your item. Please talk to Paul.');
+      return FALSE;
+    }
+
+    // Receive the item.
+    $success = $player->remove_item($item);
+    if ($success === false) {
+      $this->respond('There was a problem removing the item you sold. Please talk to Paul.');
+      return FALSE;
+    }
+    
+    $this->respond("You sold your ".$item->get_display_name()." for ".Display::get_currency($value).".");
   }
 
 
@@ -4046,14 +4172,14 @@ class RPGSession {
 
 
 
-  /* =================================================================================================
+  /**
      _____ __  ______  ____  ____  ____  ______   ________  ___   ______________________  _   _______
     / ___// / / / __ \/ __ \/ __ \/ __ \/_  __/  / ____/ / / / | / / ____/_  __/  _/ __ \/ | / / ___/
     \__ \/ / / / /_/ / /_/ / / / / /_/ / / /    / /_  / / / /  |/ / /     / /  / // / / /  |/ /\__ \ 
    ___/ / /_/ / ____/ ____/ /_/ / _, _/ / /    / __/ / /_/ / /|  / /___  / / _/ // /_/ / /|  /___/ / 
   /____/\____/_/   /_/    \____/_/ |_| /_/    /_/    \____/_/ |_/\____/ /_/ /___/\____/_/ |_//____/  
                                                                                                      
-  ==================================================================================================== */
+  */
 
   protected function load_current_player ($allow_error = true) {
     $player = $this->get_current_player();
@@ -4217,11 +4343,12 @@ class RPGSession {
     return implode("\n", $response);
   }
 
-  protected function show_item_information ($item, $include_cost = false) {
+  protected function show_item_information ($item, $include_cost = false, $include_sell_value = false) {
     $response = array();
     $response[] = $item->get_display_name();
     $response[] = $item->get_description();
     if ($include_cost && $item->for_sale) $response[] = '*Cost*: '. Display::get_currency($item->cost);
+    if ($include_sell_value) $response[] = '*Sells for*: '. Display::get_currency($item->get_sell_value());
 
     return implode("\n", $response);
   }

@@ -115,4 +115,8 @@ class Item extends RPGEntitySaveable {
       }
     }
   }
+
+  public function get_sell_value () {
+    return floor($this->cost / 2);
+  }
 }
