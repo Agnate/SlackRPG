@@ -636,7 +636,7 @@ class RPGSession {
     }
 
     // Check if the first argument is a secondary command, pass all of the information off to the secondary functions.
-    $cmd_options = array('help', 'dismiss', 'approve', 'cancel', 'underway');
+    $cmd_options = array('help', 'dismiss', 'approve', 'cancel', 'underway', 'add');
     if (in_array($args[0], $cmd_options)) {
       $cmd_secondary = array_shift($args);
       $this->{'cmd_quest_'.$cmd_secondary}($args, $player);
@@ -699,7 +699,14 @@ class RPGSession {
       $iarg = array_shift($args);
       $kit = Item::load(array('itid' => $itid, 'gid' => $player->gid, 'type' => ItemType::KIT, 'on_hold' => false));
       if (empty($kit)) {
-        $this->respond("This item is not available to use as a modifier. Please choose a different item or remove it.".$this->get_typed($cmd_word, $orig_args));
+        // Show the list of available item modifiers.
+        $response[] = "This item is not available to use as a modifier. Please choose a different item or remove it.";
+        $response[] = '';
+        $response[] = '*Modifier items*:';
+        $response[] = $this->display_guild_modifier_items($player);
+        $response[] = '';
+        $response[] = $this->get_typed($cmd_word, $orig_args);
+        $this->respond($response);
         return FALSE;
       }
     }
@@ -1006,9 +1013,10 @@ class RPGSession {
       // Skip quests that are full-up but aren't yet confirmed.
       if ($quest->is_ready()) continue;
       $quest_available[] = $quest;
-      $cur_advs = $quest->get_registered_adventurers();
-      $adv_count = count($cur_advs);
-      $response[] = '`b'.$quest->qid.'` — '.ucwords($quest->type).' — _'. $quest->get_display_name(false) .'_ — '. Display::get_difficulty_stars($quest->stars, 30) . ($quest->death_rate > 0 ? ' — :skull:' : ''). ' — '. Display::show_adventurer_count($quest->party_size_max, $adv_count);
+      // $cur_advs = $quest->get_registered_adventurers();
+      // $adv_count = count($cur_advs);
+      // $response[] = '`b'.$quest->qid.'` — '.ucwords($quest->type).' — _'. $quest->get_display_name(false) .'_ — '. Display::get_difficulty_stars($quest->stars, 30) . ($quest->death_rate > 0 ? ' — :skull:' : ''). ' — '. Display::show_adventurer_count($quest->party_size_max, $adv_count);
+      $response[] = $this->display_multiguild_quest_one_line($quest);
     }
     if (empty($quest_available)) $response[] = '_None_';
 
@@ -1034,25 +1042,16 @@ class RPGSession {
     $response[] = '*Adventurers available for Questing*:';
     $response[] = $this->show_available_adventurers($player);
 
-    // Also show the list of available item modifiers.
+    // Show the list of available item modifiers.
     $response[] = '';
     $response[] = '*Modifier items*:';
-    // Compact same-name items.
-    $items = $player->get_items();
-    $compact_items = $this->compact_items($items);
-    foreach ($compact_items as $citemid => $citems) {
-      $count = count($citems);
-      if ($count <= 0) continue;
-      if ($citems[0]->type != ItemType::KIT) continue;
-      $kits[] = $citems[0];
-      $response[] = '`i'.$citems[0]->itid.'` '. ($count > 1 ? $count.'x ' : ''). $citems[0]->get_display_name(false);
-    }
-    if (empty($kits)) $response[] = '_None_';
+    $response[] = $this->display_guild_modifier_items($player);
 
     $response[] = '';
-    $response[] = 'To embark on a Quest, type: `quest [QUEST ID] [MODIFIER ITEM ID (optional)] [ADVENTURER NAMES (comma-separated)]` (example: `quest q23 `)';
+    $response[] = 'To embark on a Quest, type: `quest [QUEST ID] [MODIFIER ITEM ID (optional)] [ADVENTURER NAMES (comma-separated)]` (example: `quest q23 i10 Emma, Jacob`)';
     $response[] = 'For more help about what the various icons mean, type: `quest help`';
     $response[] = 'To see a list of Quests you\'re participating in, type: `quest underway`';
+    $response[] = 'To add adventurers or an item modifier to a Multi-Guild Quest you\'re already participating in, type: `quest add`';
     $response[] = 'To dismiss a Quest, type: `quest dismiss [QUEST ID]`';
     $response[] = 'To approve a Multi-Guild Quest, type: `quest approve [QUEST ID]`';
     $response[] = 'To cancel a Multi-Guild Quest, type: `quest cancel [QUEST ID]`';
@@ -1066,7 +1065,7 @@ class RPGSession {
    */
   protected function cmd_quest_help ($args, $player) {
     $orig_args = $args;
-    $cmd_word = 'quest';
+    $cmd_word = 'quest help';
     $response = array();
 
     $response[] = '*Quests*';
@@ -1264,12 +1263,7 @@ class RPGSession {
       foreach ($quests as $quest) {
         if ($quest->is_ready() == false) continue;
         $ready_quests[] = $quest;
-
-        $quest_bonus = $quest->get_bonus();
-        $adventurers = $quest->get_registered_adventurers();
-        $adv_count = count($adventurers);
-        $success_rate = $quest->get_success_rate($quest_bonus, $adventurers);
-        $response[] = '`b'.$quest->qid.'` _'. $quest->get_display_name(false) .'_ — '. Display::get_difficulty_stars($quest->stars, $success_rate) . ($quest->death_rate > 0 ? ' — :skull:' : ''). ' — '. Display::show_adventurer_count($quest->party_size_max, $adv_count);
+        $response[] = $this->display_multiguild_quest_one_line($quest);
       }
       if (empty($ready_quests)) $response[] = '_None_';
 
@@ -1405,7 +1399,7 @@ class RPGSession {
 
     // Info must be submitted to properly cancel.
     if (empty($args) || empty($args[0])) {
-      $response[] = '*Quests that can to be canceled*:';
+      $response[] = '*Quests that can be canceled*:';
 
       // Load up any multiplayer Quests that this player is leading.
       $quests = Quest::load_multiple(array('gid' => $player->gid, 'active' => true, 'multiplayer' => true, 'completed' => false));
@@ -1413,12 +1407,7 @@ class RPGSession {
       foreach ($quests as $quest) {
         if ($quest->is_ready() == false) continue;
         $ready_quests[] = $quest;
-
-        $quest_bonus = $quest->get_bonus();
-        $adventurers = $quest->get_registered_adventurers();
-        $adv_count = count($adventurers);
-        $success_rate = $quest->get_success_rate($quest_bonus, $adventurers);
-        $response[] = '`b'.$quest->qid.'` _'. $quest->get_display_name(false) .'_ — '. Display::get_difficulty_stars($quest->stars, $success_rate) . ($quest->death_rate > 0 ? ' — :skull:' : ''). ' — '. Display::show_adventurer_count($quest->party_size_max, $adv_count);
+        $response[] = $this->display_multiguild_quest_one_line($quest);
       }
       if (empty($ready_quests)) $response[] = '_None_';
 
@@ -1557,6 +1546,322 @@ class RPGSession {
       // Message the user to let them know their adventurers are leaving.
       $this->respond($leader->get_display_name().' canceled the quest _'.$quest->get_display_name().'_. You have been reimbursed '.Display::get_fame($reimburse_amount).' and your Adventurers are available again.', RPGSession::PERSONAL, $guild);
     }
+  }
+
+
+
+  /**
+   * Add adventurers and kits to a multiplayer quest.
+   */
+  protected function cmd_quest_add ($args, $player) {
+    $orig_args = $args;
+    $cmd_word = 'quest add';
+    $response = array();
+
+    // Info must be submitted to properly alter.
+    if (empty($args) || empty($args[0])) {
+      $response[] = '*Quests that you can add to*:';
+
+      // Load up any multiplayer Quests that has players in it and is still active.
+      $mquests = Quest::load_multiple(array('active' => true, 'multiplayer' => true, 'completed' => false));
+      $quests = array();
+      foreach ($mquests as $quest) {
+        if ($quest->is_registered_guild($player) == false) continue;
+        $quests[] = $quest;
+        $response[] = $this->display_multiguild_quest_one_line($quest);
+      }
+      if (empty($quests)) $response[] = '_None_';
+
+      // Also show the list of available adventurers.
+      $response[] = '';
+      $response[] = '*Adventurers available for Questing*:';
+      $response[] = $this->show_available_adventurers($player);
+
+      // Also show the list of available item modifiers.
+      $response[] = '';
+      $response[] = '*Modifier items*:';
+      $response[] = $this->display_guild_modifier_items($player);
+
+      $response[] = '';
+      $response[] = 'To add an item or adventurers to a Quest, type: `quest add [QUEST ID] [MODIFIER ITEM ID (optional)] [ADVENTURER NAMES (comma-separated)]` (example: `quest add b203 i10 Emma, Jacob`)';
+      $response[] = 'For more help about what the various icons mean, type: `quest help`';
+
+      $this->respond($response);
+      return FALSE;
+    }
+
+    // Check if Quest ID is available.
+    $qarg = array_shift($args);
+    $qtype = substr($qarg, 0, 1);
+    $qid = substr($qarg, 1);
+    if ($qtype == 'b') $quest = Quest::load(array('qid' => $qid, 'active' => true, 'multiplayer' => true, 'completed' => false));
+
+    if (!isset($quest) || empty($quest)) {
+      $this->respond("This quest is not available or does not exist.".$this->get_typed($cmd_word, $orig_args));
+      return FALSE;
+    }
+
+    // Get the adventurers going.
+    if (empty($args)) {
+      $response[] = 'Please choose Adventurers or an Item Modifier to add this quest.';
+      // Show the list of available adventurers.
+      $response[] = '';
+      $response[] = '*Adventurers available for Questing*:';
+      $response[] = $this->show_available_adventurers($player);
+      // Show the list of available item modifiers.
+      $response[] = '';
+      $response[] = '*Modifier items*:';
+      $response[] = $this->display_guild_modifier_items($player);
+      $response[] = $this->get_typed($cmd_word, $orig_args);
+      $this->respond($response);
+      return FALSE;
+    }
+
+    // Check if there is an optional modifier item ID available.
+    $kit = null;
+    $itid = intval(substr($args[0], 1));
+    if (!empty($args[0]) && substr($args[0], 0, 1) == 'i' && $itid > 0) {
+      $iarg = array_shift($args);
+      $kit = Item::load(array('itid' => $itid, 'gid' => $player->gid, 'type' => ItemType::KIT, 'on_hold' => false));
+      if (empty($kit)) {
+        $this->respond("This item is not available to use as a modifier. Please choose a different item or remove it.".$this->get_typed($cmd_word, $orig_args));
+        return FALSE;
+      }
+    }
+
+    // If this is a multiplayer quest and we already have a kit used, don't allow a second.
+    if ($quest->multiplayer && !empty($quest->kit_id) && !empty($kit)) {
+      $this->respond("Another Guild already chose an item to use on this Quest, so no other items can be used.".$this->get_typed($cmd_word, $orig_args));
+      return FALSE;
+    }
+
+    // Check the last argument for the confirmation code.
+    $confirmation = false;
+    if (!empty($args) && strpos($args[count($args)-1], 'CONFIRM') === 0) {
+      $confirmation = array_pop($args);
+    }
+
+    // Check if the adventurers are valid.
+    $adventurer_args = implode(' ', $args);
+    $list = explode(',', $adventurer_args);
+    $success = $this->check_for_valid_adventurers($player, $list);
+    if (!$success['success']) {
+      $success['msg'][] = $this->get_typed($cmd_word, $orig_args);
+      $this->respond($success['msg']);
+      return FALSE;
+    }
+    // Get the list of adventurers.
+    $adventurers = $success['data']['adventurers'];
+    $num_adventurers = count($adventurers);
+
+    // Allow up to the max (because it is multiplayer).
+    if ($quest->multiplayer) {
+      $too_few = false;
+      $cur_adventurers = $quest->get_registered_adventurers();
+      $open_spots = $quest->party_size_max - count($cur_adventurers);
+      $too_many = $num_adventurers > $open_spots;
+      $adventurer_diff = $num_adventurers - $open_spots;
+      $group_size = $open_spots;
+    }
+
+    if ($too_few || $too_many) {
+      if ($too_few) {
+        $response[] = 'You need at least '.$quest->party_size_min.' adventurer'.($quest->party_size_min == 1 ? '' : 's').' to embark on this quest.';
+      }
+      
+      if ($too_many) {
+        $response[] = 'There are '.abs($adventurer_diff).' too many adventurers for this quest. Please reduce the group to '.$group_size.' adventurer'.($group_size == 1 ? '' : 's').'.';
+      }
+
+      $response[] = '';
+      $response[] = '*Adventurers available for Questing*:';
+      $response[] = $this->show_available_adventurers($player);
+      $response[] = '';
+      $response[] = $this->get_typed($cmd_word, $orig_args);
+      $this->respond($response);
+      return FALSE;
+    }
+
+    // Get the bonuses that this player brings to the table.
+    $quest_bonus = Quest::make_bonus($player, $adventurers, $kit);
+    // Merge in the rest of the participating Guilds' bonuses.
+    $registered_bonus = $quest->get_bonus();
+    $quest_bonus->merge($registered_bonus);
+
+    // Check for a valid confirmation code.
+    if (!empty($confirmation) && $confirmation != 'CONFIRM') {
+      $response[] = 'The confirmation code "'.$confirmation.'" is invalid. The code should be: `CONFIRM`.';
+      $response[] = '';
+      // Re-display the confirmation text.
+      $confirmation = false;
+    }
+
+    $duration = $quest->get_duration($quest_bonus);
+    $death_rate = $quest->get_death_rate($quest_bonus);
+
+    // Aggregate in the existing adventurers so they can see their complete contribution.
+    $registered_groups = $quest->get_registered_adventuring_groups();
+    $advgroup = null;
+    // Find this player's groups.
+    foreach ($registered_groups as $reg_group) {
+      if ($reg_group->gid != $player->gid) continue;
+      $advgroup = $reg_group;
+    }
+
+    // There should be at least one adventuring group for this guild, if not, we've got an error.
+    if (empty($advgroup)) {
+      $this->respond('There was an error finding your adventuring group. Please talk to Paul.');
+      return FALSE;
+    }
+
+    // Get the currently-registered adventurers.
+    $registered_adventurers = $advgroup->get_adventurers();
+    $full_party = array_merge($adventurers, $registered_adventurers);
+
+    // Aggregate in the existing kit (if they are the kit provider).
+    if (!empty($quest->kit_id)) {
+      $qkit = $quest->get_kit();
+      // Unset the qkit if it's not theirs.
+      if ($qkit->gid != $player->gid) {
+        unset($qkit);
+      }
+    }
+    else if (isset($kit) && !empty($kit)) {
+      $qkit = $kit;
+    }
+
+    // Display the confirmation message and code.
+    if (empty($confirmation)) {
+      // Set a fake success rate for multi-guild quests
+      if (!isset($success_rate)) $success_rate = 30;
+      $response[] = '*Quest*: '.$quest->get_display_name(false);
+      $response[] = '*Type*: '.ucwords($quest->type);
+      $response[] = '*Rating*: '.Display::get_difficulty_stars($quest->stars, $success_rate);
+      if ($death_rate > 0) $response[] = '*Chance of Death*: :skull: _Yes_';
+      if (isset($qkit)) $response[] = '*Modifier Item*: '. $qkit->get_display_name(false);
+      
+      $response[] = $this->show_adventuring_party($full_party, $player);
+      $response[] = '';
+      $response[] = '_Note: These values will adjust as more Guilds register for this Quest._';
+      $response[] = '';
+      $response[] = $this->get_confirm($cmd_word, $orig_args);
+      $this->respond($response);
+      return FALSE;
+    }
+
+    // Assign all the adventurers to the new group.
+    $names = array();
+    foreach ($adventurers as $adventurer) {
+      $names[] = $adventurer->get_display_name();
+      $adventurer->agid = $advgroup->agid;
+      $success = $adventurer->save();
+      if ($success === false) {
+        $this->respond('There was a problem saving an adventurer to the adventuring group. Please talk to Paul.');
+        return FALSE;
+      }
+    }
+
+    // Add the kit to the quest.
+    if (isset($kit)) $quest->kit_id = $kit->iid;
+    $success = $quest->save();
+    if ($success === false) {
+      $this->respond('There was a problem saving the quest. Please talk to Paul.');
+      return FALSE;
+    }
+
+    // Put the kit on hold.
+    if (isset($kit)) $player->remove_item($kit, true);
+
+    // Check if the quest is ready.
+    $quest_ready = $quest->is_ready(true);
+
+    // Get list of adventurer names.
+    $name_count = count($names);
+    $last_name = ($name_count > 1) ? ', and '.array_pop($names) : '';
+    $names = implode(', ', $names).$last_name;
+
+    if ($quest->multiplayer) {
+      // Get the leader of the quest.
+      $season = Season::current();
+      $leader = Guild::load(array('gid' => $quest->gid, 'season' => $season->sid));
+
+      if (empty($leader)) {
+        $this->respond('There was a problem sending the notification to the Quest Leader. Please talk to Paul.');
+        return FALSE;
+      }
+
+      $added_info = array();
+      if (!empty($names)) $added_info[] = $names;
+      if (isset($kit)) $added_info[] = $kit->get_display_name(false);
+      $added_to_quest = implode(', and ', $added_info).' '.(count($added_info) == 1 && $name_count <= 1 ? 'was' : 'were').' added to the quest.';
+
+      // Send out the final approval message to the Quest leader.
+      $approval_message = 'The following Multi-Guild Quest had a status update:';
+      if ($quest_ready) {        
+        // If this player is not the leader, show the "wait for authorization" message.
+        if ($player->gid != $leader->gid) {
+          $this->respond($added_to_quest . ' You are waiting for the Quest Leader to authorize the team.');
+        }
+        // Change the approval message if this is the Quest Leader.
+        else {
+          $approval_message = $added_to_quest . ' You (the Quest Leader) need to authorize the team.';
+        }
+
+        $attachment = new SlackAttachment ();
+        $attachment->title = 'APPROVAL NEEDED';
+        $attachment->text = 'Multi-Guild Quest named _'.$quest->name.'_ requires the final approval before departure. Please review the Quest to either approve or cancel by typing: `quest approve b'.$quest->qid.'`';
+        $attachment->fallback = $attachment->title .' - '. $attachment->text;
+        $attachment->color = SlackAttachment::COLOR_BLUE;
+
+        // Notify the Leader.
+        $this->respond($approval_message, RPGSession::PERSONAL, $leader, $attachment);
+        return TRUE;
+      }
+      // Otherwise, just let the user know they registered for the multiplayer quest and more spots need to be filled.
+      else {
+        $open_spots = $quest->open_spots();
+
+
+        $this->respond($added_to_quest .' '. $open_spots.' more adventurer'.($open_spots > 1 ? 's' : '').' are needed for the quest of _'.$quest->name.'_.');
+
+        // Also let the Quest Leader know that someone else registered.
+        if ($player->gid != $leader->gid) {
+          $attachment = new SlackAttachment ();
+          $attachment->title = 'NEW MULTI-GUILD REGISTRATION';
+          $attachment->text = $name_count.' new Adventurer'.($name_count == 1 ? '' : 's').' registered for the Multi-Guild Quest named _'.$quest->name.'_, but there are still '.$open_spots.' open spot'.($open_spots > 1 ? 's' : '').'.';
+          $attachment->fallback = $attachment->text;
+          $attachment->color = SlackAttachment::COLOR_BLUE;
+          $this->respond($approval_message, RPGSession::PERSONAL, $leader, $attachment);
+        }
+        return TRUE;
+      }
+    }
+  }
+
+  protected function display_multiguild_quest_one_line ($quest) {
+    $quest_bonus = $quest->get_bonus();
+    $adventurers = $quest->get_registered_adventurers();
+    $adv_count = count($adventurers);
+    $success_rate = $quest->get_success_rate($quest_bonus, $adventurers);
+    return '`b'.$quest->qid.'` — _'. $quest->get_display_name(false) .'_ — '. Display::get_difficulty_stars($quest->stars, $success_rate) . ($quest->death_rate > 0 ? ' — :skull:' : ''). ' — '. Display::show_adventurer_count($quest->party_size_max, $adv_count);
+  }
+
+  protected function display_guild_modifier_items ($guild) {
+    $response = array();
+
+    // Compact same-name items.
+    $items = $guild->get_items();
+    $compact_items = $this->compact_items($items);
+    foreach ($compact_items as $citemid => $citems) {
+      $count = count($citems);
+      if ($count <= 0) continue;
+      if ($citems[0]->type != ItemType::KIT) continue;
+      $kits[] = $citems[0];
+      $response[] = '`i'.$citems[0]->itid.'` '. ($count > 1 ? $count.'x ' : ''). $citems[0]->get_display_name(false);
+    }
+    if (empty($kits)) $response[] = '_None_';
+
+    return implode("\n", $response);
   }
 
 

@@ -167,7 +167,9 @@ class ServerUtils {
 
     // Generate new adventurers for the tavern.
     if ($output_information) print "Creating ".$num_new." new adventurers for the Tavern...";
-    ServerUtils::generate_new_adventurers($output_information, $num_new);
+    $new_adventurers = ServerUtils::generate_new_adventurers($output_information, $num_new);
+
+    return $new_adventurers;
   }
 
   public static function trickle_tavern ($output_information = false) {
@@ -178,15 +180,18 @@ class ServerUtils {
     $guilds = Guild::current();
     $trickle_limit = 1 + floor(count($guilds) / 10);
     $num_new = $trickle_limit - count($adventurers);
+    $new_adventurers = array();
 
     // If the tavern is low on adventurers, create some.
     if ($num_new > 0) {
       if ($output_information) print "Trickling in ".$num_new." new adventurer(s) for the Tavern...";
-      ServerUtils::generate_new_adventurers($output_information, $num_new);
+      $new_adventurers = ServerUtils::generate_new_adventurers($output_information, $num_new);
     }
     else {
       if ($output_information) print "Tavern has enough adventurers.";
     }
+
+    return $new_adventurers;
   }
 
   /**
@@ -258,6 +263,23 @@ class ServerUtils {
     // Output the adventurers that were created.
     if ($output_information)
       foreach ($adventurers as $adventurer) print 'Created new adventurer: '.$adventurer->name."\n";
+
+    // Return the list of adventurers.
+    return $adventurers;
+  }
+
+  public static function get_tavern_is_refreshed_message ($attachment_only = false) {
+    $attachment = new SlackAttachment ();
+    $attachment->title = 'Tavern Update';
+    $attachment->text = 'New adventurers have arrived at the Tavern.';
+    $attachment->fallback = $attachment->title .' - '. $attachment->text;
+    $attachment->color = SlackAttachment::COLOR_BLUE;
+    if ($attachment_only) return $attachment;
+
+    $message = new SlackMessage ();
+    $message->add_attachment($attachment);
+
+    return $message;
   }
 
 

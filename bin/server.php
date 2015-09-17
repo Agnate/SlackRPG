@@ -79,7 +79,13 @@ function timer_reset_tavern () {
     $next_tavern_reset = ServerUtils::get_next_refresh_time($tavern_reset_intervals);
 
     // Clean out the tavern of available adventurers and add new ones.
-    ServerUtils::reset_tavern();
+    $adventurers = ServerUtils::reset_tavern();
+
+    // If there are new adventurers, let people know.
+    if (count($adventurers) > 0) {
+      $message = ServerUtils::get_tavern_is_refreshed_message();
+      send_message($message);
+    }
 
     $logger->notice("Tavern reset! Next Tavern Reset: ".date('Y-m-d H:i:s', $next_tavern_reset));
   }
@@ -99,7 +105,15 @@ function timer_trickle_tavern () {
     $next_tavern_trickle = ServerUtils::get_next_refresh_time($tavern_trickle_intervals);
 
     // Trickle some new Adventurers into the tavern.
-    ServerUtils::trickle_tavern();
+    $adventurers = ServerUtils::trickle_tavern();
+
+    $logger->notice("# of Adventurers: ".count($adventurers));
+
+    // If there are new adventurers, let people know.
+    if (count($adventurers) > 0) {
+      $message = ServerUtils::get_tavern_is_refreshed_message();
+      send_message($message);
+    }
 
     $logger->notice("Tavern refreshed! Next Tavern Trickle: ".date('Y-m-d H:i:s', $next_tavern_trickle));
   }
