@@ -42,6 +42,11 @@ class Challenge extends RPGEntitySaveable {
   const RESULT_MISS = 'miss';
   const RESULT_CRIT = 'crit';
 
+  const DIFFICULTY_EASY = 'easy';
+  const DIFFICULTY_AVERAGE = 'average';
+  const DIFFICULTY_CHALLENGING = 'challenging';
+  const DIFFICULTY_HARD = 'hard';
+
   
   function __construct($data = array()) {
     // Perform regular constructor.
@@ -526,6 +531,25 @@ class Challenge extends RPGEntitySaveable {
   public static function convert_list_to_moves ($list) {
     if (!is_array($list) || empty($list)) return '';
     return implode(',', $list);
+  }
+
+  public static function compare_champions ($champion, $opponent_champ) {
+    // Calculate difference of level. Positive means player has advantage.
+    $level_diff = $champion->get_level() - $opponent_champ->get_level();
+
+    // 2% crit increase per level above
+    // 4% miss increase per level below
+
+    // By default anything +/- 2 levels is average.
+    $difficulty = Challenge::DIFFICULTY_AVERAGE;
+    // If you're above them by 3 or more levels, it's fairly easy.
+    if ($level_diff > 2) $difficulty = Challenge::DIFFICULTY_EASY;
+    // If you're below them by 7 or more levels, it's hard (28% miss rate).
+    else if ($level_diff <= -7) $difficulty = Challenge::DIFFICULTY_HARD;
+    // If you're below them by 3-6 levels, it's challenging (12-24% miss rate).
+    else if ($level_diff <= -3) $difficulty = Challenge::DIFFICULTY_CHALLENGING;
+
+    return $difficulty;
   }
 
   /**

@@ -400,7 +400,6 @@ $first_names = array(
     'Ianthe',
     'Gwendoline',
     'Oana',
-    'Tanith',
     'Ramona',
     'Philomena',
   ),

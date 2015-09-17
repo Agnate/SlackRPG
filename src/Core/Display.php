@@ -77,6 +77,17 @@ class Display {
     return "*Difficulty Legend*:\n:rpg-quest-diff0: Impossible, :rpg-quest-diff1: Risky, :rpg-quest-diff2: Difficult, :rpg-quest-diff3: Challenging, :rpg-quest-diff4: Recommended\n:skull: Adventurers can die";
   }
 
+  public static function get_challenge_difficulty ($difficulty) {
+    switch ($difficulty) {
+      case Challenge::DIFFICULTY_EASY: return ':rpg-star-green: _Easy_';
+      case Challenge::DIFFICULTY_AVERAGE: return ':rpg-star-yellow: _Average_';
+      case Challenge::DIFFICULTY_CHALLENGING: return ':rpg-star-orange: _Challenging_';
+      case Challenge::DIFFICULTY_HARD: return ':rpg-star-red: _Hard_';
+    }
+
+    return ':rpg-star-black: _Unknown_';
+  }
+
   public static function addOrdinalNumberSuffix ($num) {
     if (!in_array(($num % 100), array(11,12,13))) {
       switch ($num % 10) {

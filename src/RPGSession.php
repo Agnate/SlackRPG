@@ -2662,11 +2662,10 @@ class RPGSession {
   protected function cmd_challenge ($args = array()) {
     $orig_args = $args;
     $cmd_word = 'challenge';
+    $response = array();
 
     // Load the player and fail out if they have not created a Guild.
     if (!($player = $this->load_current_player())) return;
-
-    $response = array();
 
     // If there are no arguments, show the help.
     if (empty($args) || empty($args[0])) {
@@ -2692,6 +2691,8 @@ class RPGSession {
 
       // Show help message.
       $response[] = 'For more information about the Colosseum, type: `challenge help`';
+      $response[] = 'To see a list of Guild\'s whose Champions are roughly equal in strength to yours, type: `challenge compare`';
+      $response[] = 'To do a comparison of your Champion to another Guild\'s, type: `challenge compare [GUILD NAME]`';
       $response[] = 'To challenge another Guild, type: `challenge [FAME WAGER] [GUILD NAME] [6 CHALLENGE MOVES (comma-separated)]`';
       $response[] = 'To cancel challenges you started, type: `challenge cancel`';
       $response[] = '';
@@ -2704,10 +2705,10 @@ class RPGSession {
     }
 
     // Check if the first argument is a secondary command, pass all of the information off to the secondary functions.
-    $cmd_options = array('help', 'cancel');
+    $cmd_options = array('help', 'cancel', 'compare');
     if (in_array($args[0], $cmd_options)) {
       $cmd_secondary = array_shift($args);
-      $this->{'cmd_challenge_'.$cmd_secondary}($args);
+      $this->{'cmd_challenge_'.$cmd_secondary}($args, $player);
       return TRUE;
     }
 
@@ -2792,6 +2793,19 @@ class RPGSession {
     // Check if the opponent can afford the wager.
     if (empty($challenge) && $opponent->fame < $wager) {
       $this->respond($opponent->get_display_name(). " does not have ".Display::get_fame($wager)." to match your wager. Try a lower amount or check their report to see how much they have (type `report ".$opponent->name."`).".$this->get_typed($cmd_word, $orig_args));
+      return FALSE;
+    }
+
+    // If no moves have been entered yet, show the opponent, their champion, and roughly how strong they are in relation.
+    if (empty($moves)) {
+      $response[] = 'You must select six moves (five + tie-breaker) to continue with the challenge.';
+      $response[] = '';
+      $response[] = 'Moves:';
+      $response[] = '`attack` (or `a`) Attack wins against Break, but loses against Defend.';
+      $response[] = '`defend` (or `d`) Defend wins against Attack, but loses against Break.';
+      $response[] = '`break` (or `b`) Break wins against Defend, but loses against Attack.';
+      $response[] = $this->get_typed($cmd_word, $orig_args);
+      $this->respond($response);
       return FALSE;
     }
 
@@ -2927,13 +2941,9 @@ class RPGSession {
   /**
    * Show additional help for the Challenge command.
    */
-  protected function cmd_challenge_help ($args = array()) {
+  protected function cmd_challenge_help ($args, $player) {
     $orig_args = $args;
     $cmd_word = 'challenge help';
-
-    // Load the player and fail out if they have not created a Guild.
-    if (!($player = $this->load_current_player())) return;
-
     $response = array();
 
     // For more help, show the help.
@@ -2963,13 +2973,9 @@ class RPGSession {
   /**
    * Allow the challenger to cancel the Challenge at any time.
    */
-  protected function cmd_challenge_cancel ($args = array()) {
+  protected function cmd_challenge_cancel ($args, $player) {
     $orig_args = $args;
     $cmd_word = 'challenge cancel';
-
-    // Load the player and fail out if they have not created a Guild.
-    if (!($player = $this->load_current_player())) return;
-
     $response = array();
 
     // If they didn't choose a challenge to cancel, show the list.
@@ -3067,6 +3073,75 @@ class RPGSession {
 
     $this->respond('The Colosseum challenge against '.$opponent->get_display_name().' was successfully cancelled and your wager of '.Display::get_fame($wager).' was returned to you.');
     $this->respond($player->get_display_name()." cancelled the Colosseum challenge against you.", RPGSession::PERSONAL, $opponent);
+  }
+
+
+
+  /**
+   * Allow the challenger to compare their champion to another Guild's.
+   */
+  protected function cmd_challenge_compare ($args, $player) {
+    $orig_args = $args;
+    $cmd_word = 'challenge compare';
+    $response = array();
+
+    // If this player has not set their champion, we cannot compare.
+    $champion = $player->get_champion();
+    if (empty($champion)) {
+      $this->respond("You must choose your Guild's Champion before you can compare to another Guild. Type `champion` to select one.".$this->get_typed($cmd_word, $orig_args));
+      return FALSE;
+    }
+
+    // Show a list of Guilds with similarly-leveled Champions.
+    if (empty($args) || empty($args[0])) {
+      $guilds = Guild::current();
+
+      $response[] = 'Guilds of similar strength:';
+      $in_range = array();
+      foreach ($guilds as $opponent) {
+        $opponent_champ = $opponent->get_champion();
+        if (empty($opponent_champ)) continue;
+        // Calculate the difficulty.
+        $difficulty = Challenge::compare_champions($champion, $opponent_champ);
+        if ($difficulty != Challenge::DIFFICULTY_EASY && $difficulty != Challenge::DIFFICULTY_AVERAGE) continue;
+        $in_range[] = $opponent;
+        $response[] = $opponent->get_display_name() .' — '. Display::get_challenge_difficulty($difficulty);
+      }
+      if (empty($in_range)) $response[] = '_None_';
+      $this->respond($response);
+      return TRUE;
+    }
+
+    // Get the name of the Guild.
+    $name = trim(implode(' ', $args));
+    $season = Season::current();
+    $opponent = Guild::load(array('name' => $name, 'season' => $season->sid), true);
+    if (empty($opponent)) {
+      $this->respond("The Guild \"".$name."\" does not exist.".$this->get_typed($cmd_word, $orig_args));
+      return FALSE;
+    }
+
+    // Get the opponent champion.
+    $opponent_champ = $opponent->get_champion();
+
+    if (empty($opponent_champ)) {
+      $this->respond("The Guild ".$opponent->get_display_name()." has not chosen a Champion so you cannot compare with theirs.".$this->get_typed($cmd_word, $orig_args));
+      return FALSE;
+    }
+
+    // Calculate the difficulty.
+    $difficulty = Challenge::compare_champions($champion, $opponent_champ);
+
+    $response[] = '*Name*: '.$opponent->get_display_name(false);
+    $response[] = '*Fame*: '.Display::get_fame($opponent->fame);
+    $response[] = '*Champion*: '.(empty($opponent_champ) ? '_None_' : $opponent_champ->get_display_name());
+    $response[] = '*Comparison*: '.Display::get_challenge_difficulty($difficulty);
+
+    $response[] = '';
+    $response[] = '*Your Champion*:';
+    $response[] = $this->show_adventurer_status($champion);
+
+    $this->respond($response);
   }
 
 
