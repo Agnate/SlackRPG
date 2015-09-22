@@ -13,7 +13,7 @@
 error_reporting(E_ALL);
 ini_set("display_errors", 1);
 
-require_once('/rpg_slack/test/config.php');
+require_once('config.php');
 require_once(RPG_SERVER_ROOT.'/includes/db.inc');
 require_once(RPG_SERVER_ROOT.'/vendor/autoload.php');
 require_once(RPG_SERVER_ROOT.'/src/autoload.php');
