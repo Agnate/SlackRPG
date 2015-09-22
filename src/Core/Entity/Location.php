@@ -40,9 +40,9 @@ class Location extends RPGEntitySaveable {
   const FILENAME_LIST = '/bin/json/location_names.json';
 
   // Used to calculate the exp/tile and represents the tile to travel 1 tile on the map.
-  const TRAVEL_BASE_CALC_VALUE = 1800; // 1800 = 30 mins/tile (60 * 30)
+  const TRAVEL_BASE_CALC_VALUE = 2700; // 2700 = 45 mins/tile (60 * 45)
   // This should always be equal to the TRAVEL_BASE_CALC_VALUE, but for debugging it can be lowered without affected the exp/tile.
-  const TRAVEL_BASE = 5;
+  const TRAVEL_BASE = 2700;
   
 
   
@@ -232,10 +232,10 @@ class Location extends RPGEntitySaveable {
 
     // Hours of travel for this star rating.
     $rates = array(
-      '1' => 7,
-      '2' => 12,
-      '3' => 17,
-      '4' => 22,
+      '1' => 10.5,
+      '2' => 18,
+      '3' => 25.5,
+      '4' => 33,
     );
 
     if ($distance <= 0) return 0;

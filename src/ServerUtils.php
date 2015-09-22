@@ -5,6 +5,11 @@ require_once(RPG_SERVER_ROOT.'/src/autoload.php');
 
 class ServerUtils {
 
+  public static function microtime_float () {
+    list($usec, $sec) = explode(" ", microtime());
+    return ((float)$usec + (float)$sec);
+  }
+
   public static function get_next_refresh_time ($intervals) {
     // Get the current time and find the closest one.
     $now = time();

@@ -29,6 +29,8 @@ class SpriteSheet {
 
     // Count how many tiles we have and separate into a useful list.
     $tile_size = 32;
+    $resizer = 0.5;
+    $rtile_size = floor($tile_size * $resizer);
     $num_cols = 20;
     $num_rows = ceil($num_tiles / $num_cols);
     $width = $num_cols * $tile_size;
@@ -67,11 +69,11 @@ class SpriteSheet {
 
           // Store new coordinates.
           $group[] = array(
-            'x' => $x,
-            'y' => $y,
+            'x' => $col * $rtile_size,
+            'y' => $row * $rtile_size,
             'orientation' => $orientation,
-            'width' => $tile['width'],
-            'height' => $tile['height'],
+            'width' => floor($tile['width'] * $resizer),
+            'height' => floor($tile['height'] * $resizer),
           );
 
           $col++;
@@ -87,10 +89,20 @@ class SpriteSheet {
       }
     }
 
-    // Output the image.
+    // Resize the spritesheet to shrink the overall map size.
+    $rwidth = floor($width * $resizer);
+    $rheight = floor($height * $resizer);
+    $resized = imagecreatetruecolor($rwidth, $rheight);
+    imagealphablending($resized, true);
+    imagesavealpha($resized, true);
+    $rtrans_colour = imagecolorallocatealpha($resized, 0, 0, 0, 127);
+    imagefill($resized, 0, 0, $rtrans_colour);
+    imagecopyresampled($resized, $image, 0, 0, 0, 0, $rwidth, $rheight, $width, $height);
+
+    // Output the resized image.
     $image_url = SpriteSheet::DEFAULT_SPRITESHEET_URL;
     $file_path = RPG_SERVER_ROOT.$image_url;
-    imagepng($image, $file_path);
+    imagepng($resized, $file_path);
     $urls = array('url' => $image_url);
 
     // Save out JSON data for sprites.
@@ -101,7 +113,7 @@ class SpriteSheet {
     if ($debug) {
       $debug_url = SpriteSheet::DEBUG_URL;
       $debug_file_path = RPG_SERVER_ROOT .'/public'.$debug_url;
-      imagepng($image, $debug_file_path);
+      imagepng($resized, $debug_file_path);
       $urls['debug'] = $debug_url;
     }
 
@@ -244,16 +256,16 @@ class SpriteSheet {
         ),
         'field' => array(
           array(
-            array('x' => 1, 'y' => 26),
-            array('x' => 2, 'y' => 26),
-            array('x' => 1, 'y' => 27),
-            array('x' => 2, 'y' => 27),
+            array('x' => 1, 'y' => 29),
+            array('x' => 1, 'y' => 29),
+            array('x' => 1, 'y' => 29),
+            array('x' => 1, 'y' => 29),
           ),
           array(
-            array('x' => 1, 'y' => 20),
-            array('x' => 2, 'y' => 20),
-            array('x' => 1, 'y' => 21),
-            array('x' => 2, 'y' => 21),
+            array('x' => 1, 'y' => 23),
+            array('x' => 1, 'y' => 23),
+            array('x' => 1, 'y' => 23),
+            array('x' => 1, 'y' => 23),
           ),
         ),
       ),

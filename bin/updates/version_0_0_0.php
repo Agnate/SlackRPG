@@ -260,29 +260,29 @@ function update_version_0_0_0 ($forced = false) {
   }*/
 
   // TEMP: change hours to seconds so it can be easily tested. (Comment the line below to set back to proper value)
-  $hours = 0.5;
+  // $hours = 0.5;
 
   // Add some Upgrades.
   $upgrades = array();
-  $upgrades[] = array(':name_id' => "dorm1", ':name' => "Dormitory 1", ':description' => "increase max adventurer limit by 1", ':cost' => 750, ':duration' => (12 * $hours), ':requires' => '');
-  $upgrades[] = array(':name_id' => "dorm2", ':name' => "Dormitory 2", ':description' => "increase max adventurer limit by 1", ':cost' => 1250, ':duration' => (24 * $hours), ':requires' => 'upgrade,dorm1');
-  $upgrades[] = array(':name_id' => "dorm3", ':name' => "Dormitory 3", ':description' => "increase max adventurer limit by 1", ':cost' => 2250, ':duration' => (36 * $hours), ':requires' => 'upgrade,dorm2');
-  $upgrades[] = array(':name_id' => "dorm4", ':name' => "Dormitory 4", ':description' => "increase max adventurer limit by 1", ':cost' => 3500, ':duration' => (48 * $hours), ':requires' => 'upgrade,dorm3');
-  $upgrades[] = array(':name_id' => "dorm5", ':name' => "Dormitory 5", ':description' => "increase max adventurer limit by 1", ':cost' => 5000, ':duration' => (60 * $hours), ':requires' => 'upgrade,dorm4');
-  $upgrades[] = array(':name_id' => "dorm6", ':name' => "Dormitory 6", ':description' => "increase max adventurer limit by 1", ':cost' => 10000, ':duration' => (72 * $hours), ':requires' => 'upgrade,dorm5');
-  $upgrades[] = array(':name_id' => "speed1", ':name' => "Transportation: Horse", ':description' => "increase speed by 5%", ':cost' => 3000, ':duration' => (24 * $hours), ':requires' => 'item,animal_horse,4');
-  $upgrades[] = array(':name_id' => "speed2", ':name' => "Transportation: Pegasus", ':description' => "increase speed by 5%", ':cost' => 10000, ':duration' => (48 * $hours), ':requires' => 'upgrade,speed1|item,animal_pegasus,4');
-  $upgrades[] = array(':name_id' => "speed3", ':name' => "Transportation: Airship", ':description' => "increase speed by 10%", ':cost' => 20000, ':duration' => (72 * $hours), ':requires' => 'upgrade,speed2|item,ore_steel,10|item,ore_iron,10|item,ore_adamantine,3|item,ore_crystal');
-  $upgrades[] = array(':name_id' => "equip1", ':name' => "Equipment: Iron", ':description' => "increase quest success rate by 2%", ':cost' => 750, ':duration' => (24 * $hours), ':requires' => 'item,ore_iron,3');
-  $upgrades[] = array(':name_id' => "equip2", ':name' => "Equipment: Steel", ':description' => "increase quest success rate by 2%", ':cost' => 2500, ':duration' => (24 * $hours), ':requires' => 'upgrade,equip1|item,ore_steel,3');
-  $upgrades[] = array(':name_id' => "equip3", ':name' => "Equipment: Mithril", ':description' => "increase quest success rate by 2%", ':cost' => 6000, ':duration' => (36 * $hours), ':requires' => 'upgrade,equip2|item,ore_mithril,3');
-  $upgrades[] = array(':name_id' => "equip4", ':name' => "Equipment: Inlaid Crystal", ':description' => "increase quest success rate by 2%", ':cost' => 7000, ':duration' => (36 * $hours), ':requires' => 'upgrade,equip3|item,ore_crystal,3');
-  $upgrades[] = array(':name_id' => "equip5", ':name' => "Equipment: Diamond Edged", ':description' => "increase quest success rate by 2%", ':cost' => 10000, ':duration' => (48 * $hours), ':requires' => 'upgrade,equip4|item,ore_diamond,3');
-  $upgrades[] = array(':name_id' => "equip6", ':name' => "Equipment: Adamantine", ':description' => "increase quest success rate by 2%", ':cost' => 12000, ':duration' => (48 * $hours), ':requires' => 'upgrade,equip5|item,ore_adamantine,3');
-  $upgrades[] = array(':name_id' => "equip7", ':name' => "Equipment: Demonsteel", ':description' => "increase quest success rate by 2%", ':cost' => 18000, ':duration' => (72 * $hours), ':requires' => 'upgrade,equip6|item,ore_demonite,3');
-  $upgrades[] = array(':name_id' => "equip8", ':name' => "Equipment: Godsteel", ':description' => "increase quest success rate by 2%", ':cost' => 20000, ':duration' => (72 * $hours), ':requires' => 'upgrade,equip7|item,ore_godstone,3');
-  $upgrades[] = array(':name_id' => "heal1", ':name' => "Healer's Garden", ':description' => "reduce death rate by 2%", ':cost' => 1100, ':duration' => (48 * $hours), ':requires' => 'item,herb_green,5');
-  $upgrades[] = array(':name_id' => "heal2", ':name' => "Apothecary", ':description' => "reduce death rate by 2%", ':cost' => 4500, ':duration' => (72 * $hours), ':requires' => 'upgrade,heal1|item,herb_red,5');
+  $upgrades[] = array(':name_id' => "dorm1", ':name' => "Dormitory 1", ':description' => "increase max adventurer limit by 1", ':cost' => 750, ':duration' => (3 * $hours), ':requires' => '');
+  $upgrades[] = array(':name_id' => "dorm2", ':name' => "Dormitory 2", ':description' => "increase max adventurer limit by 1", ':cost' => 1250, ':duration' => (6 * $hours), ':requires' => 'upgrade,dorm1');
+  $upgrades[] = array(':name_id' => "dorm3", ':name' => "Dormitory 3", ':description' => "increase max adventurer limit by 1", ':cost' => 2250, ':duration' => (12 * $hours), ':requires' => 'upgrade,dorm2');
+  $upgrades[] = array(':name_id' => "dorm4", ':name' => "Dormitory 4", ':description' => "increase max adventurer limit by 1", ':cost' => 3500, ':duration' => (18 * $hours), ':requires' => 'upgrade,dorm3');
+  $upgrades[] = array(':name_id' => "dorm5", ':name' => "Dormitory 5", ':description' => "increase max adventurer limit by 1", ':cost' => 5000, ':duration' => (24 * $hours), ':requires' => 'upgrade,dorm4');
+  $upgrades[] = array(':name_id' => "dorm6", ':name' => "Dormitory 6", ':description' => "increase max adventurer limit by 1", ':cost' => 10000, ':duration' => (30 * $hours), ':requires' => 'upgrade,dorm5');
+  $upgrades[] = array(':name_id' => "speed1", ':name' => "Transportation: Horse", ':description' => "increase speed by 5%", ':cost' => 3000, ':duration' => (12 * $hours), ':requires' => 'item,animal_horse,4');
+  $upgrades[] = array(':name_id' => "speed2", ':name' => "Transportation: Pegasus", ':description' => "increase speed by 5%", ':cost' => 10000, ':duration' => (18 * $hours), ':requires' => 'upgrade,speed1|item,animal_pegasus,4');
+  $upgrades[] = array(':name_id' => "speed3", ':name' => "Transportation: Airship", ':description' => "increase speed by 10%", ':cost' => 20000, ':duration' => (24 * $hours), ':requires' => 'upgrade,speed2|item,ore_steel,10|item,ore_iron,10|item,ore_adamantine,3|item,ore_crystal');
+  $upgrades[] = array(':name_id' => "equip1", ':name' => "Equipment: Iron", ':description' => "increase quest success rate by 2%", ':cost' => 750, ':duration' => (12 * $hours), ':requires' => 'item,ore_iron,3');
+  $upgrades[] = array(':name_id' => "equip2", ':name' => "Equipment: Steel", ':description' => "increase quest success rate by 2%", ':cost' => 2500, ':duration' => (12 * $hours), ':requires' => 'upgrade,equip1|item,ore_steel,3');
+  $upgrades[] = array(':name_id' => "equip3", ':name' => "Equipment: Mithril", ':description' => "increase quest success rate by 2%", ':cost' => 6000, ':duration' => (18 * $hours), ':requires' => 'upgrade,equip2|item,ore_mithril,3');
+  $upgrades[] = array(':name_id' => "equip4", ':name' => "Equipment: Inlaid Crystal", ':description' => "increase quest success rate by 2%", ':cost' => 7000, ':duration' => (18 * $hours), ':requires' => 'upgrade,equip3|item,ore_crystal,3');
+  $upgrades[] = array(':name_id' => "equip5", ':name' => "Equipment: Diamond Edged", ':description' => "increase quest success rate by 2%", ':cost' => 10000, ':duration' => (24 * $hours), ':requires' => 'upgrade,equip4|item,ore_diamond,3');
+  $upgrades[] = array(':name_id' => "equip6", ':name' => "Equipment: Adamantine", ':description' => "increase quest success rate by 2%", ':cost' => 12000, ':duration' => (24 * $hours), ':requires' => 'upgrade,equip5|item,ore_adamantine,3');
+  $upgrades[] = array(':name_id' => "equip7", ':name' => "Equipment: Demonsteel", ':description' => "increase quest success rate by 2%", ':cost' => 18000, ':duration' => (30 * $hours), ':requires' => 'upgrade,equip6|item,ore_demonite,3');
+  $upgrades[] = array(':name_id' => "equip8", ':name' => "Equipment: Godsteel", ':description' => "increase quest success rate by 2%", ':cost' => 20000, ':duration' => (30 * $hours), ':requires' => 'upgrade,equip7|item,ore_godstone,3');
+  $upgrades[] = array(':name_id' => "heal1", ':name' => "Healer's Garden", ':description' => "reduce death rate by 2%", ':cost' => 1100, ':duration' => (12 * $hours), ':requires' => 'item,herb_green,5');
+  $upgrades[] = array(':name_id' => "heal2", ':name' => "Apothecary", ':description' => "reduce death rate by 2%", ':cost' => 4500, ':duration' => (18 * $hours), ':requires' => 'upgrade,heal1|item,herb_red,5');
   //$upgrades[] = array(':name_id' => "", ':name' => "", ':description' => "", ':cost' => 0, ':duration' => 0, ':requires' => '');
   foreach ($upgrades as $upgrade) {
     add_update_query("INSERT INTO upgrades (name_id, name, description, cost, duration, requires) VALUES (:name_id, :name, :description, :cost, :duration, :requires)", $upgrade);

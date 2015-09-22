@@ -28,7 +28,7 @@ use Frlnc\Slack\Core\Commander;
 $tavern_trickle_intervals = array(
   '02:59:59',
   '05:59:59',
-  '08:59:59',
+  // '08:59:59', // We do a full reset here.
   '11:59:59',
   '14:59:59',
   '17:59:59',
@@ -40,7 +40,7 @@ $next_tavern_trickle = ServerUtils::get_next_refresh_time($tavern_trickle_interv
 
 // Once a day
 $tavern_reset_intervals = array(
-  '23:59:59',
+  '08:59:59',
 );
 $next_tavern_reset = ServerUtils::get_next_refresh_time($tavern_reset_intervals);
 

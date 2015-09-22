@@ -4,6 +4,7 @@ class MapImage {
   
   public $url;
   public $map;
+  public $times;
 
   const DEFAULT_IMAGE_URL = '/images/map.png';
   const DEFAULT_ICON_URL = '/icons';
@@ -14,6 +15,7 @@ class MapImage {
     if (count($data)) foreach ($data as $key => $value) if (property_exists($this, $key)) $this->{$key} = $value;
 
     if (empty($this->url)) $this->url = MapImage::DEFAULT_IMAGE_URL;
+    if (empty($this->times)) $this->times = array();
   }
 
 
@@ -27,6 +29,11 @@ class MapImage {
   ==================================== */
 
   public static function generate_image ($map) {
+    // Calculate time to start.
+    $times = array();
+    $times['start'] = ServerUtils::microtime_float();
+    $times['iteration'] = $times['start'];
+
     // Get all locations for this map.
     $locations = $map->get_locations();
     $loc_coords = array();
@@ -57,11 +64,15 @@ class MapImage {
       }
     }
 
+    // Time to massage locations.
+    $times['massage_locations'] = ServerUtils::microtime_float() - $times['iteration'];
+    $times['iteration'] = ServerUtils::microtime_float();
+
     // Create base image with extra row and col for letters and numbers.
     $num_rows = ($info['row_hi'] - $info['row_lo'] + 1) + 1;
     $num_cols = ($info['col_hi'] - $info['col_lo'] + 1) + 1;
 
-    $icon_size = 32;
+    $icon_size = 16;
     $cell_size = $icon_size * 2;
     $width = $num_cols * $cell_size;
     $height = $num_rows * $cell_size;
@@ -74,37 +85,35 @@ class MapImage {
     $black = imagecolorallocate($image, 0, 0, 0);
     $gray = imagecolorallocate($image, 80, 80, 80);
 
-    // Fill the background.
-    imagefill($image, 0, 0, $white);
+    // Fill the edges with white.
+    imagefilledrectangle($image, 0, 0, $width+1, $cell_size, $white);
+    imagefilledrectangle($image, 0, 0, $cell_size, $height+1, $white);
     
     // Load the spritesheet.
     $sheet = SpriteSheet::load_sprites_list();
     $spritesheet = imagecreatefrompng(RPG_SERVER_ROOT. $sheet['url']);
 
-    // Generate the base (randomized grass).
-    for ($r = 1; $r <= $num_rows; $r++) {
-      for ($c = 1; $c <= $num_cols; $c++) {
-        $x = $c * $cell_size;
-        $y = $r * $cell_size;
-        MapImage::create_random_cells($image, $icon_size, $spritesheet, reset($sheet['tiles']['grass']), $x, $y);
-      }
-    }
+    // Time to prep base.
+    $times['prep_base'] = ServerUtils::microtime_float() - $times['iteration'];
+    $times['iteration'] = ServerUtils::microtime_float();
 
+    // Generate the tiles for locations.
     foreach ($loc_coords as $row => $cols) {
       foreach ($cols as $col => $location) {
         $x = ($col - $info['col_lo'] + 1) * $cell_size;
         $y = ($row - $info['row_lo'] + 1) * $cell_size;
 
-        // If there's no location (or we can't go to the location), do Fog of war.
-        if ($location === true || ($location->revealed == false && $location->open == false)) {
-          MapImage::create_random_cells($image, $icon_size, $spritesheet, reset($sheet['tiles']['fog']), $x, $y, 90);
+        // If this location is revealed or needs lite fog of war, generated a grass time.
+        if ($location !== true && ($location->revealed || ($location->revealed == false && $location->open))) {
+          MapImage::create_random_cells($image, $icon_size, $spritesheet, reset($sheet['tiles']['grass']), $x, $y);
         }
+
         // Lite fog of war.
-        else if ($location->revealed == false && $location->open) {
+        if ($location !== true && $location->revealed == false && $location->open) {
           MapImage::create_random_cells($image, $icon_size, $spritesheet, reset($sheet['tiles']['fog']), $x, $y, 60);
         }
         // Fancy icon.
-        else if ($location->revealed && $location->type != Location::TYPE_EMPTY) {
+        else if ($location !== true && $location->revealed && $location->type != Location::TYPE_EMPTY) {
           $icon = MapImage::generalize_icon($location->get_map_icon());
           // Check if we have an icon for this.
           if (isset($sheet['tiles'][$icon])) {
@@ -125,14 +134,18 @@ class MapImage {
       }
     }
 
+    // Time to generate tiles.
+    $times['gen_tiles'] = ServerUtils::microtime_float() - $times['iteration'];
+    $times['iteration'] = ServerUtils::microtime_float();
+
     // Draw grid lines and letters/numbers.
     for ($r = 1; $r <= $num_rows; $r++) {
       $y = $r * $cell_size;
       imageline($image, ($cell_size / 4) * 3, $y, $width, $y, $gray);
       // Numbers
       $row_num = $info['row_lo'] + $r - 1;
-      $x = ($row_num < 10) ? 41 : (($row_num < 100) ? 22 : 0);
-      imagettftext($image, 26, 0, $x, $y + $cell_size - 16, $black, RPG_SERVER_ROOT.'/icons/RobotoMono-Regular.ttf', $row_num);
+      $x = ($row_num < 10) ? 20 : (($row_num < 100) ? 11 : 1);
+      imagettftext($image, 13, 0, $x, $y + $cell_size - 8, $black, RPG_SERVER_ROOT.'/icons/RobotoMono-Regular.ttf', $row_num);
     }
 
     for ($c = 1; $c <= $num_cols; $c++) {
@@ -140,16 +153,35 @@ class MapImage {
       imageline($image, $x, ($cell_size / 4) * 3, $x, $height, $gray);
       // Letters
       $col_num = $info['col_lo'] + $c - 1;
-      imagettftext($image, 30, 0, $x + 10, $cell_size - 10, $black, RPG_SERVER_ROOT.'/icons/RobotoMono-Regular.ttf', Location::get_letter($col_num));
+      imagettftext($image, 15, 0, $x + 5, $cell_size - 5, $black, RPG_SERVER_ROOT.'/icons/RobotoMono-Regular.ttf', Location::get_letter($col_num));
     }
+
+    // Time to generate gridnums.
+    $times['gen_gridnums'] = ServerUtils::microtime_float() - $times['iteration'];
+    $times['iteration'] = ServerUtils::microtime_float();
+
+    // Try resizing the image.
+    // $rwidth = floor(($width+1) / 3);
+    // $rheight = floor(($height+1) / 3);
+    // $resized = imagecreatetruecolor($rwidth, $rheight);
+    // imagecopyresized($resized, $image, 0, 0, 0, 0, $rwidth, $rheight, $width+1, $height+1);
 
     // Output the image.
     $image_url = MapImage::DEFAULT_IMAGE_URL;
     $file_path = RPG_SERVER_ROOT.'/public'.$image_url;
+    // imagepng($resized, $file_path);
     imagepng($image, $file_path);
 
+    // Time to output image.
+    $times['output_image'] = ServerUtils::microtime_float() - $times['iteration'];
+    $times['iteration'] = ServerUtils::microtime_float();
+
+    // Calculate time to generate image.
+    $times['end'] = ServerUtils::microtime_float();
+    $times['total'] = $times['end'] - $times['start'];
+
     // Create the object.
-    return new MapImage (array('map' => $map, 'url' => $image_url));
+    return new MapImage (array('map' => $map, 'url' => $image_url, 'times' => $times));
   }
 
   protected static function generalize_icon ($icon) {

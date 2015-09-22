@@ -52,7 +52,7 @@ class Quest extends RPGEntitySaveable {
   const MULTIPLAYER_FAME_COST = 50;
 
   // Set this to 1 to use normal duration times. Set to a lower number (example 0.05) to reduce the Quest duration for debugging.
-  const DEBUG_DURATION_MODIFIER = 0.05;
+  const DEBUG_DURATION_MODIFIER = 1; // 0.05
 
   const TYPE_EXPLORE = 'explore';
   const TYPE_TRAIN = 'train';

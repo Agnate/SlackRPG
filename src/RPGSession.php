@@ -2862,7 +2862,7 @@ class RPGSession {
 
 
     // Delay before starting challenge in seconds.
-    $duration = 10; // (60 * 30) = 30 minutes
+    $duration = 900; // (60 * 30) = 15 minutes
     $new_challenge = empty($challenge);
 
     // If there's no existing challenge, create a new one.
@@ -3498,7 +3498,7 @@ class RPGSession {
   protected function cmd_admin_gen_map_spritesheet ($args, $player) {
     // Create the sprite sheet.
     $spritesheet = SpriteSheet::generate(true);
-    $this->respond('<img class="map" src="'.$spritesheet['debug'].'">');
+    $this->respond('<img class="map" src="'.$spritesheet['debug'].'?timestamp='.time().'">');
   }
 
 
@@ -3511,7 +3511,7 @@ class RPGSession {
       $file_name = explode('/', $file);
       $file_name = array_pop($file_name);
       $lined = SpriteSheet::add_grid_to_sheet('/'.$file_name, true);
-      $this->respond("*".$file_name."*\n".'<img class="map" src="'.$lined['debug'].'">');      
+      $this->respond("*".$file_name."*\n".'<img class="map" src="'.$lined['debug'].'?timestamp='.time().'">');      
     }
   }
 
@@ -3523,7 +3523,9 @@ class RPGSession {
     $map = $season->get_map();
 
     $mapimage = MapImage::generate_image($map);
-    $this->respond('<img class="map" src="'.$mapimage->url.'">');
+    $this->respond('<img class="map" src="'.$mapimage->url.'?timestamp='.time().'">');
+
+    d($mapimage->times);
   }
 
   /**
